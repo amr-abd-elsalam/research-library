@@ -8,8 +8,9 @@
 const ChatModule = (() => {
 
   /* ── History (sessionStorage) ─────────────────────────────── */
-  const HISTORY_KEY = 'research_chat_history';
-  const MAX_HISTORY = CLIENT_CONFIG.LIMITS.maxHistoryItems;
+  const HISTORY_KEY    = 'research_chat_history';
+  const SESSION_ID_KEY = 'research_session_id';
+  const MAX_HISTORY    = CLIENT_CONFIG.LIMITS.maxHistoryItems;
 
   function _loadHistory() {
     try {
@@ -29,6 +30,33 @@ const ChatModule = (() => {
     history.push({ role, text });
     if (history.length > MAX_HISTORY) history.splice(0, history.length - MAX_HISTORY);
     _saveHistory(history);
+  }
+
+  /* ── Server-side sessions ─────────────────────────────────── */
+  function _getSessionId() {
+    if (!CLIENT_CONFIG.SESSIONS || !CLIENT_CONFIG.SESSIONS.enabled) return null;
+    return sessionStorage.getItem(SESSION_ID_KEY) || null;
+  }
+
+  async function _ensureSession() {
+    if (!CLIENT_CONFIG.SESSIONS || !CLIENT_CONFIG.SESSIONS.enabled) return null;
+    var sid = sessionStorage.getItem(SESSION_ID_KEY);
+    if (sid) return sid;
+    try {
+      var topicFilter = TopicsModule.getActiveTopic();
+      var res = await fetch(CLIENT_CONFIG.API.sessions, {
+        method: 'POST',
+        headers: Object.assign(
+          { 'Content-Type': 'application/json' },
+          AuthModule.getAccessHeaders()
+        ),
+        body: JSON.stringify({ topic_filter: topicFilter }),
+      });
+      if (!res.ok) return null;
+      var data = await res.json();
+      sessionStorage.setItem(SESSION_ID_KEY, data.session_id);
+      return data.session_id;
+    } catch (e) { return null; }
   }
 
   /* ── Input state (enable/disable) ────────────────────────── */
@@ -340,17 +368,21 @@ const ChatModule = (() => {
       const controller = new AbortController();
       const timer      = setTimeout(() => controller.abort(), 38000);
 
+      var chatBody = {
+        message:      message,
+        topic_filter: topicFilter,
+        history:      history.slice(-10),
+      };
+      var currentSid = _getSessionId();
+      if (currentSid) chatBody.session_id = currentSid;
+
       const res = await fetch(CLIENT_CONFIG.API.chat, {
         method:  'POST',
         headers: Object.assign(
           { 'Content-Type': 'application/json' },
           AuthModule.getAccessHeaders()
         ),
-        body:    JSON.stringify({
-          message,
-          topic_filter: topicFilter,
-          history:      history.slice(-10),
-        }),
+        body:    JSON.stringify(chatBody),
         signal: controller.signal,
       });
 
@@ -479,6 +511,9 @@ const ChatModule = (() => {
 
     _addUserMessage(message);
 
+    // Ensure server-side session exists (graceful — no-op if disabled)
+    await _ensureSession();
+
     await _fetchAndStream(message);
   }
 
@@ -490,6 +525,7 @@ const ChatModule = (() => {
     if (AppModule.STATE.isLoading) return;
 
     sessionStorage.removeItem(HISTORY_KEY);
+    sessionStorage.removeItem(SESSION_ID_KEY);
 
     AppModule.resetWelcomeState();
 
@@ -568,26 +604,78 @@ const ChatModule = (() => {
 
   /* ── استعادة آخر محادثة ─────────────────────────────────── */
   function _restoreSession() {
-    const history = _loadHistory();
+    var sid = _getSessionId();
+    if (sid) {
+      // Try server-side restore first
+      _restoreFromServer(sid);
+      return;
+    }
+    _restoreFromLocal();
+  }
+
+  function _restoreFromLocal() {
+    var history = _loadHistory();
     if (!history.length) return;
 
     AppModule.hideWelcomeState();
-
-    // إخفاء الهيدر عند استعادة session
     if (window.__headerControl) window.__headerControl.hide();
 
-    const { messagesList } = AppModule.DOM;
+    var messagesList = AppModule.DOM.messagesList;
     if (!messagesList) return;
 
-    history.forEach(item => {
+    history.forEach(function(item) {
       if (item.role === 'user') {
         _addUserMessage(item.text);
-      } else if (item.role === 'model') {
+      } else if (item.role === 'model' || item.role === 'assistant') {
         _addRestoredAssistantMessage(item.text);
       }
     });
 
     AppModule.scrollToBottom(false);
+  }
+
+  function _restoreFromServer(sid) {
+    fetch(CLIENT_CONFIG.API.sessions + '/' + sid, {
+      headers: AuthModule.getAccessHeaders(),
+    })
+    .then(function(res) {
+      if (!res.ok) throw new Error('session fetch failed');
+      return res.json();
+    })
+    .then(function(data) {
+      var messages = data.messages || [];
+      if (!messages.length) {
+        _restoreFromLocal();
+        return;
+      }
+      // Sync local history with server data
+      var localHistory = [];
+      messages.forEach(function(m) {
+        var role = m.role === 'assistant' ? 'model' : m.role;
+        localHistory.push({ role: role, text: m.text });
+      });
+      _saveHistory(localHistory);
+
+      AppModule.hideWelcomeState();
+      if (window.__headerControl) window.__headerControl.hide();
+
+      var messagesList = AppModule.DOM.messagesList;
+      if (!messagesList) return;
+
+      messages.forEach(function(m) {
+        if (m.role === 'user') {
+          _addUserMessage(m.text);
+        } else if (m.role === 'assistant' || m.role === 'model') {
+          _addRestoredAssistantMessage(m.text);
+        }
+      });
+
+      AppModule.scrollToBottom(false);
+    })
+    .catch(function() {
+      // Server failed — fallback to local sessionStorage
+      _restoreFromLocal();
+    });
   }
 
   function _addRestoredAssistantMessage(text) {

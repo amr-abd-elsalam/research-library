@@ -21,6 +21,7 @@ function buildPayload() {
     API:        config.API,
     AUTH:       { mode: getAccessMode() },
     COMMANDS:   config.COMMANDS,
+    SESSIONS:   { enabled: config.SESSIONS.enabled },
   });
   return cachedPayload;
 }

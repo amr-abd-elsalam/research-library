@@ -76,6 +76,9 @@ let CLIENT_CONFIG = Object.freeze({
     prefix:  '/',
     list:    [],
   }),
+  SESSIONS: Object.freeze({
+    enabled: false,
+  }),
 });
 
 // ── دالة التحميل — تُستدعى من bootstrap.js ─────────────────
@@ -107,6 +110,7 @@ async function loadConfig() {
       API:        Object.freeze(data.API         || CLIENT_CONFIG.API),
       AUTH:       Object.freeze(data.AUTH         || CLIENT_CONFIG.AUTH),
       COMMANDS:   Object.freeze(data.COMMANDS     || CLIENT_CONFIG.COMMANDS),
+      SESSIONS:   Object.freeze(data.SESSIONS     || CLIENT_CONFIG.SESSIONS),
     });
 
     console.log('[config] ✅ تم تحميل الإعدادات من السيرفر');
