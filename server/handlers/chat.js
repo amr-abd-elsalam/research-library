@@ -8,6 +8,7 @@ import { matchCommand, executeCommand } from '../services/commands.js';
 import { routeQuery, getTopK }         from '../services/queryRouter.js';
 import { getPromptForType }            from '../services/promptTemplates.js';
 import config              from '../../config.js';
+import { appendMessage }   from '../services/sessions.js';
 
 const LOW_SCORE_THRESHOLD   = 0.30;
 const CACHE_TTL             = 3600;
@@ -97,6 +98,15 @@ async function streamCachedResponse(res, cached, req, message, topic_filter) {
     cache_hit:        true,
     estimated_cost:   0,
   }).catch(() => {});
+
+  // ── Session persistence (fire-and-forget) ──────────────────
+  if (session_id && config.SESSIONS.enabled) {
+    appendMessage(session_id, 'user', message).catch(() => {});
+    appendMessage(session_id, 'assistant', cached.text, {
+      sources:    cached.sources,
+      score:      cached.score,
+    }).catch(() => {});
+  }
 }
 
 // ── validateTopicFilter ────────────────────────────────────────
@@ -110,7 +120,7 @@ function validateTopicFilter(topic_filter) {
 
 // ── handler ───────────────────────────────────────────────────
 export async function handleChat(req, res) {
-  const { message, topic_filter: rawFilter, history } = req._validatedBody;
+  const { message, topic_filter: rawFilter, history, session_id } = req._validatedBody;
 
   // ── Validate topic_filter ──────────────────────────────────
   const topic_filter = validateTopicFilter(rawFilter);
@@ -258,6 +268,16 @@ export async function handleChat(req, res) {
     // ── 6. Done ──────────────────────────────────────────────
     writeChunk(res, { done: true, sources, score: avg });
     res.end();
+
+    // ── 6.5. Session persistence (fire-and-forget) ──────────
+    if (session_id && config.SESSIONS.enabled) {
+      appendMessage(session_id, 'user', message).catch(() => {});
+      appendMessage(session_id, 'assistant', fullText, {
+        sources,
+        score:      avg,
+        query_type: queryRoute.type,
+      }).catch(() => {});
+    }
 
     // ── 7. Analytics (fire-and-forget) ───────────────────────
     const embeddingTokens  = estimateTokens(message);
