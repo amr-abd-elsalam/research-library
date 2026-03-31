@@ -99,13 +99,14 @@ async function streamCachedResponse(res, cached, req, message, topic_filter, ses
     estimated_cost:   0,
   }).catch(() => {});
 
-  // ── Session persistence (fire-and-forget) ──────────────────
+  // ── Session persistence (fire-and-forget, sequential) ──────
   if (session_id && config.SESSIONS.enabled) {
-    appendMessage(session_id, 'user', message).catch(() => {});
-    appendMessage(session_id, 'assistant', cached.text, {
-      sources:    cached.sources,
-      score:      cached.score,
-    }).catch(() => {});
+    appendMessage(session_id, 'user', message)
+      .then(() => appendMessage(session_id, 'assistant', cached.text, {
+        sources:    cached.sources,
+        score:      cached.score,
+      }))
+      .catch(() => {});
   }
 }
 
@@ -269,14 +270,15 @@ export async function handleChat(req, res) {
     writeChunk(res, { done: true, sources, score: avg });
     res.end();
 
-    // ── 6.5. Session persistence (fire-and-forget) ──────────
+    // ── 6.5. Session persistence (fire-and-forget, sequential)
     if (session_id && config.SESSIONS.enabled) {
-      appendMessage(session_id, 'user', message).catch(() => {});
-      appendMessage(session_id, 'assistant', fullText, {
-        sources,
-        score:      avg,
-        query_type: queryRoute.type,
-      }).catch(() => {});
+      appendMessage(session_id, 'user', message)
+        .then(() => appendMessage(session_id, 'assistant', fullText, {
+          sources,
+          score:      avg,
+          query_type: queryRoute.type,
+        }))
+        .catch(() => {});
     }
 
     // ── 7. Analytics (fire-and-forget) ───────────────────────
