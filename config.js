@@ -172,8 +172,10 @@ const config = {
     topics:     "/api/topics",
     health:     "/api/health",
     config:     "/api/config",
-    adminStats: "/api/admin/stats",
-    authVerify: "/api/auth/verify",
+    adminStats:    "/api/admin/stats",
+    authVerify:    "/api/auth/verify",
+    sessions:      "/api/sessions",
+    adminSessions: "/api/admin/sessions",
   },
 
   // ═══════════════════════════════════════════════════════════
@@ -193,7 +195,20 @@ const config = {
   },
 
   // ═══════════════════════════════════════════════════════════
-  // 9. تعليمات النموذج (SYSTEM_PROMPT)
+  // 9. الجلسات (SESSIONS)
+  //    — حفظ المحادثات على السيرفر
+  //    — معطّل افتراضياً — فعّله من هنا
+  //    — لا يحتاج أي خدمة خارجية (file-based)
+  // ═══════════════════════════════════════════════════════════
+  SESSIONS: {
+    enabled:      false,    // true = حفظ المحادثات على السيرفر | false = المتصفح فقط
+    maxMessages:  100,      // أقصى عدد رسائل في session واحدة
+    ttlDays:      30,       // مدة الاحتفاظ بالـ session (بالأيام)
+    maxSessions:  10000,    // أقصى عدد sessions محفوظة
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // 10. تعليمات النموذج (SYSTEM_PROMPT)
   //    — التعليمات التي تُرسل لـ Gemini مع كل سؤال
   //    — خصّصها حسب تخصص المدرب ونوع المحتوى
   // ═══════════════════════════════════════════════════════════

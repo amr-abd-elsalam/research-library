@@ -145,10 +145,17 @@ export async function validateBody(req, res) {
     }
   }
 
-  // ── 7. Attach to request ───────────────────────────────────────
+  // ── 7. Validate session_id (optional) ──────────────────────────
+  const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const session_id = (typeof parsed.session_id === 'string' && UUID_V4_RE.test(parsed.session_id))
+    ? parsed.session_id
+    : null;
+
+  // ── 8. Attach to request ───────────────────────────────────
   req._validatedBody = {
     message:      message.trim(),
     topic_filter: topic_filter,
     history:      history,
+    session_id:   session_id,
   };
 }

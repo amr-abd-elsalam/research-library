@@ -8,6 +8,7 @@ import { handleHealth }   from './handlers/health.js';
 import { handleConfig }   from './handlers/configHandler.js';
 import { handleAdminStats } from './handlers/adminStats.js';
 import { handleAuthVerify }  from './handlers/authHandler.js';
+import { handleCreateSession, handleGetSession, handleDeleteSession, handleListSessions, extractSessionId } from './handlers/sessions.js';
 
 // ── URL matcher (strips query string + trailing slash) ─────────
 function matchRoute(reqUrl, routePath) {
@@ -79,6 +80,38 @@ export async function router(req, res) {
     requireAdmin(req, res);
     if (res.writableEnded) return;
     await handleAdminStats(req, res);
+    return;
+  }
+
+  // GET /api/admin/sessions (admin — metadata only)
+  if (method === 'GET' && matchRoute(url, '/api/admin/sessions')) {
+    requireAdmin(req, res);
+    if (res.writableEnded) return;
+    await handleListSessions(req, res);
+    return;
+  }
+
+  // POST /api/sessions (create)
+  if (method === 'POST' && matchRoute(url, '/api/sessions')) {
+    requireAccess(req, res);
+    if (res.writableEnded) return;
+    await handleCreateSession(req, res);
+    return;
+  }
+
+  // GET /api/sessions/:id (read)
+  if (method === 'GET' && extractSessionId(url)) {
+    requireAccess(req, res);
+    if (res.writableEnded) return;
+    await handleGetSession(req, res);
+    return;
+  }
+
+  // DELETE /api/sessions/:id (delete)
+  if (method === 'DELETE' && extractSessionId(url)) {
+    requireAccess(req, res);
+    if (res.writableEnded) return;
+    await handleDeleteSession(req, res);
     return;
   }
 
