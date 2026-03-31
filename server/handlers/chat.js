@@ -2,6 +2,8 @@ import { embedText, streamGenerate, GeminiTimeoutError, GeminiSafetyError, Gemin
 import { search, QdrantNotFoundError, QdrantTimeoutError, QdrantConnectionError }                             from '../services/qdrant.js';
 import { cache }           from '../services/cache.js';
 import { getValidTopicIds } from './topics.js';
+import { logEvent }        from '../services/analytics.js';
+import { estimateTokens, estimateRequestCost } from '../services/costTracker.js';
 import config              from '../../config.js';
 
 const LOW_SCORE_THRESHOLD   = 0.30;
@@ -52,7 +54,9 @@ function avgScore(hits) {
 }
 
 // ── streamCachedResponse ───────────────────────────────────────
-async function streamCachedResponse(res, cached) {
+async function streamCachedResponse(res, cached, req, message, topic_filter) {
+  const startTime = Date.now();
+
   res.writeHead(200, {
     'Content-Type':  'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -74,6 +78,22 @@ async function streamCachedResponse(res, cached) {
     score:   cached.score,
   });
   res.end();
+
+  // ── Analytics (fire-and-forget) ────────────────────────────
+  logEvent({
+    event_type:       'chat',
+    req,
+    topic_filter:     topic_filter || null,
+    message_length:   message.length,
+    response_length:  cached.text.length,
+    embedding_tokens: 0,
+    generation_tokens:0,
+    latency_ms:       Date.now() - startTime,
+    score:            cached.score,
+    sources_count:    cached.sources?.length || 0,
+    cache_hit:        true,
+    estimated_cost:   0,
+  }).catch(() => {});
 }
 
 // ── validateTopicFilter ────────────────────────────────────────
@@ -104,11 +124,13 @@ export async function handleChat(req, res) {
   const cacheKey = buildCacheKey(topic_filter, message);
   const cached   = cache.get(cacheKey);
   if (cached) {
-    await streamCachedResponse(res, cached);
+    await streamCachedResponse(res, cached, req, message, topic_filter);
     return;
   }
 
   // ── Start SSE stream ───────────────────────────────────────
+  const startTime = Date.now();
+
   res.writeHead(200, {
     'Content-Type':  'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -202,7 +224,35 @@ export async function handleChat(req, res) {
     writeChunk(res, { done: true, sources, score: avg });
     res.end();
 
-    // ── 7. Cache ─────────────────────────────────────────────
+    // ── 7. Analytics (fire-and-forget) ───────────────────────
+    const embeddingTokens  = estimateTokens(message);
+    const genInputTokens   = estimateTokens(config.SYSTEM_PROMPT)
+                           + estimateTokens(context)
+                           + estimateTokens(message);
+    const genOutputTokens  = estimateTokens(fullText);
+
+    const costEstimate = estimateRequestCost({
+      embeddingInputTokens:   embeddingTokens,
+      generationInputTokens:  genInputTokens,
+      generationOutputTokens: genOutputTokens,
+    });
+
+    logEvent({
+      event_type:        'chat',
+      req,
+      topic_filter:      topic_filter || null,
+      message_length:    message.length,
+      response_length:   fullText.length,
+      embedding_tokens:  embeddingTokens,
+      generation_tokens: genOutputTokens,
+      latency_ms:        Date.now() - startTime,
+      score:             avg,
+      sources_count:     sources.length,
+      cache_hit:         false,
+      estimated_cost:    costEstimate.total_cost,
+    }).catch(() => {});
+
+    // ── 8. Cache ─────────────────────────────────────────────
     cache.set(cacheKey, { text: fullText, sources, score: avg }, CACHE_TTL);
 
   } catch (err) {

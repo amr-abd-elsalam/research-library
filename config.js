@@ -168,10 +168,12 @@ const config = {
   //    — لا تغيّر هذه القيم
   // ═══════════════════════════════════════════════════════════
   API: {
-    chat:   "/api/chat",
-    topics: "/api/topics",
-    health: "/api/health",
-    config: "/api/config",
+    chat:       "/api/chat",
+    topics:     "/api/topics",
+    health:     "/api/health",
+    config:     "/api/config",
+    adminStats: "/api/admin/stats",
+    authVerify: "/api/auth/verify",
   },
 
   // ═══════════════════════════════════════════════════════════

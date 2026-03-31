@@ -62,10 +62,14 @@ let CLIENT_CONFIG = Object.freeze({
     streamDelay:     28,
   }),
   API: Object.freeze({
-    chat:   "/api/chat",
-    topics: "/api/topics",
-    health: "/api/health",
-    config: "/api/config",
+    chat:       "/api/chat",
+    topics:     "/api/topics",
+    health:     "/api/health",
+    config:     "/api/config",
+    authVerify: "/api/auth/verify",
+  }),
+  AUTH: Object.freeze({
+    mode: "public",
   }),
 });
 
@@ -96,6 +100,7 @@ async function loadConfig() {
       CONFIDENCE: Object.freeze(data.CONFIDENCE  || CLIENT_CONFIG.CONFIDENCE),
       LIMITS:     Object.freeze(data.LIMITS      || CLIENT_CONFIG.LIMITS),
       API:        Object.freeze(data.API         || CLIENT_CONFIG.API),
+      AUTH:       Object.freeze(data.AUTH         || CLIENT_CONFIG.AUTH),
     });
 
     console.log('[config] ✅ تم تحميل الإعدادات من السيرفر');

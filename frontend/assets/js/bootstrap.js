@@ -11,16 +11,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.warn('[bootstrap] ⚠️ يتم استخدام الإعدادات الاحتياطية');
   }
 
-  // ── 2. تهيئة الوحدة الأساسية (براند + ترحيب) ──────────────
+  // ── 2. Auth gate — لو الوصول مقيّد، نعرض شاشة الدخول أولاً ──
+  if (AuthModule.isRequired() && !AuthModule.isVerified()) {
+    const granted = await AuthModule.showGate();
+    if (!granted) {
+      console.warn('[bootstrap] ⛔ لم يتم التحقق من الوصول');
+      return; // Stop — don't init app
+    }
+  }
+
+  // ── 3. تهيئة الوحدة الأساسية (براند + ترحيب) ──────────────
   AppModule.init();
 
-  // ── 3. تعيين نطاق البحث ────────────────────────────────────
+  // ── 4. تعيين نطاق البحث ────────────────────────────────────
   const scopePrefix = document.getElementById('scope-prefix');
   if (scopePrefix) {
     scopePrefix.textContent = CLIENT_CONFIG.CHAT.scopePrefix + ' ';
   }
 
-  // ── 4. تهيئة باقي الوحدات ──────────────────────────────────
+  // ── 5. تهيئة باقي الوحدات ──────────────────────────────────
   SourcesModule.init();
   TopicsModule.init();
   SuggestionsModule.init();

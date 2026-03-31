@@ -342,7 +342,10 @@ const ChatModule = (() => {
 
       const res = await fetch(CLIENT_CONFIG.API.chat, {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: Object.assign(
+          { 'Content-Type': 'application/json' },
+          AuthModule.getAccessHeaders()
+        ),
         body:    JSON.stringify({
           message,
           topic_filter: topicFilter,

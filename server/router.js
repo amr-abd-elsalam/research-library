@@ -1,10 +1,13 @@
 import { applyCors }      from './middleware/cors.js';
 import { applyRateLimit } from './middleware/rateLimit.js';
 import { validateBody }   from './middleware/validate.js';
+import { requireAdmin, requireAccess } from './middleware/auth.js';
 import { handleChat }     from './handlers/chat.js';
 import { handleTopics }   from './handlers/topics.js';
 import { handleHealth }   from './handlers/health.js';
 import { handleConfig }   from './handlers/configHandler.js';
+import { handleAdminStats } from './handlers/adminStats.js';
+import { handleAuthVerify }  from './handlers/authHandler.js';
 
 // ── URL matcher (strips query string + trailing slash) ─────────
 function matchRoute(reqUrl, routePath) {
@@ -45,6 +48,12 @@ export async function router(req, res) {
     return;
   }
 
+  // POST /api/auth/verify
+  if (method === 'POST' && matchRoute(url, '/api/auth/verify')) {
+    await handleAuthVerify(req, res);
+    return;
+  }
+
   // GET /api/topics
   if (method === 'GET' && matchRoute(url, '/api/topics')) {
     await applyRateLimit(req, res, 'topics');
@@ -55,11 +64,21 @@ export async function router(req, res) {
 
   // POST /api/chat
   if (method === 'POST' && matchRoute(url, '/api/chat')) {
+    requireAccess(req, res);
+    if (res.writableEnded) return;
     await applyRateLimit(req, res, 'chat');
     if (res.writableEnded) return;
     await validateBody(req, res);
     if (res.writableEnded) return;
     await handleChat(req, res);
+    return;
+  }
+
+  // GET /api/admin/stats
+  if (method === 'GET' && matchRoute(url, '/api/admin/stats')) {
+    requireAdmin(req, res);
+    if (res.writableEnded) return;
+    await handleAdminStats(req, res);
     return;
   }
 
