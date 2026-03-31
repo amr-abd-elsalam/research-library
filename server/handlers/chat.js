@@ -58,7 +58,7 @@ function avgScore(hits) {
 }
 
 // ── streamCachedResponse ───────────────────────────────────────
-async function streamCachedResponse(res, cached, req, message, topic_filter) {
+async function streamCachedResponse(res, cached, req, message, topic_filter, session_id) {
   const startTime = Date.now();
 
   res.writeHead(200, {
@@ -165,7 +165,7 @@ export async function handleChat(req, res) {
   const cacheKey = buildCacheKey(topic_filter, message);
   const cached   = cache.get(cacheKey);
   if (cached) {
-    await streamCachedResponse(res, cached, req, message, topic_filter);
+    await streamCachedResponse(res, cached, req, message, topic_filter, session_id);
     return;
   }
 
