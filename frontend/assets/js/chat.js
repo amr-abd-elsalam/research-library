@@ -1,0 +1,593 @@
+/* =============================================================
+   chat.js — ChatModule
+   Send · Stream · Render messages · History · Clear
+   ============================================================= */
+
+'use strict';
+
+const ChatModule = (() => {
+
+  /* ── History (sessionStorage) ─────────────────────────────── */
+  const HISTORY_KEY = 'research_chat_history';
+  const MAX_HISTORY = CLIENT_CONFIG.LIMITS.maxHistoryItems;
+
+  function _loadHistory() {
+    try {
+      const raw = sessionStorage.getItem(HISTORY_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  }
+
+  function _saveHistory(history) {
+    try {
+      sessionStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    } catch { /* quota exceeded — ignore */ }
+  }
+
+  function _pushHistory(role, text) {
+    const history = _loadHistory();
+    history.push({ role, text });
+    if (history.length > MAX_HISTORY) history.splice(0, history.length - MAX_HISTORY);
+    _saveHistory(history);
+  }
+
+  /* ── Input state (enable/disable) ────────────────────────── */
+  function _setInputState(enabled) {
+    const { chatTextarea, btnSend } = AppModule.DOM;
+    AppModule.STATE.isLoading = !enabled;
+
+    if (chatTextarea) chatTextarea.disabled = !enabled;
+    if (btnSend)      btnSend.disabled      = !enabled;
+
+    if (enabled && chatTextarea) {
+      chatTextarea.focus();
+    }
+  }
+
+  /* ── Char counter ─────────────────────────────────────────── */
+  function _updateCharCount(len) {
+    const { charCount } = AppModule.DOM;
+    if (!charCount) return;
+
+    const max = CLIENT_CONFIG.LIMITS.maxMessageChars;
+    charCount.textContent = `${len} / ${max}`;
+    charCount.className   = 'char-count';
+
+    if (len > max)           charCount.classList.add('over');
+    else if (len > max * 0.8) charCount.classList.add('warn');
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     MESSAGE BUILDERS
+  ══════════════════════════════════════════════════════════ */
+
+  function _makeAvatar(isUser) {
+    const div = document.createElement('div');
+    div.className = 'msg-avatar';
+    div.setAttribute('aria-hidden', 'true');
+    div.textContent = isUser ? '👤' : '🔍';
+    return div;
+  }
+
+  function _addUserMessage(text) {
+    AppModule.hideWelcomeState();
+
+    const { messagesList } = AppModule.DOM;
+    if (!messagesList) return;
+
+    const msg = document.createElement('div');
+    msg.className = 'message user';
+    msg.appendChild(_makeAvatar(true));
+
+    const body = document.createElement('div');
+    body.className = 'msg-body';
+
+    const label = document.createElement('span');
+    label.className   = 'msg-label';
+    label.textContent = CLIENT_CONFIG.CHAT.userLabel;
+    body.appendChild(label);
+
+    const bubble = document.createElement('div');
+    bubble.className   = 'msg-bubble';
+    bubble.textContent = text;
+    body.appendChild(bubble);
+
+    msg.appendChild(body);
+    messagesList.appendChild(msg);
+    AppModule.scrollToBottom();
+  }
+
+  function _addTypingIndicator() {
+    const { messagesList } = AppModule.DOM;
+    if (!messagesList) return null;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'typing-indicator';
+
+    wrap.appendChild(_makeAvatar(false));
+
+    const body = document.createElement('div');
+    body.className = 'typing-body';
+
+    const label = document.createElement('span');
+    label.className   = 'typing-label';
+    label.textContent = CLIENT_CONFIG.CHAT.typingText;
+    body.appendChild(label);
+
+    const dots = document.createElement('div');
+    dots.className = 'typing-dots';
+    for (let i = 0; i < 3; i++) {
+      dots.appendChild(document.createElement('span'));
+    }
+    body.appendChild(dots);
+
+    wrap.appendChild(body);
+    messagesList.appendChild(wrap);
+    AppModule.scrollToBottom();
+    return wrap;
+  }
+
+  /* ── بناء هيكل رسالة الـ assistant — يرجّع refs بدل IDs ── */
+  function _buildAssistantSkeleton() {
+    const { messagesList } = AppModule.DOM;
+    if (!messagesList) return null;
+
+    const msg = document.createElement('div');
+    msg.className = 'message assistant';
+    msg.appendChild(_makeAvatar(false));
+
+    const body = document.createElement('div');
+    body.className = 'msg-body';
+
+    const label = document.createElement('span');
+    label.className   = 'msg-label';
+    label.textContent = CLIENT_CONFIG.CHAT.assistantLabel;
+    body.appendChild(label);
+
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    body.appendChild(bubble);
+
+    // Confidence bar
+    const confWrap = document.createElement('div');
+    confWrap.className = 'confidence-bar-wrap hidden';
+
+    const confBar = document.createElement('div');
+    confBar.className = 'confidence-bar';
+    const confFill = document.createElement('div');
+    confFill.className = 'confidence-fill';
+    confBar.appendChild(confFill);
+    confWrap.appendChild(confBar);
+
+    const confLabel = document.createElement('span');
+    confLabel.className = 'confidence-label';
+    confWrap.appendChild(confLabel);
+
+    body.appendChild(confWrap);
+
+    // Warning
+    const warning = document.createElement('div');
+    warning.className = 'confidence-warning hidden';
+    const warnIcon = document.createElement('span');
+    warnIcon.textContent = '⚠️';
+    warning.appendChild(warnIcon);
+    const warnText = document.createElement('span');
+    warning.appendChild(warnText);
+    body.appendChild(warning);
+
+    // Source chips
+    const chips = document.createElement('div');
+    chips.className = 'source-chips hidden';
+    body.appendChild(chips);
+
+    // Actions (copy)
+    const actions = document.createElement('div');
+    actions.className = 'msg-actions hidden';
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'btn-copy';
+    copyBtn.type      = 'button';
+
+    const copyIcon = document.createElement('span');
+    copyIcon.textContent = '📋';
+    copyIcon.setAttribute('aria-hidden', 'true');
+    copyBtn.appendChild(copyIcon);
+
+    const copyLabel = document.createElement('span');
+    copyLabel.textContent = CLIENT_CONFIG.CHAT.copyBtn;
+    copyBtn.appendChild(copyLabel);
+
+    actions.appendChild(copyBtn);
+    body.appendChild(actions);
+
+    msg.appendChild(body);
+    messagesList.appendChild(msg);
+
+    // نرجّع object فيه كل الـ references — بدون أي IDs
+    return {
+      msgEl:     msg,
+      bubble,
+      confWrap,
+      confFill,
+      confLabel,
+      warning,
+      warnText,
+      chips,
+      actions,
+      copyBtn,
+      copyLabel,
+    };
+  }
+
+  /* ── Markdown render ──────────────────────────────────────── */
+  function _renderMarkdown(bubble, fullText) {
+    if (!bubble || !fullText) return;
+    while (bubble.firstChild) bubble.removeChild(bubble.firstChild);
+    bubble.appendChild(MarkdownRenderer.render(fullText));
+    AppModule.scrollToBottom(false);
+  }
+
+  function _appendRawText(bubble, text) {
+    if (!bubble) return;
+    bubble.appendChild(document.createTextNode(text));
+    AppModule.scrollToBottom(false);
+  }
+
+  /* ── Confidence bar — يستخدم refs مباشرة ─────────────────── */
+  function _buildConfidenceBar(refs, score) {
+    const { confWrap, confFill, confLabel, warning, warnText } = refs;
+    if (!confWrap || !confFill || !confLabel) return;
+
+    const { CONFIDENCE } = CLIENT_CONFIG;
+    let levelLabel = CONFIDENCE.level1.label;
+    if      (score >= CONFIDENCE.level5.min) levelLabel = CONFIDENCE.level5.label;
+    else if (score >= CONFIDENCE.level4.min) levelLabel = CONFIDENCE.level4.label;
+    else if (score >= CONFIDENCE.level3.min) levelLabel = CONFIDENCE.level3.label;
+    else if (score >= CONFIDENCE.level2.min) levelLabel = CONFIDENCE.level2.label;
+
+    let confClass = 'conf-1';
+    if      (score >= 0.92) confClass = 'conf-5';
+    else if (score >= 0.82) confClass = 'conf-4';
+    else if (score >= 0.72) confClass = 'conf-3';
+    else if (score >= 0.60) confClass = 'conf-2';
+
+    confFill.className = `confidence-fill ${confClass}`;
+    confLabel.textContent = levelLabel;
+    confWrap.classList.remove('hidden');
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        confFill.style.width = `${Math.round(score * 100)}%`;
+      });
+    });
+
+    if (score < CONFIDENCE.level2.min && warning && warnText) {
+      warnText.textContent = CONFIDENCE.lowWarning;
+      warning.classList.remove('hidden');
+    }
+  }
+
+  /* ── Copy button — يستخدم refs مباشرة ─────────────────────── */
+  function _setupCopyButton(refs, fullText) {
+    const { copyBtn, copyLabel, actions } = refs;
+    if (!copyBtn || !copyLabel || !actions) return;
+
+    actions.classList.remove('hidden');
+
+    copyBtn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(fullText);
+        copyBtn.classList.add('copied');
+        copyLabel.textContent = CLIENT_CONFIG.CHAT.copiedBtn;
+        setTimeout(() => {
+          copyBtn.classList.remove('copied');
+          copyLabel.textContent = CLIENT_CONFIG.CHAT.copyBtn;
+        }, 2000);
+      } catch { /* clipboard API غير متاحة */ }
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     ERROR MESSAGE
+  ══════════════════════════════════════════════════════════ */
+
+  function _addErrorMessage(text) {
+    const { messagesList } = AppModule.DOM;
+    if (!messagesList) return;
+
+    const msg = document.createElement('div');
+    msg.className = 'message assistant';
+    msg.appendChild(_makeAvatar(false));
+
+    const body = document.createElement('div');
+    body.className = 'msg-body';
+
+    const label = document.createElement('span');
+    label.className   = 'msg-label';
+    label.textContent = CLIENT_CONFIG.CHAT.assistantLabel;
+    body.appendChild(label);
+
+    const bubble = document.createElement('div');
+    bubble.className   = 'msg-bubble';
+    bubble.style.color     = 'var(--text-secondary)';
+    bubble.style.fontStyle = 'italic';
+    bubble.textContent = text;
+    body.appendChild(bubble);
+
+    msg.appendChild(body);
+    messagesList.appendChild(msg);
+    AppModule.scrollToBottom();
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     FETCH & STREAM
+  ══════════════════════════════════════════════════════════ */
+
+  async function _fetchAndStream(message) {
+    const history     = _loadHistory();
+    const topicFilter = TopicsModule.getActiveTopic();
+
+    const typingEl = _addTypingIndicator();
+    const refs     = _buildAssistantSkeleton();
+
+    // مخفي حتى يبدأ الـ stream
+    if (refs) refs.msgEl.style.visibility = 'hidden';
+
+    let fullText = '';
+    let done     = false;
+
+    try {
+      const controller = new AbortController();
+      const timer      = setTimeout(() => controller.abort(), 38000);
+
+      const res = await fetch(CLIENT_CONFIG.API.chat, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+          message,
+          topic_filter: topicFilter,
+          history:      history.slice(-10),
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timer);
+
+      if (typingEl) typingEl.remove();
+
+      if (!res.ok) {
+        let code = 'SERVER_ERROR';
+        try { const j = await res.json(); code = j.code || code; } catch { /* */ }
+        if (res.status === 429) throw Object.assign(new Error(), { _code: 'RATE_LIMITED' });
+        throw Object.assign(new Error(), { _code: code });
+      }
+
+      if (refs) refs.msgEl.style.visibility = 'visible';
+
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let   buffer  = '';
+
+      while (!done) {
+        const { value, done: streamDone } = await reader.read();
+        if (streamDone) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const raw = line.slice(6).trim();
+          if (!raw) continue;
+
+          let parsed;
+          try { parsed = JSON.parse(raw); } catch { continue; }
+
+          if (parsed.error) {
+            if (refs && refs.bubble) {
+              refs.bubble.textContent = parsed.message || CLIENT_CONFIG.CHAT.errorServer;
+            }
+            done = true;
+            break;
+          }
+
+          if (parsed.text) {
+            fullText += parsed.text;
+            if (refs) _appendRawText(refs.bubble, parsed.text);
+          }
+
+          if (parsed.done) {
+            done = true;
+
+            const sources = parsed.sources || [];
+            const score   = parsed.score   ?? 0;
+
+            if (fullText && refs) {
+              _renderMarkdown(refs.bubble, fullText);
+            }
+
+            if (score > 0 && refs) _buildConfidenceBar(refs, score);
+
+            if (refs && refs.chips && sources.length) {
+              refs.chips.classList.remove('hidden');
+              SourcesModule.buildSourceChips(sources, refs.chips);
+            }
+
+            AppModule.STATE.lastSources = sources;
+            AppModule.STATE.lastScore   = score;
+
+            if (fullText && refs) _setupCopyButton(refs, fullText);
+            if (fullText) _pushHistory('model', fullText);
+
+            break;
+          }
+        }
+      }
+
+      reader.releaseLock();
+
+    } catch (err) {
+      if (typingEl) typingEl.remove();
+      if (refs) refs.msgEl.remove();
+
+      let errMsg = CLIENT_CONFIG.CHAT.errorServer;
+      if (err.name === 'AbortError')          errMsg = CLIENT_CONFIG.CHAT.errorTimeout;
+      else if (err._code === 'RATE_LIMITED')  errMsg = CLIENT_CONFIG.CHAT.errorRate;
+      else if (err._code === 'TIMEOUT')       errMsg = CLIENT_CONFIG.CHAT.errorTimeout;
+
+      _addErrorMessage(errMsg);
+      AppModule.setConnectionStatus('offline');
+      console.warn('[ChatModule] stream error:', err);
+
+    } finally {
+      _setInputState(true);
+      AppModule.scrollToBottom();
+      if (done) AppModule.setConnectionStatus('online');
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     PUBLIC: send
+  ══════════════════════════════════════════════════════════ */
+
+  async function send() {
+    const { chatTextarea } = AppModule.DOM;
+    if (!chatTextarea) return;
+
+    const message = chatTextarea.value.trim();
+    if (!message) return;
+
+    const max = CLIENT_CONFIG.LIMITS.maxMessageChars;
+    if (message.length > max) return;
+
+    if (AppModule.STATE.isLoading) return;
+
+    _pushHistory('user', message);
+
+    chatTextarea.value = '';
+    _updateCharCount(0);
+
+    _setInputState(false);
+    AppModule.setConnectionStatus('loading');
+
+    // إخفاء الهيدر والتصنيفات عند أول رسالة
+    if (window.__headerControl) window.__headerControl.hide();
+
+    _addUserMessage(message);
+
+    await _fetchAndStream(message);
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     PUBLIC: clear
+  ══════════════════════════════════════════════════════════ */
+
+  function clear() {
+    if (AppModule.STATE.isLoading) return;
+
+    sessionStorage.removeItem(HISTORY_KEY);
+
+    AppModule.resetWelcomeState();
+
+    AppModule.STATE.lastSources = [];
+    AppModule.STATE.lastScore   = 0;
+
+    _updateCharCount(0);
+
+    const { chatTextarea } = AppModule.DOM;
+    if (chatTextarea) {
+      chatTextarea.value = '';
+      chatTextarea.focus();
+    }
+
+    AppModule.setConnectionStatus('online');
+
+    // إظهار الهيدر والتصنيفات
+    if (window.__headerControl) window.__headerControl.show();
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     INIT
+  ══════════════════════════════════════════════════════════ */
+
+  function init() {
+    const { chatTextarea, btnSend, btnClear } = AppModule.DOM;
+
+    if (chatTextarea) {
+      chatTextarea.addEventListener('input', () => {
+        chatTextarea.style.height = 'auto';
+        chatTextarea.style.height = Math.min(chatTextarea.scrollHeight, 140) + 'px';
+        _updateCharCount(chatTextarea.value.length);
+      });
+
+      chatTextarea.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          send();
+        }
+      });
+    }
+
+    if (btnSend)  btnSend.addEventListener('click', send);
+    if (btnClear) btnClear.addEventListener('click', clear);
+
+    _restoreSession();
+  }
+
+  /* ── استعادة آخر محادثة ─────────────────────────────────── */
+  function _restoreSession() {
+    const history = _loadHistory();
+    if (!history.length) return;
+
+    AppModule.hideWelcomeState();
+
+    // إخفاء الهيدر عند استعادة session
+    if (window.__headerControl) window.__headerControl.hide();
+
+    const { messagesList } = AppModule.DOM;
+    if (!messagesList) return;
+
+    history.forEach(item => {
+      if (item.role === 'user') {
+        _addUserMessage(item.text);
+      } else if (item.role === 'model') {
+        _addRestoredAssistantMessage(item.text);
+      }
+    });
+
+    AppModule.scrollToBottom(false);
+  }
+
+  function _addRestoredAssistantMessage(text) {
+    const { messagesList } = AppModule.DOM;
+    if (!messagesList) return;
+
+    const msg = document.createElement('div');
+    msg.className = 'message assistant';
+    msg.appendChild(_makeAvatar(false));
+
+    const body = document.createElement('div');
+    body.className = 'msg-body';
+
+    const label = document.createElement('span');
+    label.className   = 'msg-label';
+    label.textContent = CLIENT_CONFIG.CHAT.assistantLabel;
+    body.appendChild(label);
+
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    bubble.appendChild(MarkdownRenderer.render(text));
+    body.appendChild(bubble);
+
+    msg.appendChild(body);
+    messagesList.appendChild(msg);
+  }
+
+  return Object.freeze({
+    init,
+    send,
+    clear,
+  });
+
+})();

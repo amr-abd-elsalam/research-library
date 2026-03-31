@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="" id="meta-description" />
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'none';
+    script-src  'self';
+    style-src   'self';
+    font-src    'self';
+    img-src     'self' data:;
+    connect-src 'self';
+  " />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="16x16" href="./assets/img/fav16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/img/fav32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="./assets/img/fav180.png">
+
+  <title>Ai8V | Smart Research Library</title>
+  <link rel="stylesheet" href="./assets/css/style.css" />
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     APP SHELL — بدون sidebar
+════════════════════════════════════════════════════════════ -->
+<div class="app-shell">
+
+  <!-- ── HEADER ─────────────────────────────────────────────── -->
+  <header class="app-header" role="banner">
+
+    <!-- Brand (يسار في RTL) -->
+    <div class="header-brand">
+      <div id="header-logo-wrap" aria-hidden="true"></div>
+      <div class="header-text">
+        <div id="header-title"   class="header-title"></div>
+        <div id="header-tagline" class="header-tagline"></div>
+      </div>
+    </div>
+
+    <!-- Actions (يمين في RTL) -->
+    <div class="header-actions">
+      <!-- Connection indicator -->
+      <div class="conn-indicator" role="status" aria-live="polite">
+        <div id="conn-dot" class="conn-dot" aria-hidden="true"></div>
+        <span id="conn-label" class="sr-only"></span>
+      </div>
+
+      <!-- New chat button (بدل "مسح المحادثة") -->
+      <button id="btn-clear" class="btn-new-chat" type="button" aria-label="محادثة جديدة">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+        <span>محادثة جديدة</span>
+      </button>
+    </div>
+
+  </header>
+
+  <!-- ── MAIN ───────────────────────────────────────────────── -->
+  <main class="app-main" role="main">
+
+    <!-- Topics bar (تصنيفات — بدون أعداد) -->
+    <nav id="topics-bar" class="topics-bar" aria-label="تصفية حسب التصنيف"></nav>
+
+    <!-- Chat scroll area -->
+    <div id="chat-scroll" class="chat-scroll" role="log" aria-live="polite" aria-label="المحادثة">
+
+      <!-- Welcome state -->
+      <div id="welcome-state" class="welcome-state">
+
+        <!-- Logo كبير بدل emoji -->
+        <div id="welcome-logo" class="welcome-logo" aria-hidden="true"></div>
+
+        <div class="welcome-text">
+          <h1 id="welcome-title" class="welcome-title"></h1>
+          <p  id="welcome-sub"   class="welcome-sub"></p>
+        </div>
+
+        <!-- سطر إحصائيات بسيط -->
+        <div id="welcome-stats" class="welcome-stats" aria-label="معلومات المكتبة"></div>
+
+        <!-- أسئلة مقترحة -->
+        <div id="suggestions-grid" class="suggestions-grid" aria-label="أسئلة مقترحة"></div>
+
+      </div>
+
+      <!-- Messages list -->
+      <div id="messages-list" class="messages-list hidden" aria-label="رسائل المحادثة"></div>
+
+    </div>
+
+    <!-- Input area -->
+    <div class="chat-input-wrap">
+
+      <!-- Scope indicator -->
+      <div id="input-scope" class="input-scope hidden-scope" aria-live="polite">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <span id="scope-prefix"></span>
+        <strong id="scope-text"></strong>
+      </div>
+
+      <!-- Input box -->
+      <div class="input-box">
+        <textarea
+          id="chat-textarea"
+          class="chat-textarea"
+          rows="1"
+          maxlength="500"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          aria-label="اكتب سؤالك هنا"
+          aria-multiline="true"
+        ></textarea>
+
+        <button id="btn-send" class="btn-send" type="button" aria-label="إرسال السؤال">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+            <path d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485
+                     12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0
+                     0h7.5"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Hint + char count -->
+      <div class="input-footer">
+        <span id="input-hint"  class="input-hint"></span>
+        <span id="char-count"  class="char-count">0 / 500</span>
+      </div>
+
+    </div>
+  </main>
+
+</div><!-- /.app-shell -->
+
+<!-- ═══════════════════════════════════════════════════════════
+     SOURCE DRAWER (يفتح عند الضغط على chip مصدر)
+════════════════════════════════════════════════════════════ -->
+<div id="drawer-overlay" class="drawer-overlay" aria-hidden="true"></div>
+
+<aside id="source-drawer"
+       class="source-drawer"
+       role="dialog"
+       aria-modal="true"
+       aria-labelledby="drawer-title"
+       aria-hidden="true">
+
+  <!-- Drawer header -->
+  <div class="drawer-header">
+    <div>
+      <div id="drawer-title"   class="drawer-title"></div>
+      <div id="drawer-section" class="drawer-section"></div>
+    </div>
+    <button id="btn-drawer-close" class="btn-drawer-close"
+            type="button" aria-label="إغلاق">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+        <path d="M6 18 18 6M6 6l12 12"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Score bar -->
+  <div id="drawer-score-bar" class="drawer-score-bar">
+    <span id="drawer-score" class="drawer-score-label"></span>
+  </div>
+
+  <!-- Content -->
+  <div id="drawer-body" class="drawer-body"></div>
+
+</aside>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SCRIPTS
+════════════════════════════════════════════════════════════ -->
+<script src="./assets/js/config-client.js" defer></script>
+<script src="./assets/js/markdown.js"      defer></script>
+<script src="./assets/js/app.js"           defer></script>
+<script src="./assets/js/topics.js"        defer></script>
+<script src="./assets/js/suggestions.js"   defer></script>
+<script src="./assets/js/sources.js"       defer></script>
+<script src="./assets/js/chat.js"          defer></script>
+<script src="./assets/js/header-scroll.js" defer></script>
+<script src="./assets/js/bootstrap.js"     defer></script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+{
+  "name": "research-library-server",
+  "version": "2.0.0",
+  "description": "منصة المكتبة البحثية الذكية — Node.js API Server",
+  "type": "module",
+  "license": "UNLICENSED",
+  "private": true,
+  "engines": {
+    "node": ">=20.6.0"
+  },
+  "scripts": {
+    "start": "node --env-file=.env server.js",
+    "dev": "node --env-file=.env --watch server.js",
+    "pm2:start": "pm2 start ecosystem.config.cjs --env production",
+    "pm2:stop": "pm2 stop research-library",
+    "pm2:restart": "pm2 restart research-library",
+    "pm2:reload": "pm2 reload research-library",
+    "pm2:logs": "pm2 logs research-library",
+    "pm2:status": "pm2 status",
+    "pm2:save": "pm2 save",
+    "health": "node --env-file=.env -e \"fetch('http://localhost:'+(process.env.PORT||3000)+'/api/health').then(r=>r.json()).then(d=>console.log(JSON.stringify(d,null,2)))\""
+  },
+  "dependencies": {
+    "@qdrant/js-client-rest": "^1.9.0",
+    "dotenv": "^17.3.1"
+  }
+}
