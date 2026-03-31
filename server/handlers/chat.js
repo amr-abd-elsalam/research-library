@@ -5,6 +5,8 @@ import { getValidTopicIds } from './topics.js';
 import { logEvent }        from '../services/analytics.js';
 import { estimateTokens, estimateRequestCost } from '../services/costTracker.js';
 import { matchCommand, executeCommand } from '../services/commands.js';
+import { routeQuery, getTopK }         from '../services/queryRouter.js';
+import { getPromptForType }            from '../services/promptTemplates.js';
 import config              from '../../config.js';
 
 const LOW_SCORE_THRESHOLD   = 0.30;
@@ -185,10 +187,13 @@ export async function handleChat(req, res) {
       return;
     }
 
-    // ── 2. Search Qdrant ─────────────────────────────────────
+    // ── 2. Route query + Search Qdrant ───────────────────────
+    const queryRoute = routeQuery(message);
+    const topK       = getTopK(queryRoute.type);
+
     let hits;
     try {
-      hits = await search(queryVector, 5, topic_filter);
+      hits = await search(queryVector, topK, topic_filter);
     } catch (err) {
       if (err instanceof QdrantNotFoundError) {
         writeChunk(res, { error: true, message: 'قاعدة البيانات غير جاهزة', code: 'SERVICE_UNAVAILABLE' });
@@ -215,10 +220,11 @@ export async function handleChat(req, res) {
     const sources = buildSources(hits);
 
     // ── 5. Stream Gemini ─────────────────────────────────────
+    const systemPrompt = getPromptForType(queryRoute.type);
     let fullText = '';
     try {
       await streamGenerate(
-        config.SYSTEM_PROMPT,
+        systemPrompt,
         context,
         history,
         message,
@@ -255,7 +261,7 @@ export async function handleChat(req, res) {
 
     // ── 7. Analytics (fire-and-forget) ───────────────────────
     const embeddingTokens  = estimateTokens(message);
-    const genInputTokens   = estimateTokens(config.SYSTEM_PROMPT)
+    const genInputTokens   = estimateTokens(systemPrompt)
                            + estimateTokens(context)
                            + estimateTokens(message);
     const genOutputTokens  = estimateTokens(fullText);
@@ -270,6 +276,7 @@ export async function handleChat(req, res) {
       event_type:        'chat',
       req,
       topic_filter:      topic_filter || null,
+      query_type:        queryRoute.type,
       message_length:    message.length,
       response_length:   fullText.length,
       embedding_tokens:  embeddingTokens,
