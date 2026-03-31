@@ -4,6 +4,7 @@ import { cache }           from '../services/cache.js';
 import { getValidTopicIds } from './topics.js';
 import { logEvent }        from '../services/analytics.js';
 import { estimateTokens, estimateRequestCost } from '../services/costTracker.js';
+import { matchCommand, executeCommand } from '../services/commands.js';
 import config              from '../../config.js';
 
 const LOW_SCORE_THRESHOLD   = 0.30;
@@ -117,6 +118,34 @@ export async function handleChat(req, res) {
       error: 'topic_filter غير صالح',
       code:  'INVALID_TOPIC',
     }));
+    return;
+  }
+
+  // ── Command check ──────────────────────────────────────────
+  const cmd = matchCommand(message);
+  if (cmd) {
+    const startTime = Date.now();
+    res.writeHead(200, {
+      'Content-Type':  'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection':    'keep-alive',
+    });
+    req.setTimeout?.(120_000);
+    res.setTimeout?.(0);
+
+    try {
+      await executeCommand(cmd, {
+        req, res, message, topic_filter, history,
+        writeChunk: (payload) => writeChunk(res, payload),
+        startTime,
+      });
+    } catch (err) {
+      console.error('[chat] command error:', err.message);
+      if (!res.writableEnded) {
+        writeChunk(res, { error: true, message: 'حدث خطأ في تنفيذ الأمر', code: 'COMMAND_ERROR' });
+        res.end();
+      }
+    }
     return;
   }
 

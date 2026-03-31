@@ -511,6 +511,33 @@ const ChatModule = (() => {
   }
 
   /* ══════════════════════════════════════════════════════════
+     COMMAND HINTS
+  ══════════════════════════════════════════════════════════ */
+
+  function _showCommandHint(value) {
+    const { inputHint } = AppModule.DOM;
+    if (!inputHint) return;
+
+    const commands = CLIENT_CONFIG.COMMANDS?.list;
+    if (!commands || !commands.length) return;
+
+    const trimmed = value.trim();
+    const prefix  = CLIENT_CONFIG.COMMANDS?.prefix || '/';
+
+    // Show hints when user types the prefix
+    if (trimmed === prefix || (trimmed.startsWith(prefix) && trimmed.length <= 10)) {
+      const matching = commands.filter(c => c.cmd.startsWith(trimmed));
+      if (matching.length > 0 && trimmed !== matching[0]?.cmd) {
+        inputHint.textContent = matching.map(c => c.cmd + ' ' + c.desc).join(' · ');
+        return;
+      }
+    }
+
+    // Reset to default hint
+    inputHint.textContent = CLIENT_CONFIG.CHAT.inputHint;
+  }
+
+  /* ══════════════════════════════════════════════════════════
      INIT
   ══════════════════════════════════════════════════════════ */
 
@@ -522,6 +549,7 @@ const ChatModule = (() => {
         chatTextarea.style.height = 'auto';
         chatTextarea.style.height = Math.min(chatTextarea.scrollHeight, 140) + 'px';
         _updateCharCount(chatTextarea.value.length);
+        _showCommandHint(chatTextarea.value);
       });
 
       chatTextarea.addEventListener('keydown', e => {

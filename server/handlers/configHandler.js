@@ -20,6 +20,7 @@ function buildPayload() {
     LIMITS:     config.LIMITS,
     API:        config.API,
     AUTH:       { mode: getAccessMode() },
+    COMMANDS:   config.COMMANDS,
   });
   return cachedPayload;
 }
