@@ -1,10 +1,12 @@
 // server/services/hookRegistry.js
 // ═══════════════════════════════════════════════════════════════
-// PipelineHookRegistry — Phase 12
+// PipelineHookRegistry — Phase 12, Phase 16 (Logger integration)
 // Manages registration and execution of pipeline lifecycle hooks:
 //   beforeStage / afterStage  (per-stage or wildcard '*')
 //   beforePipeline / afterPipeline (pipeline-level)
 // ═══════════════════════════════════════════════════════════════
+
+import { logger } from './logger.js';
 
 class PipelineHookRegistry {
   #hooks = {
@@ -90,7 +92,7 @@ class PipelineHookRegistry {
         try {
           await hook(ctx, trace);
         } catch (err) {
-          console.warn(`[pipelineHooks] ${event} hook error:`, err.message);
+          logger.warn('pipelineHooks', `${event} hook error`, { error: err.message });
         }
       }
       return;
@@ -104,7 +106,7 @@ class PipelineHookRegistry {
         try {
           await hook(ctx, trace, stageName);
         } catch (err) {
-          console.warn(`[pipelineHooks] ${event}(*) hook error:`, err.message);
+          logger.warn('pipelineHooks', `${event}(*) hook error`, { error: err.message });
         }
       }
     }
@@ -117,7 +119,7 @@ class PipelineHookRegistry {
           try {
             await hook(ctx, trace, stageName);
           } catch (err) {
-            console.warn(`[pipelineHooks] ${event}(${stageName}) hook error:`, err.message);
+            logger.warn('pipelineHooks', `${event}(${stageName}) hook error`, { error: err.message });
           }
         }
       }

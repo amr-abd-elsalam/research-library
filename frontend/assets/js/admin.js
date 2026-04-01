@@ -49,6 +49,9 @@
     metricsCards:  $('admin-metrics-cards'),
     metricsStages: $('admin-metrics-stages'),
     metricsEmpty:  $('admin-metrics-empty'),
+    // Log (Phase 16)
+    logEntries:    $('admin-log-entries'),
+    logFilter:     $('admin-log-filter'),
   };
 
   // ══════════════════════════════════════════════════════════
@@ -129,6 +132,10 @@
 
   async function fetchMetrics() {
     return adminFetch('/api/admin/metrics');
+  }
+
+  async function fetchLog() {
+    return adminFetch('/api/admin/log', { limit: 200 });
   }
 
   async function fetchConfig() {
@@ -788,6 +795,61 @@
   }
 
   // ══════════════════════════════════════════════════════════
+  //  OPERATIONAL LOG (Phase 16)
+  // ══════════════════════════════════════════════════════════
+  var _logData = null;
+
+  function renderLog(data) {
+    _logData = data;
+    var container = DOM.logEntries;
+    if (!container) return;
+
+    if (!data || !data.entries || data.entries.length === 0) {
+      container.innerHTML = '<p class="admin-empty-msg">\u0644\u0627 \u062a\u0648\u062c\u062f \u0623\u062d\u062f\u0627\u062b \u0628\u0639\u062f</p>';
+      return;
+    }
+
+    var filterValue = DOM.logFilter ? DOM.logFilter.value : 'all';
+    var filtered = filterValue === 'all'
+      ? data.entries
+      : data.entries.filter(function (e) { return e.event === filterValue; });
+
+    if (filtered.length === 0) {
+      container.innerHTML = '<p class="admin-empty-msg">\u0644\u0627 \u062a\u0648\u062c\u062f \u0623\u062d\u062f\u0627\u062b \u0645\u0637\u0627\u0628\u0642\u0629 \u0644\u0644\u0641\u0644\u062a\u0631</p>';
+      return;
+    }
+
+    var html = '';
+    var max = Math.min(filtered.length, 100);
+    for (var i = 0; i < max; i++) {
+      var e = filtered[i];
+      var isError = e.event.indexOf('error') !== -1;
+      var isWarn = e.event.indexOf('warn') !== -1;
+      var cssClass = isError ? 'admin-log-error' : isWarn ? 'admin-log-warn' : 'admin-log-info';
+      var time = '';
+      try {
+        time = new Date(e.timestamp).toLocaleTimeString('ar-EG', { hour12: false });
+      } catch (_) {
+        time = e.timestamp ? e.timestamp.slice(11, 19) : '';
+      }
+      var corrId = e.correlationId ? '<span class="admin-log-corr">' + e.correlationId + '</span>' : '';
+      var detailStr = e.detail ? '<span class="admin-log-detail">' + JSON.stringify(e.detail) + '</span>' : '';
+      html += '<div class="admin-log-row ' + cssClass + '">' +
+        '<span class="admin-log-time">' + time + '</span>' +
+        '<span class="admin-log-event">' + e.event + '</span>' +
+        '<span class="admin-log-module">' + e.module + '</span>' +
+        corrId + detailStr + '</div>';
+    }
+    container.innerHTML = html;
+  }
+
+  function showLogSkeleton() {
+    var container = DOM.logEntries;
+    if (!container) return;
+    container.innerHTML = '<p class="admin-empty-msg">\u062c\u0627\u0631\u064a \u0627\u0644\u062a\u062d\u0645\u064a\u0644...</p>';
+  }
+
+  // ══════════════════════════════════════════════════════════
   //  SECTION ERROR STATE
   // ══════════════════════════════════════════════════════════
   function showSectionError(container, msg, retryFn) {
@@ -824,6 +886,7 @@
     showSessionsSkeleton();
     showCostSkeleton();
     showMetricsSkeleton();
+    showLogSkeleton();
 
     // Parallel fetch
     var results = await Promise.allSettled([
@@ -831,6 +894,7 @@
       fetchHealth(),
       fetchSessions(DEFAULTS.sessionsPageSize, 0),
       fetchMetrics(),
+      fetchLog(),
     ]);
 
     // Stats
@@ -868,6 +932,13 @@
       renderMetrics(results[3].value);
     } else {
       renderMetrics(null);
+    }
+
+    // Log (Phase 16)
+    if (results[4].status === 'fulfilled' && results[4].value) {
+      renderLog(results[4].value);
+    } else {
+      renderLog(null);
     }
 
     // Last update
@@ -943,6 +1014,17 @@
           startAutoRefresh();
         } else {
           stopAutoRefresh();
+        }
+      });
+    }
+
+    // Log filter (Phase 16)
+    if (DOM.logFilter) {
+      DOM.logFilter.addEventListener('change', function () {
+        if (_logData) {
+          renderLog(_logData);
+        } else {
+          fetchLog().then(function (data) { renderLog(data); });
         }
       });
     }

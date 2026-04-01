@@ -1,6 +1,7 @@
 import { GeminiTimeoutError, GeminiSafetyError, GeminiEmptyError } from '../services/gemini.js';
 import { QdrantNotFoundError, QdrantTimeoutError, QdrantConnectionError } from '../services/qdrant.js';
 import { cache }           from '../services/cache.js';
+import { logger }          from '../services/logger.js';
 import { getValidTopicIds } from './topics.js';
 import { logEvent }        from '../services/analytics.js';
 import { matchCommand, executeCommand } from '../services/commands.js';
@@ -178,7 +179,7 @@ function handlePipelineError(err, res, ctx, trace, startTime) {
   }
 
   // Generic / unknown error
-  console.error('[chat] pipeline error:', err.message);
+  logger.error('chat', 'pipeline error', { error: err.message }, trace?.correlationId);
   if (!res.writableEnded) {
     writeChunk(res, { error: true, message: 'حدث خطأ في المعالجة', code: 'SERVER_ERROR' });
     res.end();

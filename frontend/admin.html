@@ -135,6 +135,25 @@
         </div>
       </section>
 
+      <!-- ═══ سجل الأحداث التشغيلية (Phase 16) ═══ -->
+      <section class="admin-section" id="admin-section-log">
+        <h2 class="admin-section-title">سجل الأحداث التشغيلية</h2>
+        <div class="admin-log-controls">
+          <select id="admin-log-filter" class="admin-log-select">
+            <option value="all">كل الأحداث</option>
+            <option value="pipeline:complete">اكتمال Pipeline</option>
+            <option value="pipeline:stageComplete">اكتمال Stage</option>
+            <option value="pipeline:cacheHit">Cache Hit</option>
+            <option value="command:complete">اكتمال أمر</option>
+            <option value="log:warn">تحذيرات</option>
+            <option value="log:error">أخطاء</option>
+          </select>
+        </div>
+        <div id="admin-log-entries" class="admin-log-entries">
+          <p class="admin-empty-msg">جاري التحميل...</p>
+        </div>
+      </section>
+
     </main>
   </div>
 

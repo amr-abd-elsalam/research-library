@@ -10,6 +10,7 @@ import { estimateTokens, estimateRequestCost } from './costTracker.js';
 import config              from '../../config.js';
 import { commandRegistry, createTextCommand } from './commandRegistry.js';
 import { eventBus }        from './eventBus.js';
+import { logger }          from './logger.js';
 
 // ── Custom Error ───────────────────────────────────────────────
 export class CommandError extends Error {
@@ -99,11 +100,11 @@ export async function executeCommand(entry, opts) {
 
 // ── Lifecycle hooks ────────────────────────────────────────────
 commandRegistry.on('beforeExecute', async (entry, _context) => {
-  console.log(`[commands] executing: ${entry.name} (${entry.category})`);
+  logger.debug('commands', `executing: ${entry.name} (${entry.category})`);
 });
 
 commandRegistry.on('afterExecute', async (entry, _context) => {
-  console.log(`[commands] completed: ${entry.name} (${entry.category})`);
+  logger.debug('commands', `completed: ${entry.name} (${entry.category})`);
 });
 
 // ── Helper: fetch points from Qdrant with optional topic filter ──
@@ -222,7 +223,7 @@ async function handleSources({ res, writeChunk, startTime, req, topic_filter }) 
     });
 
   } catch (err) {
-    console.error('[commands] /مصادر error:', err.message);
+    logger.error('commands', '/مصادر error', { error: err.message });
     writeChunk({ error: true, message: 'حدث خطأ في جلب المصادر', code: 'COMMAND_ERROR' });
     res.end();
   }
@@ -300,7 +301,7 @@ async function handleSummary({ req, res, writeChunk, startTime, topic_filter }) 
     });
 
   } catch (err) {
-    console.error('[commands] /ملخص error:', err.message);
+    logger.error('commands', '/ملخص error', { error: err.message });
     if (!res.writableEnded) {
       writeChunk({ error: true, message: 'حدث خطأ في توليد الملخص', code: 'COMMAND_ERROR' });
       res.end();
@@ -381,7 +382,7 @@ async function handleQuiz({ req, res, writeChunk, startTime, topic_filter }) {
     });
 
   } catch (err) {
-    console.error('[commands] /اختبار error:', err.message);
+    logger.error('commands', '/اختبار error', { error: err.message });
     if (!res.writableEnded) {
       writeChunk({ error: true, message: 'حدث خطأ في توليد الأسئلة', code: 'COMMAND_ERROR' });
       res.end();

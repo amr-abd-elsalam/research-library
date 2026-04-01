@@ -1,9 +1,11 @@
 // server/services/commandRegistry.js
 // ═══════════════════════════════════════════════════════════════
-// Extensible Command Registry — Phase 9
+// Extensible Command Registry — Phase 9, Phase 16 (Logger integration)
 // Manages command registration, matching, execution + lifecycle hooks
 // Zero dependencies — standalone module
 // ═══════════════════════════════════════════════════════════════
+
+import { logger } from './logger.js';
 
 /**
  * @typedef {Object} CommandEntry
@@ -52,7 +54,7 @@ class CommandRegistry {
 
     // Overwrite warning
     if (this.#commands.has(normalized.name)) {
-      console.warn(`[commandRegistry] overwriting existing command: ${normalized.name}`);
+      logger.warn('commandRegistry', `overwriting existing command: ${normalized.name}`);
     }
 
     // Register command
@@ -61,7 +63,7 @@ class CommandRegistry {
     // Register aliases → point to command name
     for (const alias of normalized.aliases) {
       if (this.#aliases.has(alias)) {
-        console.warn(`[commandRegistry] overwriting alias: ${alias}`);
+        logger.warn('commandRegistry', `overwriting alias: ${alias}`);
       }
       this.#aliases.set(alias, normalized.name);
     }
@@ -103,7 +105,7 @@ class CommandRegistry {
       try {
         await hook(entry, context);
       } catch (err) {
-        console.warn('[commandRegistry] beforeExecute hook error:', err.message);
+        logger.warn('commandRegistry', 'beforeExecute hook error', { error: err.message });
       }
     }
 
@@ -115,7 +117,7 @@ class CommandRegistry {
       try {
         await hook(entry, context);
       } catch (err) {
-        console.warn('[commandRegistry] afterExecute hook error:', err.message);
+        logger.warn('commandRegistry', 'afterExecute hook error', { error: err.message });
       }
     }
   }

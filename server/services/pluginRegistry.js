@@ -1,6 +1,6 @@
 // server/services/pluginRegistry.js
 // ═══════════════════════════════════════════════════════════════
-// PluginRegistry — Phase 15
+// PluginRegistry — Phase 15, Phase 16 (Logger integration)
 // Manages plugin lifecycle: registration, validation, hook/command/listener
 // collection, and initialization. Plugins extend the platform without
 // modifying source code.
@@ -8,6 +8,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import config from '../../config.js';
+import { logger } from './logger.js';
 
 class PluginRegistry {
   #plugins     = new Map();   // Map<name, NormalizedPlugin>
@@ -28,14 +29,14 @@ class PluginRegistry {
     if (!this.#enabled) return false;
 
     if (!plugin || typeof plugin.name !== 'string' || !plugin.name.trim()) {
-      console.warn('[plugins] skipping plugin — missing or invalid name');
+      logger.warn('plugins', 'skipping plugin — missing or invalid name');
       return false;
     }
 
     const name = plugin.name.trim();
 
     if (this.#plugins.has(name)) {
-      console.warn(`[plugins] overwriting existing plugin: ${name}`);
+      logger.warn('plugins', `overwriting existing plugin: ${name}`);
     }
 
     // Normalize
@@ -98,7 +99,7 @@ class PluginRegistry {
           // Plugin dir doesn't exist — not an error
           return 0;
         }
-        console.warn('[plugins] failed to read plugin directory:', err.message);
+        logger.warn('plugins', 'failed to read plugin directory', { error: err.message });
         return 0;
       }
 
@@ -113,14 +114,14 @@ class PluginRegistry {
           if (plugin && typeof plugin === 'object') {
             if (this.register(plugin)) count++;
           } else {
-            console.warn(`[plugins] ${entry} — no valid plugin export found (expected default or named 'plugin')`);
+            logger.warn('plugins', `${entry} — no valid plugin export found (expected default or named 'plugin')`);
           }
         } catch (err) {
-          console.warn(`[plugins] failed to load ${entry}:`, err.message);
+          logger.warn('plugins', `failed to load ${entry}`, { error: err.message });
         }
       }
     } catch (err) {
-      console.warn('[plugins] loadFromDirectory error:', err.message);
+      logger.warn('plugins', 'loadFromDirectory error', { error: err.message });
     }
 
     return count;
@@ -233,9 +234,9 @@ class PluginRegistry {
       if (typeof plugin.hooks?.onInit === 'function') {
         try {
           await plugin.hooks.onInit();
-          console.log(`[plugins] initialized: ${plugin.name}`);
+          logger.info('plugins', `initialized: ${plugin.name}`);
         } catch (err) {
-          console.warn(`[plugins] onInit failed for '${plugin.name}':`, err.message);
+          logger.warn('plugins', `onInit failed for '${plugin.name}'`, { error: err.message });
         }
       }
     }

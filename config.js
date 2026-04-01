@@ -334,6 +334,18 @@ const config = {
     ],
   },
 
+  // ═══════════════════════════════════════════════════════════
+  // 17. التسجيل والمراقبة (LOGGING)
+  //    — يتحكم في مستوى تفاصيل الـ logs وتسجيل الأحداث التشغيلية
+  //    — الأحداث التشغيلية تظهر في لوحة تحكم الأدمن
+  //    — لا تحتاج تعديل عادةً
+  // ═══════════════════════════════════════════════════════════
+  LOGGING: {
+    level:          'info',    // 'debug' | 'info' | 'warn' | 'error' — الحد الأدنى لمستوى الطباعة في الـ console
+    operationalLog: true,      // true = تسجيل الأحداث التشغيلية في ring buffer (routing, cache, hooks, errors)
+    maxEntries:     500,       // أقصى عدد entries في الـ operational log (in-memory ring buffer — الأقدم يتحذف أولاً)
+  },
+
 };
 
 export default deepFreeze(config);

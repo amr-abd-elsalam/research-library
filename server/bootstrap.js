@@ -16,6 +16,8 @@ import { pipelineHooks } from './services/hookRegistry.js';
 import { registerAllListeners } from './services/listeners/index.js';
 import { pluginRegistry } from './services/pluginRegistry.js';
 import { eventBus } from './services/eventBus.js';
+import { logger } from './services/logger.js';
+import { operationalLog } from './services/operationalLog.js';
 
 // ── Timeout helper (for bootstrap-specific timeouts) ──────────
 function raceTimeout(promise, ms) {
@@ -46,6 +48,18 @@ class BootstrapManager {
   async run() {
     const startedAt = new Date();
     const stages    = [];
+
+    // ── Wire Logger → OperationalLog (Phase 16) ──────────────
+    logger.addListener((entry) => {
+      if (entry.level === 'warn' || entry.level === 'error') {
+        operationalLog.record(
+          `log:${entry.level}`,
+          entry.module,
+          { message: entry.message, ...(entry.detail && typeof entry.detail === 'object' ? entry.detail : {}) },
+          entry.correlationId || null
+        );
+      }
+    });
 
     // ── Stage 1: env_check (sync) ────────────────────────────
     stages.push(await this.#runStage('env_check', () => this.#checkEnv()));
@@ -114,7 +128,7 @@ class BootstrapManager {
       // Initialize plugins (runs onInit hooks)
       await pluginRegistry.initialize();
 
-      console.log(`[plugins] ${pluginRegistry.size} plugin(s) loaded (${inlineCount} inline, ${fileCount} file-based), ${pluginCommands.length} command(s), ${pluginListeners.length} listener(s)`);
+      logger.info('plugins', `${pluginRegistry.size} plugin(s) loaded (${inlineCount} inline, ${fileCount} file-based), ${pluginCommands.length} command(s), ${pluginListeners.length} listener(s)`);
     }
 
     // ── Stages 3+4: qdrant + gemini (parallel) ───────────────

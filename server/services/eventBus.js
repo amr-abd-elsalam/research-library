@@ -1,9 +1,11 @@
 // server/services/eventBus.js
 // ═══════════════════════════════════════════════════════════════
-// EventBus — Phase 12
+// EventBus — Phase 12, Phase 16 (Logger integration)
 // Lightweight publish/subscribe for decoupled module communication.
 // Backend-only — fire-and-forget, synchronous emit, errors caught.
 // ═══════════════════════════════════════════════════════════════
+
+import { logger } from './logger.js';
 
 class EventBus {
   #listeners = new Map();
@@ -35,7 +37,7 @@ class EventBus {
 
   /**
    * Emits an event to all registered listeners.
-   * Synchronous, fire-and-forget — errors are caught and warned.
+   * Synchronous, fire-and-forget — errors are caught and logged.
    * @param {string} event — event name
    * @param {*} data       — payload passed to each listener
    */
@@ -47,7 +49,7 @@ class EventBus {
       try {
         fn(data);
       } catch (err) {
-        console.warn(`[eventBus] listener error on '${event}':`, err.message);
+        logger.warn('eventBus', `listener error on '${event}'`, { error: err.message });
       }
     }
   }

@@ -623,6 +623,63 @@ img { max-width: 100%; display: block; }
 .hidden { display: none !important; }
 
 /* ══════════════════════════════════════════════════════════
+   8c. OPERATIONAL LOG (Phase 16)
+══════════════════════════════════════════════════════════ */
+.admin-log-controls {
+  margin-bottom: 1rem;
+}
+.admin-log-select {
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-family: var(--font-base);
+}
+.admin-log-entries {
+  max-height: 500px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+}
+.admin-log-row {
+  display: grid;
+  grid-template-columns: 70px 180px 100px auto;
+  gap: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.8rem;
+  font-family: 'Courier New', monospace;
+  align-items: center;
+}
+.admin-log-row:last-child { border-bottom: none; }
+.admin-log-time { color: var(--text-muted); }
+.admin-log-event { font-weight: 600; }
+.admin-log-module { color: var(--accent); }
+.admin-log-corr {
+  background: var(--bg-elevated);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+.admin-log-detail {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 300px;
+}
+.admin-log-info .admin-log-event { color: var(--accent); }
+.admin-log-warn .admin-log-event { color: var(--status-warn); }
+.admin-log-error .admin-log-event { color: var(--status-error); }
+.admin-log-error { background: rgba(248, 113, 113, 0.05); }
+.admin-log-warn { background: rgba(245, 158, 11, 0.05); }
+
+/* ══════════════════════════════════════════════════════════
    13. RESPONSIVE
 ══════════════════════════════════════════════════════════ */
 @media (max-width: 960px) {
@@ -651,6 +708,14 @@ img { max-width: 100%; display: block; }
   .admin-cost-grid { grid-template-columns: 1fr; }
   .admin-metrics-top-grid { grid-template-columns: 1fr; }
   .admin-metrics-stage-row { grid-template-columns: 100px 1fr 50px; gap: 8px; }
+
+  .admin-log-row {
+    grid-template-columns: 60px 1fr;
+    gap: 0.3rem;
+  }
+  .admin-log-module,
+  .admin-log-corr,
+  .admin-log-detail { display: none; }
 
   .admin-content { padding: 16px 12px 32px; gap: 24px; }
 
