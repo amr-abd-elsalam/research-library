@@ -2,6 +2,7 @@ import "dotenv/config";
 import http         from 'node:http';
 import { router }   from './server/router.js';
 import { serveStatic } from './server/static.js';
+import { bootstrap }   from './server/bootstrap.js';
 
 const PORT = process.env.PORT || 3000;
 
@@ -35,11 +36,21 @@ server.keepAliveTimeout = 5_000;  // 5s keep-alive
 // ── Connection limit ──────────────────────────────────────────
 server.maxConnections = 100;
 
-// ── Start ─────────────────────────────────────────────────────
-server.listen(PORT, () => {
-  console.log(`[server] running on http://localhost:${PORT}`);
-  console.log(`[server] NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
-});
+// ── Bootstrap then listen ─────────────────────────────────────
+(async () => {
+  const report = await bootstrap.run();
+
+  if (!report.ready) {
+    console.error('[server] bootstrap FAILED — check errors above');
+    console.error('[server] server will NOT start');
+    process.exit(1);
+  }
+
+  server.listen(PORT, () => {
+    console.log(`[server] running on http://localhost:${PORT}`);
+    console.log(`[server] NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
+  });
+})();
 
 // ── Server errors ─────────────────────────────────────────────
 server.on('error', (err) => {

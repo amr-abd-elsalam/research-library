@@ -9,6 +9,7 @@ import { handleConfig }   from './handlers/configHandler.js';
 import { handleAdminStats } from './handlers/adminStats.js';
 import { handleAuthVerify }  from './handlers/authHandler.js';
 import { handleCreateSession, handleGetSession, handleDeleteSession, handleListSessions, extractSessionId } from './handlers/sessions.js';
+import { bootstrap } from './bootstrap.js';
 
 // ── URL matcher (strips query string + trailing slash) ─────────
 function matchRoute(reqUrl, routePath) {
@@ -40,6 +41,15 @@ export async function router(req, res) {
     await applyRateLimit(req, res, 'health');
     if (res.writableEnded) return;
     await handleHealth(req, res);
+    return;
+  }
+
+  // GET /api/health/ready (readiness probe — no rate limit, no auth)
+  if (method === 'GET' && matchRoute(url, '/api/health/ready')) {
+    const payload = bootstrap.getReadinessPayload();
+    const statusCode = payload.ready ? 200 : 503;
+    res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(payload));
     return;
   }
 

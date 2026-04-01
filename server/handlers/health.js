@@ -2,6 +2,7 @@ import { getCollectionInfo, QdrantTimeoutError, QdrantNotFoundError, QdrantConne
 import { embedText, GeminiTimeoutError, GeminiAPIError }                                     from '../services/gemini.js';
 import { cache }                                                                              from '../services/cache.js';
 import config                                                                                 from '../../config.js';
+import { bootstrap }                                                                          from '../bootstrap.js';
 
 // ── checkQdrant ────────────────────────────────────────────────
 async function checkQdrant() {
@@ -59,6 +60,10 @@ export async function handleHealth(req, res) {
       uptime_sec: Math.floor(process.uptime()),
       memory_mb:  Math.round(process.memoryUsage().rss / 1024 / 1024),
       node_env:   process.env.NODE_ENV || 'development',
+    },
+    bootstrap: {
+      ready:      bootstrap.isReady,
+      durationMs: bootstrap.report?.durationMs ?? null,
     },
     brand:     config.BRAND.name,
     timestamp: new Date().toISOString(),
