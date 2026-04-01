@@ -22,7 +22,16 @@ function buildPayload() {
     LIMITS:     config.LIMITS,
     API:        config.API,
     AUTH:       { mode: getAccessMode() },
-    COMMANDS:   config.COMMANDS,
+    COMMANDS: {
+      enabled: config.COMMANDS.enabled,
+      prefix:  config.COMMANDS.prefix,
+      list:    commandRegistry.list().map(c => ({
+        cmd:   c.name,
+        label: c.description.slice(0, 20),
+        desc:  c.description,
+      })),
+    },
+
     SESSIONS:   { enabled: config.SESSIONS.enabled },
   });
   return cachedPayload;
