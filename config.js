@@ -287,6 +287,8 @@ const config = {
     enableTracing:    true,    // تسجيل مراحل كل request (EventTrace)
     traceInAnalytics: false,   // حفظ الـ trace المضغوط في JSONL analytics log
     enableHooks:      true,    // تفعيل pipeline hooks (beforeStage/afterStage/beforePipeline/afterPipeline)
+    metricsEnabled:   true,    // تجميع مقاييس الأداء في الذاكرة (P50/P95/P99 latency, counters)
+    metricsWindow:    2000,    // أقصى عدد observations لكل histogram (sliding window)
   },
 
 };

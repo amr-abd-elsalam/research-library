@@ -7,6 +7,7 @@ import { handleTopics }   from './handlers/topics.js';
 import { handleHealth }   from './handlers/health.js';
 import { handleConfig }   from './handlers/configHandler.js';
 import { handleAdminStats } from './handlers/adminStats.js';
+import { handleMetrics }    from './handlers/metricsHandler.js';
 import { handleAuthVerify }  from './handlers/authHandler.js';
 import { handleCreateSession, handleGetSession, handleDeleteSession, handleListSessions, extractSessionId } from './handlers/sessions.js';
 import { bootstrap } from './bootstrap.js';
@@ -90,6 +91,14 @@ export async function router(req, res) {
     requireAdmin(req, res);
     if (res.writableEnded) return;
     await handleAdminStats(req, res);
+    return;
+  }
+
+  // GET /api/admin/metrics
+  if (method === 'GET' && matchRoute(url, '/api/admin/metrics')) {
+    requireAdmin(req, res);
+    if (res.writableEnded) return;
+    await handleMetrics(req, res);
     return;
   }
 

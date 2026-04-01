@@ -8,6 +8,10 @@ import config              from '../../config.js';
 import { EventTrace }      from '../services/eventTrace.js';
 import { eventBus }        from '../services/eventBus.js';
 import { PipelineContext, chatPipeline, writeChunk } from '../services/pipeline.js';
+import { metrics }         from '../services/metrics.js';
+
+// ── Active requests counter (for gauge) ────────────────────────
+let activeRequests = 0;
 
 // ── Helpers (kept in chat.js — not part of pipeline) ───────────
 function buildCacheKey(topic_filter, message) {
@@ -183,6 +187,18 @@ function handlePipelineError(err, res, ctx, trace, startTime) {
 
 // ── handler ───────────────────────────────────────────────────
 export async function handleChat(req, res) {
+  activeRequests++;
+  metrics.set('active_requests', activeRequests);
+
+  try {
+    await _handleChat(req, res);
+  } finally {
+    activeRequests--;
+    metrics.set('active_requests', activeRequests);
+  }
+}
+
+async function _handleChat(req, res) {
   const { message, topic_filter: rawFilter, history, session_id } = req._validatedBody;
 
   // ── 1. Topic validation (stays here) ────────────────────────

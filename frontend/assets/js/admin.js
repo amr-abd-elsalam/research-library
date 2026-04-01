@@ -45,6 +45,10 @@
     sessionsInfo:  $('admin-sessions-info'),
     sessionsEmpty: $('admin-sessions-empty'),
     costGrid:      $('admin-cost-grid'),
+    // Metrics (Phase 14)
+    metricsCards:  $('admin-metrics-cards'),
+    metricsStages: $('admin-metrics-stages'),
+    metricsEmpty:  $('admin-metrics-empty'),
   };
 
   // ══════════════════════════════════════════════════════════
@@ -121,6 +125,10 @@
       if (err.name === 'AbortError') throw new Error('انتهت مهلة الاتصال');
       throw err;
     }
+  }
+
+  async function fetchMetrics() {
+    return adminFetch('/api/admin/metrics');
   }
 
   async function fetchConfig() {
@@ -313,6 +321,9 @@
     cost:    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
     cache:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12A10 10 0 1 1 12 2"/><path d="M22 2 13.5 10.5"/><path d="M16 2h6v6"/></svg>',
     latency: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+    gauge:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M12 12l4-4"/><circle cx="12" cy="12" r="1"/></svg>',
+    stage:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+    counter: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>',
   };
 
   function renderOverview(statsData) {
@@ -602,6 +613,181 @@
   }
 
   // ══════════════════════════════════════════════════════════
+  //  METRICS (Phase 14)
+  // ══════════════════════════════════════════════════════════
+  function renderMetrics(metricsData) {
+    var cards  = DOM.metricsCards;
+    var stages = DOM.metricsStages;
+    var empty  = DOM.metricsEmpty;
+    if (!cards || !stages) return;
+
+    while (cards.firstChild) cards.removeChild(cards.firstChild);
+    while (stages.firstChild) stages.removeChild(stages.firstChild);
+
+    if (!metricsData || !metricsData.metrics) {
+      cards.classList.add('hidden');
+      stages.classList.add('hidden');
+      if (empty) empty.classList.remove('hidden');
+      return;
+    }
+
+    var m = metricsData.metrics;
+    var hasData = (Object.keys(m.counters || {}).length > 0) ||
+                  (Object.keys(m.histograms || {}).length > 0);
+
+    if (!hasData) {
+      cards.classList.add('hidden');
+      stages.classList.add('hidden');
+      if (empty) empty.classList.remove('hidden');
+      return;
+    }
+
+    cards.classList.remove('hidden');
+    stages.classList.remove('hidden');
+    if (empty) empty.classList.add('hidden');
+
+    // ── Summary Cards ──────────────────────────────────────
+    // 1. Request Duration P95
+    var reqHist = (m.histograms || {})['request_duration_ms'] || {};
+    var reqAll  = reqHist['[]'] || {};
+    addMetricCard(cards, SVG_ICONS.latency, (reqAll.p95 || 0) + 'ms', 'P95 زمن الاستجابة',
+      'P50: ' + (reqAll.p50 || 0) + 'ms · P99: ' + (reqAll.p99 || 0) + 'ms');
+
+    // 2. Active Requests
+    var activeReqs = ((m.gauges || {})['active_requests']) || 0;
+    addMetricCard(cards, SVG_ICONS.gauge, String(activeReqs), 'طلبات نشطة', 'الطلبات الجارية حالياً');
+
+    // 3. Total Requests
+    var reqCounters = (m.counters || {})['requests_total'] || {};
+    var pipelineCount = reqCounters['[["type","pipeline"]]'] || 0;
+    var cacheHitCount = reqCounters['[["type","cache_hit"]]'] || 0;
+    var totalReqs = pipelineCount + cacheHitCount;
+    addMetricCard(cards, SVG_ICONS.counter, String(totalReqs), 'إجمالي الطلبات',
+      'Pipeline: ' + pipelineCount + ' · Cache: ' + cacheHitCount);
+
+    // 4. Aborted / Errors
+    var abortCounters = (m.counters || {})['aborted_total'] || {};
+    var abortTotal = 0;
+    for (var ak in abortCounters) { abortTotal += abortCounters[ak]; }
+    var stageErrCounters = (m.counters || {})['stage_errors_total'] || {};
+    var stageErrTotal = 0;
+    for (var ek in stageErrCounters) { stageErrTotal += stageErrCounters[ek]; }
+    addMetricCard(cards, SVG_ICONS.stage, String(abortTotal), 'طلبات ملغاة',
+      'أخطاء Stages: ' + stageErrTotal);
+
+    // ── Stage Breakdown Bars ───────────────────────────────
+    var stageHist = (m.histograms || {})['stage_duration_ms'] || {};
+    var stageKeys = Object.keys(stageHist);
+
+    if (stageKeys.length === 0) {
+      stages.classList.add('hidden');
+      return;
+    }
+
+    var stageTitle = document.createElement('div');
+    stageTitle.className = 'admin-metrics-stages-title';
+    stageTitle.textContent = 'تفاصيل المراحل (P95 ms)';
+    stages.appendChild(stageTitle);
+
+    // Find max p95 for bar scaling
+    var maxP95 = 0;
+    for (var si = 0; si < stageKeys.length; si++) {
+      var sv = stageHist[stageKeys[si]];
+      if (sv.p95 > maxP95) maxP95 = sv.p95;
+    }
+    if (maxP95 === 0) maxP95 = 1;
+
+    for (var sj = 0; sj < stageKeys.length; sj++) {
+      var sKey  = stageKeys[sj];
+      var sVal  = stageHist[sKey];
+
+      // Extract stage name from serialized label key like '[["stage","stageEmbed"]]'
+      var stageName = sKey;
+      try {
+        var parsed = JSON.parse(sKey);
+        if (Array.isArray(parsed) && parsed.length > 0 && Array.isArray(parsed[0])) {
+          stageName = parsed[0][1] || sKey;
+        }
+      } catch (_) { /* keep raw key */ }
+
+      var row = document.createElement('div');
+      row.className = 'admin-metrics-stage-row';
+
+      var labelEl = document.createElement('div');
+      labelEl.className = 'admin-metrics-stage-label';
+      labelEl.textContent = stageName;
+      row.appendChild(labelEl);
+
+      var barWrap = document.createElement('div');
+      barWrap.className = 'admin-metrics-stage-bar-wrap';
+
+      var bar = document.createElement('div');
+      bar.className = 'admin-metrics-stage-bar';
+      var pct = Math.max((sVal.p95 / maxP95) * 100, 2);
+      bar.style.width = pct + '%';
+      barWrap.appendChild(bar);
+      row.appendChild(barWrap);
+
+      var valEl = document.createElement('div');
+      valEl.className = 'admin-metrics-stage-value';
+      valEl.textContent = sVal.p95 + 'ms';
+      valEl.title = 'P50: ' + sVal.p50 + 'ms · P99: ' + sVal.p99 + 'ms · Count: ' + sVal.count;
+      row.appendChild(valEl);
+
+      stages.appendChild(row);
+    }
+  }
+
+  function addMetricCard(parent, iconSvg, value, label, sub) {
+    var card = document.createElement('div');
+    card.className = 'admin-card';
+
+    var header = document.createElement('div');
+    header.className = 'admin-card-header';
+    var iconWrap = document.createElement('div');
+    iconWrap.className = 'admin-card-icon';
+    iconWrap.innerHTML = iconSvg || '';
+    header.appendChild(iconWrap);
+    card.appendChild(header);
+
+    var valueEl = document.createElement('div');
+    valueEl.className = 'admin-card-value';
+    valueEl.textContent = value;
+    card.appendChild(valueEl);
+
+    var labelEl = document.createElement('div');
+    labelEl.className = 'admin-card-label';
+    labelEl.textContent = label;
+    card.appendChild(labelEl);
+
+    if (sub) {
+      var subEl = document.createElement('div');
+      subEl.className = 'admin-card-sub';
+      subEl.textContent = sub;
+      card.appendChild(subEl);
+    }
+
+    parent.appendChild(card);
+  }
+
+  function showMetricsSkeleton() {
+    var cards = DOM.metricsCards;
+    if (!cards) return;
+    while (cards.firstChild) cards.removeChild(cards.firstChild);
+    cards.classList.remove('hidden');
+    for (var i = 0; i < 4; i++) {
+      var s = document.createElement('div');
+      s.className = 'admin-skeleton admin-skeleton-card';
+      cards.appendChild(s);
+    }
+    if (DOM.metricsStages) {
+      while (DOM.metricsStages.firstChild) DOM.metricsStages.removeChild(DOM.metricsStages.firstChild);
+      DOM.metricsStages.classList.remove('hidden');
+    }
+    if (DOM.metricsEmpty) DOM.metricsEmpty.classList.add('hidden');
+  }
+
+  // ══════════════════════════════════════════════════════════
   //  SECTION ERROR STATE
   // ══════════════════════════════════════════════════════════
   function showSectionError(container, msg, retryFn) {
@@ -637,12 +823,14 @@
     showHealthSkeleton();
     showSessionsSkeleton();
     showCostSkeleton();
+    showMetricsSkeleton();
 
     // Parallel fetch
     var results = await Promise.allSettled([
       fetchStats(),
       fetchHealth(),
       fetchSessions(DEFAULTS.sessionsPageSize, 0),
+      fetchMetrics(),
     ]);
 
     // Stats
@@ -673,6 +861,13 @@
         DOM.sessionsTbody ? DOM.sessionsTbody.parentElement.parentElement : null,
         (results[2].reason ? results[2].reason.message : 'فشل تحميل الجلسات'),
         function () { loadSessionsPage(0); });
+    }
+
+    // Metrics (Phase 14)
+    if (results[3].status === 'fulfilled' && results[3].value) {
+      renderMetrics(results[3].value);
+    } else {
+      renderMetrics(null);
     }
 
     // Last update

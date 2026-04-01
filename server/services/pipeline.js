@@ -359,12 +359,18 @@ const chatPipeline = new PipelineRunner([
 
 if (config.PIPELINE?.enableHooks !== false) {
 
-  // Emit after each stage completes
+  // Emit after each stage completes (enriched with duration for metrics)
   pipelineHooks.register('afterStage', '*', (_ctx, trace, stageName) => {
+    // Read latest stage entry from trace for duration + status
+    const traceData  = trace.toJSON();
+    const lastStage  = traceData.stages[traceData.stages.length - 1];
+
     eventBus.emit('pipeline:stageComplete', {
       stageName,
       correlationId: trace.correlationId,
       timestamp:     Date.now(),
+      durationMs:    lastStage?.durationMs ?? 0,
+      status:        lastStage?.status ?? 'ok',
     });
   });
 

@@ -7,6 +7,7 @@
 import { register as registerAnalytics } from './analyticsListener.js';
 import { register as registerCache }     from './cacheListener.js';
 import { register as registerSession }   from './sessionListener.js';
+import { register as registerMetrics }   from './metricsListener.js';
 
 /**
  * Registers all EventBus listeners.
@@ -17,6 +18,7 @@ export function registerAllListeners() {
   registerAnalytics();
   registerCache();
   registerSession();
+  registerMetrics();
 
-  console.log('[listeners] 3 EventBus listeners registered (analytics, cache, session)');
+  console.log('[listeners] 4 EventBus listeners registered (analytics, cache, session, metrics)');
 }
