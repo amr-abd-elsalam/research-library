@@ -1,5 +1,6 @@
 import config from '../../config.js';
 import { getAccessMode } from '../middleware/auth.js';
+import { commandRegistry } from '../services/commandRegistry.js';
 
 const HEADERS = {
   'Content-Type':  'application/json',

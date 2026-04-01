@@ -9,6 +9,7 @@ import { scroll }          from './qdrant.js';
 import { logEvent }        from './analytics.js';
 import { estimateTokens, estimateRequestCost } from './costTracker.js';
 import config              from '../../config.js';
+import { commandRegistry, createTextCommand } from './commandRegistry.js';
 
 // ── Custom Error ───────────────────────────────────────────────
 export class CommandError extends Error {
@@ -19,39 +20,91 @@ export class CommandError extends Error {
   }
 }
 
-// ── Command registry ───────────────────────────────────────────
-const COMMAND_MAP = new Map([
-  ['/ملخص',    handleSummary],
-  ['/مصادر',   handleSources],
-  ['/اختبار',  handleQuiz],
-  ['/مساعدة',  handleHelp],
-]);
+// ── Register builtin commands ──────────────────────────────────
+commandRegistry.register({
+  name:            '/ملخص',
+  aliases:         ['/summary'],
+  description:     'ملخص شامل من محتوى المكتبة',
+  category:        'builtin',
+  requiresContent: true,
+  execute:         handleSummary,
+});
+
+commandRegistry.register({
+  name:            '/مصادر',
+  aliases:         ['/sources'],
+  description:     'قائمة بكل الملفات والأقسام المتاحة',
+  category:        'builtin',
+  requiresContent: true,
+  execute:         handleSources,
+});
+
+commandRegistry.register({
+  name:            '/اختبار',
+  aliases:         ['/quiz'],
+  description:     'توليد أسئلة اختبارية من المحتوى',
+  category:        'builtin',
+  requiresContent: true,
+  execute:         handleQuiz,
+});
+
+commandRegistry.register({
+  name:            '/مساعدة',
+  aliases:         ['/help'],
+  description:     'عرض الأوامر المتاحة',
+  category:        'builtin',
+  requiresContent: false,
+  execute:         handleHelp,
+});
+
+// ── Register custom commands from config ───────────────────────
+if (Array.isArray(config.CUSTOM_COMMANDS)) {
+  for (const cmd of config.CUSTOM_COMMANDS) {
+    if (!cmd.name || !cmd.text) continue;
+    commandRegistry.register(createTextCommand({
+      name:        cmd.name,
+      aliases:     cmd.aliases || [],
+      description: cmd.description || cmd.text.slice(0, 50),
+      text:        cmd.text,
+      category:    'custom',
+    }));
+  }
+}
 
 /**
  * Checks if a message is a slash command.
  * @param {string} message — trimmed user message
- * @returns {string|null} command key or null
+ * @returns {CommandEntry|null} matched command entry or null
  */
 export function matchCommand(message) {
   if (!config.COMMANDS?.enabled) return null;
   const prefix = config.COMMANDS?.prefix || '/';
   if (!message.startsWith(prefix)) return null;
-  const cmd = message.split(/\s/)[0];
-  if (COMMAND_MAP.has(cmd)) return cmd;
-  return null;
+  return commandRegistry.match(message);
 }
 
 /**
  * Executes a slash command with SSE streaming.
+ * @param {CommandEntry} entry — from matchCommand()
+ * @param {object} opts — context passed to the handler
  */
-export async function executeCommand(cmd, opts) {
-  const handler = COMMAND_MAP.get(cmd);
-  if (!handler) {
+export async function executeCommand(entry, opts) {
+  if (!entry || typeof entry.execute !== 'function') {
     opts.writeChunk({ error: true, message: 'أمر غير معروف', code: 'UNKNOWN_COMMAND' });
+    if (!opts.res.writableEnded) opts.res.end();
     return;
   }
-  await handler(opts);
+  await commandRegistry.execute(entry, opts);
 }
+
+// ── Lifecycle hooks ────────────────────────────────────────────
+commandRegistry.on('beforeExecute', async (entry, _context) => {
+  console.log(`[commands] executing: ${entry.name} (${entry.category})`);
+});
+
+commandRegistry.on('afterExecute', async (entry, _context) => {
+  console.log(`[commands] completed: ${entry.name} (${entry.category})`);
+});
 
 // ── Helper: fetch points from Qdrant with optional topic filter ──
 async function fetchPoints(topicFilter) {
@@ -99,11 +152,12 @@ function pointsToContext(points, max = 15) {
 // /مساعدة
 // ═══════════════════════════════════════════════════════════════
 async function handleHelp({ res, writeChunk, startTime, req }) {
-  const commands = config.COMMANDS?.list || [];
+  const commands = commandRegistry.list();
 
   let text = '### الأوامر المتاحة\n\n';
   for (const c of commands) {
-    text += `- **${c.cmd}** — ${c.desc}\n`;
+    const aliasStr = c.aliases.length ? ` (${c.aliases.join(', ')})` : '';
+    text += `- **${c.name}**${aliasStr} — ${c.description}\n`;
   }
   text += '\nاكتب أي أمر في حقل الإدخال للاستخدام.';
 
