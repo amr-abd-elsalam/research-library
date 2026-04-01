@@ -1,0 +1,589 @@
+/* ============================================================
+   admin.css — Ai8V Admin Dashboard
+   Dark Emerald Theme · RTL · Standalone
+   ============================================================ */
+
+/* ── Self-hosted Fonts ──────────────────────────────────────── */
+@font-face {
+  font-family: 'Noto Sans Arabic';
+  src: url('../fonts/noto-sans-arabic-variable.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('../fonts/inter-variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ══════════════════════════════════════════════════════════
+   1. CSS CUSTOM PROPERTIES
+══════════════════════════════════════════════════════════ */
+:root {
+  --bg-deep:     #0a0f0d;
+  --bg-surface:  #111916;
+  --bg-card:     #151d19;
+  --bg-elevated: #1a241f;
+  --bg-input:    #0d1310;
+  --bg-hover:    #222e28;
+
+  --accent:        #10b981;
+  --accent-light:  #34d399;
+  --accent-dim:    rgba(16, 185, 129, 0.12);
+  --accent-border: rgba(16, 185, 129, 0.25);
+
+  --gradient-brand: linear-gradient(135deg, #059669, #0d9488);
+
+  --glow-sm: 0 0 10px rgba(16, 185, 129, 0.08);
+  --glow-md: 0 0 20px rgba(16, 185, 129, 0.12);
+
+  --text-primary:   #f0fdf4;
+  --text-secondary: #86efac;
+  --text-muted:     #6b7f75;
+
+  --border:        rgba(52, 211, 153, 0.10);
+  --border-accent: rgba(52, 211, 153, 0.25);
+
+  --font-ar:   'Noto Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
+  --font-en:   'Inter', system-ui, -apple-system, sans-serif;
+  --font-base: var(--font-ar);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  --speed: 200ms;
+  --ease:  cubic-bezier(0.4, 0, 0.2, 1);
+
+  --header-h: 56px;
+
+  /* Status colors */
+  --status-ok:       #34d399;
+  --status-warn:     #f59e0b;
+  --status-error:    #f87171;
+}
+
+/* ══════════════════════════════════════════════════════════
+   2. RESET & BASE
+══════════════════════════════════════════════════════════ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-base);
+  background:  var(--bg-deep);
+  color:       var(--text-primary);
+  direction:   rtl;
+  min-height:  100dvh;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+input { font-family: inherit; color: inherit; }
+img { max-width: 100%; display: block; }
+
+/* ── Scrollbar ─────────────────────────────────────────── */
+::-webkit-scrollbar            { width: 4px; height: 4px; }
+::-webkit-scrollbar-track      { background: transparent; }
+::-webkit-scrollbar-thumb      { background: rgba(52, 211, 153, 0.15); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover{ background: rgba(52, 211, 153, 0.30); }
+
+/* ══════════════════════════════════════════════════════════
+   3. AUTH OVERLAY
+══════════════════════════════════════════════════════════ */
+.admin-auth-overlay {
+  position:   fixed;
+  inset:      0;
+  z-index:    9999;
+  display:    flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-deep);
+  animation:  adminFadeIn .3s var(--ease);
+}
+
+.admin-auth-overlay.admin-fade-out {
+  opacity: 0;
+  transition: opacity .3s var(--ease);
+}
+
+.admin-auth-card {
+  display:        flex;
+  flex-direction: column;
+  align-items:    center;
+  gap:            16px;
+  padding:        40px 32px;
+  max-width:      380px;
+  width:          90%;
+  text-align:     center;
+}
+
+.admin-auth-logo {
+  width:  64px;
+  height: 64px;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-auth-logo img {
+  width: 100%; height: 100%; object-fit: contain;
+}
+
+.admin-auth-logo-placeholder {
+  width: 64px; height: 64px;
+  border-radius: var(--radius-xl);
+  background: var(--gradient-brand);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; font-weight: 700; color: #fff;
+}
+
+.admin-auth-title {
+  font-size: 22px; font-weight: 700; color: var(--text-primary);
+}
+
+.admin-auth-sub {
+  font-size: 13px; color: var(--text-muted); line-height: 1.6;
+}
+
+.admin-auth-input-wrap { width: 100%; }
+
+.admin-auth-input {
+  width:         100%;
+  padding:       12px 16px;
+  background:    var(--bg-input);
+  border:        1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size:     14px;
+  text-align:    center;
+  color:         var(--text-primary);
+  outline:       none;
+  direction:     ltr;
+  font-family:   var(--font-en);
+  transition:    border-color var(--speed) var(--ease), box-shadow var(--speed) var(--ease);
+}
+
+.admin-auth-input:focus {
+  border-color: var(--accent-border);
+  box-shadow:   0 0 0 3px var(--accent-dim);
+}
+
+.admin-auth-input::placeholder {
+  color: var(--text-muted); font-size: 13px;
+}
+
+.admin-auth-error {
+  font-size: 12px; color: var(--status-error); min-height: 18px;
+}
+
+.admin-auth-btn {
+  width:         100%;
+  padding:       12px;
+  border-radius: var(--radius-md);
+  background:    var(--gradient-brand);
+  color:         #fff;
+  font-size:     15px;
+  font-weight:   600;
+  transition:    all var(--speed) var(--ease);
+}
+
+.admin-auth-btn:hover:not(:disabled) {
+  box-shadow: var(--glow-md); transform: translateY(-1px);
+}
+
+.admin-auth-btn:disabled {
+  opacity: 0.5; cursor: not-allowed; transform: none;
+}
+
+/* ══════════════════════════════════════════════════════════
+   4. ADMIN APP LAYOUT
+══════════════════════════════════════════════════════════ */
+.admin-app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+/* ── Header ────────────────────────────────────────────── */
+.admin-header {
+  display:      flex;
+  align-items:  center;
+  justify-content: space-between;
+  height:       var(--header-h);
+  padding:      0 20px;
+  background:   rgba(10, 15, 13, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  flex-shrink:  0;
+  position:     sticky;
+  top:          0;
+  z-index:      100;
+}
+
+.admin-header-brand {
+  display: flex; align-items: center; gap: 10px; min-width: 0;
+}
+
+.admin-header-logo {
+  width: 34px; height: 34px; flex-shrink: 0;
+}
+
+.admin-header-logo img {
+  width: 34px; height: 34px; border-radius: var(--radius-sm); object-fit: contain;
+}
+
+.admin-header-logo-placeholder {
+  width: 34px; height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--gradient-brand);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 700; color: #fff;
+}
+
+.admin-header-text { min-width: 0; }
+
+.admin-header-title {
+  font-size: 14px; font-weight: 600; color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-family: var(--font-en); line-height: 1.3;
+}
+
+.admin-header-tagline {
+  font-size: 11px; color: var(--text-muted); line-height: 1.3;
+}
+
+.admin-header-actions {
+  display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+}
+
+.admin-last-update {
+  font-size: 11px; color: var(--text-muted); white-space: nowrap;
+}
+
+.admin-auto-refresh-label {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px; color: var(--text-muted); cursor: pointer; white-space: nowrap;
+}
+
+.admin-auto-refresh-label input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 14px; height: 14px; cursor: pointer;
+}
+
+.admin-btn-action {
+  padding:      5px 14px;
+  border-radius: var(--radius-sm);
+  font-size:    12px;
+  color:        var(--text-muted);
+  background:   transparent;
+  border:       1px solid var(--border);
+  transition:   all var(--speed) var(--ease);
+  white-space:  nowrap;
+}
+
+.admin-btn-action:hover {
+  color: var(--accent-light); background: var(--accent-dim); border-color: var(--accent-border);
+}
+
+.admin-btn-logout:hover {
+  color: var(--status-error); background: rgba(248, 113, 113, 0.1); border-color: rgba(248, 113, 113, 0.3);
+}
+
+/* ── Content ───────────────────────────────────────────── */
+.admin-content {
+  flex: 1;
+  padding: 24px 20px 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* ── Sections ──────────────────────────────────────────── */
+.admin-section-title {
+  font-size: 16px; font-weight: 600; color: var(--text-primary);
+  margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+
+/* ══════════════════════════════════════════════════════════
+   5. STAT CARDS
+══════════════════════════════════════════════════════════ */
+.admin-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.admin-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color var(--speed) var(--ease);
+}
+
+.admin-card:hover {
+  border-color: var(--border-accent);
+}
+
+.admin-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.admin-card-icon {
+  width: 36px; height: 36px; border-radius: var(--radius-sm);
+  background: var(--accent-dim); display: flex; align-items: center; justify-content: center;
+  color: var(--accent-light); flex-shrink: 0;
+}
+
+.admin-card-value {
+  font-size: 26px; font-weight: 700; color: var(--text-primary);
+  font-family: var(--font-en); line-height: 1.2;
+}
+
+.admin-card-label {
+  font-size: 12px; color: var(--text-muted); line-height: 1.4;
+}
+
+.admin-card-sub {
+  font-size: 11px; color: var(--text-muted); margin-top: 2px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   6. HEALTH GRID
+══════════════════════════════════════════════════════════ */
+.admin-health-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+
+.admin-health-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-health-header {
+  display: flex; align-items: center; gap: 8px;
+}
+
+.admin-status-dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+}
+
+.admin-status-dot.ok      { background: var(--status-ok); box-shadow: 0 0 6px var(--status-ok); }
+.admin-status-dot.warn    { background: var(--status-warn); box-shadow: 0 0 6px var(--status-warn); }
+.admin-status-dot.error   { background: var(--status-error); box-shadow: 0 0 6px var(--status-error); }
+
+.admin-health-label {
+  font-size: 13px; font-weight: 600; color: var(--text-primary);
+}
+
+.admin-health-detail {
+  font-size: 12px; color: var(--text-muted); line-height: 1.5;
+}
+
+.admin-health-detail strong {
+  color: var(--text-secondary); font-weight: 500;
+}
+
+/* ══════════════════════════════════════════════════════════
+   7. SESSIONS TABLE
+══════════════════════════════════════════════════════════ */
+.admin-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.admin-table th {
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 11px;
+  text-align: start;
+  padding: 10px 14px;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-table td {
+  padding: 10px 14px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  font-family: var(--font-en);
+  font-size: 12px;
+}
+
+.admin-table tr:last-child td {
+  border-bottom: none;
+}
+
+.admin-table tr:hover td {
+  background: var(--bg-hover);
+}
+
+.admin-pagination {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  margin-top: 12px;
+}
+
+.admin-btn-page {
+  padding: 6px 16px; border-radius: var(--radius-sm);
+  font-size: 12px; color: var(--text-muted); background: var(--bg-card);
+  border: 1px solid var(--border); transition: all var(--speed) var(--ease);
+}
+
+.admin-btn-page:hover:not(:disabled) {
+  color: var(--accent-light); background: var(--accent-dim); border-color: var(--accent-border);
+}
+
+.admin-btn-page:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.admin-page-info { font-size: 12px; color: var(--text-muted); }
+
+.admin-empty-msg {
+  text-align: center; font-size: 13px; color: var(--text-muted); padding: 20px 0;
+}
+
+/* ══════════════════════════════════════════════════════════
+   8. COST GRID
+══════════════════════════════════════════════════════════ */
+.admin-cost-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* ══════════════════════════════════════════════════════════
+   9. SKELETON LOADING
+══════════════════════════════════════════════════════════ */
+.admin-skeleton {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  animation: adminShimmer 1.4s infinite;
+}
+
+.admin-skeleton-card {
+  height: 110px;
+  border-radius: var(--radius-lg);
+}
+
+.admin-skeleton-row {
+  height: 40px;
+  margin-bottom: 4px;
+}
+
+@keyframes adminShimmer {
+  0%   { opacity: .4; }
+  50%  { opacity: .8; }
+  100% { opacity: .4; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   10. ERROR STATE
+══════════════════════════════════════════════════════════ */
+.admin-error-state {
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 30px; text-align: center;
+}
+
+.admin-error-state p {
+  font-size: 13px; color: var(--status-error);
+}
+
+.admin-btn-retry {
+  padding: 8px 20px; border-radius: var(--radius-sm);
+  background: var(--bg-card); border: 1px solid var(--border);
+  color: var(--text-muted); font-size: 12px;
+  transition: all var(--speed) var(--ease);
+}
+
+.admin-btn-retry:hover {
+  color: var(--accent-light); background: var(--accent-dim); border-color: var(--accent-border);
+}
+
+/* ══════════════════════════════════════════════════════════
+   11. ANIMATIONS
+══════════════════════════════════════════════════════════ */
+@keyframes adminFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ══════════════════════════════════════════════════════════
+   12. UTILITIES
+══════════════════════════════════════════════════════════ */
+.hidden { display: none !important; }
+
+/* ══════════════════════════════════════════════════════════
+   13. RESPONSIVE
+══════════════════════════════════════════════════════════ */
+@media (max-width: 960px) {
+  .admin-cards-grid { grid-template-columns: repeat(2, 1fr); }
+  .admin-health-grid { grid-template-columns: repeat(2, 1fr); }
+  .admin-cost-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  :root { --header-h: 52px; }
+
+  .admin-header {
+    flex-wrap: wrap; height: auto; padding: 8px 12px; gap: 8px;
+  }
+
+  .admin-header-actions {
+    width: 100%; justify-content: flex-end; flex-wrap: wrap; gap: 6px;
+  }
+
+  .admin-last-update { display: none; }
+
+  .admin-cards-grid { grid-template-columns: 1fr; }
+  .admin-health-grid { grid-template-columns: 1fr; }
+  .admin-cost-grid { grid-template-columns: 1fr; }
+
+  .admin-content { padding: 16px 12px 32px; gap: 24px; }
+
+  .admin-card-value { font-size: 22px; }
+}

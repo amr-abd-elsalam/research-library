@@ -9,7 +9,7 @@ const HEADERS = {
 // ── Build payload (lazy — computed on first request) ──────────
 let cachedPayload = null;
 
-// Note: CONTEXT, FOLLOWUP, SYSTEM_PROMPT — backend-only, not exposed to client
+// Note: CONTEXT, FOLLOWUP, ADMIN, SYSTEM_PROMPT — backend-only, not exposed to client
 function buildPayload() {
   if (cachedPayload) return cachedPayload;
   cachedPayload = JSON.stringify({

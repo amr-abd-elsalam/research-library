@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'none';
+    script-src  'self';
+    style-src   'self';
+    font-src    'self';
+    img-src     'self' data:;
+    connect-src 'self';
+  " />
+  <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+  <link rel="icon" type="image/png" sizes="16x16" href="./assets/img/fav16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/img/fav32.png">
+  <title>Ai8V Admin</title>
+  <link rel="stylesheet" href="./assets/css/admin.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════════════
+       AUTH OVERLAY — login gate
+  ════════════════════════════════════════════════════ -->
+  <div id="admin-auth" class="admin-auth-overlay">
+    <div class="admin-auth-card">
+      <div id="admin-auth-logo" class="admin-auth-logo"></div>
+      <h1 class="admin-auth-title">لوحة التحكم</h1>
+      <p class="admin-auth-sub">أدخل توكن الأدمن للمتابعة</p>
+      <div class="admin-auth-input-wrap">
+        <input
+          type="password"
+          id="admin-token-input"
+          class="admin-auth-input"
+          placeholder="Bearer Token"
+          autocomplete="off"
+          spellcheck="false"
+          aria-label="توكن الأدمن"
+        />
+      </div>
+      <p id="admin-auth-error" class="admin-auth-error hidden"></p>
+      <button id="admin-auth-btn" type="button" class="admin-auth-btn">دخول</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════
+       ADMIN APP — visible after auth
+  ════════════════════════════════════════════════════ -->
+  <div id="admin-app" class="admin-app hidden">
+
+    <!-- ── HEADER ─────────────────────────────────────── -->
+    <header id="admin-header" class="admin-header">
+      <div class="admin-header-brand">
+        <div id="admin-header-logo" class="admin-header-logo"></div>
+        <div class="admin-header-text">
+          <div id="admin-header-title" class="admin-header-title">Ai8V Admin</div>
+          <div class="admin-header-tagline">لوحة التحكم</div>
+        </div>
+      </div>
+      <div class="admin-header-actions">
+        <span id="admin-last-update" class="admin-last-update"></span>
+        <label class="admin-auto-refresh-label">
+          <input type="checkbox" id="admin-auto-refresh" checked />
+          <span>تحديث تلقائي</span>
+        </label>
+        <button id="admin-btn-refresh" type="button" class="admin-btn-action">تحديث</button>
+        <button id="admin-btn-logout" type="button" class="admin-btn-action admin-btn-logout">خروج</button>
+      </div>
+    </header>
+
+    <!-- ── CONTENT ────────────────────────────────────── -->
+    <main id="admin-content" class="admin-content">
+
+      <!-- Overview Cards -->
+      <section id="section-overview" class="admin-section">
+        <h2 class="admin-section-title">نظرة عامة</h2>
+        <div id="admin-overview-grid" class="admin-cards-grid">
+          <!-- Cards injected by JS -->
+        </div>
+      </section>
+
+      <!-- System Health -->
+      <section id="section-health" class="admin-section">
+        <h2 class="admin-section-title">حالة النظام</h2>
+        <div id="admin-health-grid" class="admin-health-grid">
+          <!-- Health items injected by JS -->
+        </div>
+      </section>
+
+      <!-- Sessions Table -->
+      <section id="section-sessions" class="admin-section">
+        <h2 class="admin-section-title">الجلسات</h2>
+        <div id="admin-sessions-wrap" class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>معرّف الجلسة</th>
+                <th>الإنشاء</th>
+                <th>آخر نشاط</th>
+                <th>الرسائل</th>
+                <th>IP Hash</th>
+                <th>التصنيف</th>
+              </tr>
+            </thead>
+            <tbody id="admin-sessions-tbody">
+              <!-- Rows injected by JS -->
+            </tbody>
+          </table>
+        </div>
+        <div id="admin-sessions-pagination" class="admin-pagination">
+          <button id="admin-sessions-prev" type="button" class="admin-btn-page" disabled>السابق</button>
+          <span id="admin-sessions-info" class="admin-page-info"></span>
+          <button id="admin-sessions-next" type="button" class="admin-btn-page" disabled>التالي</button>
+        </div>
+        <p id="admin-sessions-empty" class="admin-empty-msg hidden">لا توجد جلسات محفوظة</p>
+      </section>
+
+      <!-- Cost Breakdown -->
+      <section id="section-cost" class="admin-section">
+        <h2 class="admin-section-title">تفاصيل التكاليف</h2>
+        <div id="admin-cost-grid" class="admin-cards-grid admin-cost-grid">
+          <!-- Cost cards injected by JS -->
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="./assets/js/admin.js" defer></script>
+</body>
+</html>
