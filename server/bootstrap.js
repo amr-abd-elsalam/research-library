@@ -12,6 +12,7 @@ import config from '../config.js';
 import { getCollectionInfo, QdrantTimeoutError, QdrantNotFoundError, QdrantConnectionError } from './services/qdrant.js';
 import { embedText, GeminiTimeoutError, GeminiAPIError } from './services/gemini.js';
 import { commandRegistry } from './services/commandRegistry.js';
+import { pipelineHooks } from './services/hookRegistry.js';
 
 // ── Timeout helper (for bootstrap-specific timeouts) ──────────
 function raceTimeout(promise, ms) {
@@ -177,6 +178,7 @@ class BootstrapManager {
 
     const sectionCount = Object.keys(config).length;
     const cmdCount     = commandRegistry.size;
+    const hookCount    = pipelineHooks.size;
 
     if (problems.length > 0) {
       return {
@@ -187,7 +189,7 @@ class BootstrapManager {
 
     return {
       status: 'ok',
-      detail: { sections: sectionCount, commands: cmdCount },
+      detail: { sections: sectionCount, commands: cmdCount, hooks: hookCount },
     };
   }
 

@@ -286,6 +286,7 @@ const config = {
   PIPELINE: {
     enableTracing:    true,    // تسجيل مراحل كل request (EventTrace)
     traceInAnalytics: false,   // حفظ الـ trace المضغوط في JSONL analytics log
+    enableHooks:      true,    // تفعيل pipeline hooks (beforeStage/afterStage/beforePipeline/afterPipeline)
   },
 
 };

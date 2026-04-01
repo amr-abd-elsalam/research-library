@@ -12,6 +12,8 @@ import { getPromptForType }                   from './promptTemplates.js';
 import { ContextManager }                     from './contextManager.js';
 import { TranscriptStore }                    from './transcript.js';
 import { EventTrace }                         from './eventTrace.js';
+import { pipelineHooks }                      from './hookRegistry.js';
+import { eventBus }                           from './eventBus.js';
 import config                                 from '../../config.js';
 
 // ── Singleton ContextManager (same as previous chat.js) ────────
@@ -219,15 +221,27 @@ async function stageStream(ctx, _trace) {
 
 class PipelineRunner {
   #stages;
+  #hooks;
 
-  constructor(stages) {
+  /**
+   * @param {Function[]} stages — ordered stage functions
+   * @param {PipelineHookRegistry|null} [hooks=null] — optional hook registry
+   */
+  constructor(stages, hooks = null) {
     this.#stages = stages;
+    this.#hooks  = hooks;
   }
 
   async run(ctx, trace) {
+    // ── beforePipeline hooks ────────────────────────────────
+    if (this.#hooks) await this.#hooks.run('beforePipeline', null, ctx, trace);
+
     for (const stage of this.#stages) {
       // Stop if a previous stage signalled abort
       if (ctx.aborted) break;
+
+      // ── beforeStage hooks ───────────────────────────────
+      if (this.#hooks) await this.#hooks.run('beforeStage', stage.name, ctx, trace);
 
       const t0 = Date.now();
       try {
@@ -244,9 +258,16 @@ class PipelineRunner {
         throw err;
       }
 
-      // Check abort *after* recording (for stageConfidenceCheck)
+      // ── afterStage hooks ────────────────────────────────
+      if (this.#hooks) await this.#hooks.run('afterStage', stage.name, ctx, trace);
+
+      // Check abort *after* recording and hooks (for stageConfidenceCheck)
       if (ctx.aborted) break;
     }
+
+    // ── afterPipeline hooks ─────────────────────────────────
+    if (this.#hooks) await this.#hooks.run('afterPipeline', null, ctx, trace);
+
     return ctx;
   }
 }
@@ -329,7 +350,34 @@ const chatPipeline = new PipelineRunner([
   stageConfidenceCheck,
   stageBuildContext,
   stageStream,
-]);
+], config.PIPELINE?.enableHooks !== false ? pipelineHooks : null);
+
+// ═══════════════════════════════════════════════════════════════
+// Default Hooks — emit pipeline events to EventBus
+// ═══════════════════════════════════════════════════════════════
+
+if (config.PIPELINE?.enableHooks !== false) {
+
+  // Emit after each stage completes
+  pipelineHooks.register('afterStage', '*', (_ctx, trace, stageName) => {
+    eventBus.emit('pipeline:stageComplete', {
+      stageName,
+      correlationId: trace.correlationId,
+      timestamp:     Date.now(),
+    });
+  });
+
+  // Emit when the full pipeline completes
+  pipelineHooks.register('afterPipeline', (_ctx, trace) => {
+    eventBus.emit('pipeline:complete', {
+      correlationId: trace.correlationId,
+      aborted:       _ctx.aborted,
+      abortReason:   _ctx.abortReason,
+      totalMs:       Date.now() - _ctx.startTime,
+      queryType:     _ctx.queryRoute?.type ?? null,
+    });
+  });
+}
 
 // ═══════════════════════════════════════════════════════════════
 // Exports
