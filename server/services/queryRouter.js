@@ -5,6 +5,8 @@
 // system prompt and retrieval strategy
 // ═══════════════════════════════════════════════════════════════
 
+import { detectFollowUp } from './queryRewriter.js';
+
 // ── Query Types ────────────────────────────────────────────────
 // factual    — direct question expecting a specific answer
 // summary    — broad or overview question
@@ -114,7 +116,16 @@ export function routeQuery(message) {
   // Confidence: 0 = no match (default factual), 1 = strong match
   const confidence = Math.min(bestScore / 4, 1);
 
-  return { type: bestType, confidence };
+  // Follow-up detection (keyword-based — zero API calls)
+  const followUp = detectFollowUp(message);
+
+  return {
+    type:               bestType,
+    confidence,
+    isFollowUp:         followUp.isFollowUp,
+    followUpConfidence: followUp.confidence,
+    followUpSignals:    followUp.signals,
+  };
 }
 
 /**

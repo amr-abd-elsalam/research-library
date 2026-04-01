@@ -10,6 +10,8 @@ import { getPromptForType }            from '../services/promptTemplates.js';
 import config              from '../../config.js';
 import { appendMessage }   from '../services/sessions.js';
 import { ContextManager }  from '../services/contextManager.js';
+import { TranscriptStore } from '../services/transcript.js';
+import { rewriteQuery }    from '../services/queryRewriter.js';
 
 const LOW_SCORE_THRESHOLD   = 0.30;
 const CACHE_TTL             = 3600;
@@ -186,10 +188,34 @@ export async function handleChat(req, res) {
   res.setTimeout?.(0);
 
   try {
+    // ── 0. Build TranscriptStore from incoming history ───────
+    const transcript = new TranscriptStore(
+      (history || []).map(h => ({ role: h.role === 'model' ? 'assistant' : h.role, text: h.text }))
+    );
+
+    // ── 0.5. Follow-up detection + query rewriting ──────────
+    const queryRoute = routeQuery(message);
+    let effectiveMessage = message;
+
+    if (
+      queryRoute.isFollowUp &&
+      config.FOLLOWUP?.enabled &&
+      queryRoute.followUpConfidence >= (config.FOLLOWUP?.minConfidence ?? 0.33) &&
+      transcript.size > 0
+    ) {
+      const rewriteResult = await rewriteQuery(
+        message,
+        transcript.replayForAPI(config.FOLLOWUP?.maxHistoryItems ?? 4)
+      );
+      if (rewriteResult.wasRewritten) {
+        effectiveMessage = rewriteResult.rewritten;
+      }
+    }
+
     // ── 1. Embed question ────────────────────────────────────
     let queryVector;
     try {
-      queryVector = await embedText(message);
+      queryVector = await embedText(effectiveMessage);
     } catch (err) {
       if (err instanceof GeminiTimeoutError) {
         writeChunk(res, { error: true, message: 'انتهت مهلة الاتصال', code: 'TIMEOUT' });
@@ -200,8 +226,7 @@ export async function handleChat(req, res) {
       return;
     }
 
-    // ── 2. Route query + Search Qdrant ───────────────────────
-    const queryRoute = routeQuery(message);
+    // ── 2. Search Qdrant (queryRoute already computed in step 0.5)
     const topK       = getTopK(queryRoute.type);
 
     let hits;
@@ -279,7 +304,10 @@ export async function handleChat(req, res) {
     res.end();
 
     // ── 6.1. Token estimation (needed by both session & analytics)
-    const embeddingTokens  = estimateTokens(message);
+    const embeddingTokens  = estimateTokens(effectiveMessage);
+    const rewriteTokens    = effectiveMessage !== message
+                           ? estimateTokens(effectiveMessage) + estimateTokens(message)
+                           : 0;
     const genInputTokens   = estimateTokens(systemPrompt)
                            + estimateTokens(context)
                            + estimateTokens(message);
@@ -296,6 +324,7 @@ export async function handleChat(req, res) {
             embedding: embeddingTokens,
             input:     genInputTokens,
             output:    genOutputTokens,
+            rewrite:   rewriteTokens,
           },
         }))
         .catch(() => {});
@@ -322,6 +351,8 @@ export async function handleChat(req, res) {
       sources_count:     sources.length,
       cache_hit:         false,
       estimated_cost:    costEstimate.total_cost,
+      rewritten_query:   effectiveMessage !== message ? effectiveMessage : undefined,
+      follow_up:         queryRoute.isFollowUp || false,
     }).catch(() => {});
 
     // ── 8. Cache ─────────────────────────────────────────────
