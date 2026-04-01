@@ -6,10 +6,10 @@
 
 import { streamGenerate, GeminiTimeoutError, GeminiSafetyError, GeminiEmptyError } from './gemini.js';
 import { scroll }          from './qdrant.js';
-import { logEvent }        from './analytics.js';
 import { estimateTokens, estimateRequestCost } from './costTracker.js';
 import config              from '../../config.js';
 import { commandRegistry, createTextCommand } from './commandRegistry.js';
+import { eventBus }        from './eventBus.js';
 
 // ── Custom Error ───────────────────────────────────────────────
 export class CommandError extends Error {
@@ -165,13 +165,17 @@ async function handleHelp({ res, writeChunk, startTime, req }) {
   writeChunk({ done: true, sources: [], score: 0 });
   res.end();
 
-  logEvent({
-    event_type: 'command', req, topic_filter: null,
-    message_length: '/مساعدة'.length, response_length: text.length,
-    embedding_tokens: 0, generation_tokens: 0,
-    latency_ms: Date.now() - startTime, score: 0,
-    sources_count: 0, cache_hit: false, estimated_cost: 0,
-  }).catch(() => {});
+  eventBus.emit('command:complete', {
+    commandName: '/مساعدة',
+    latencyMs:   Date.now() - startTime,
+    _analytics: {
+      event_type: 'command', req, topic_filter: null,
+      message_length: '/مساعدة'.length, response_length: text.length,
+      embedding_tokens: 0, generation_tokens: 0,
+      latency_ms: Date.now() - startTime, score: 0,
+      sources_count: 0, cache_hit: false, estimated_cost: 0,
+    },
+  });
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -205,13 +209,17 @@ async function handleSources({ res, writeChunk, startTime, req, topic_filter }) 
     writeChunk({ done: true, sources: [], score: 0 });
     res.end();
 
-    logEvent({
-      event_type: 'command', req, topic_filter: topic_filter || null,
-      message_length: '/مصادر'.length, response_length: text.length,
-      embedding_tokens: 0, generation_tokens: 0,
-      latency_ms: Date.now() - startTime, score: 0,
-      sources_count: fileMap.size, cache_hit: false, estimated_cost: 0,
-    }).catch(() => {});
+    eventBus.emit('command:complete', {
+      commandName: '/مصادر',
+      latencyMs:   Date.now() - startTime,
+      _analytics: {
+        event_type: 'command', req, topic_filter: topic_filter || null,
+        message_length: '/مصادر'.length, response_length: text.length,
+        embedding_tokens: 0, generation_tokens: 0,
+        latency_ms: Date.now() - startTime, score: 0,
+        sources_count: fileMap.size, cache_hit: false, estimated_cost: 0,
+      },
+    });
 
   } catch (err) {
     console.error('[commands] /مصادر error:', err.message);
@@ -278,14 +286,18 @@ async function handleSummary({ req, res, writeChunk, startTime, topic_filter }) 
       generationOutputTokens: genOutputTokens,
     });
 
-    logEvent({
-      event_type: 'command', req, topic_filter: topic_filter || null,
-      message_length: '/ملخص'.length, response_length: fullText.length,
-      embedding_tokens: 0, generation_tokens: genOutputTokens,
-      latency_ms: Date.now() - startTime, score: 0,
-      sources_count: sources.length, cache_hit: false,
-      estimated_cost: cost.total_cost,
-    }).catch(() => {});
+    eventBus.emit('command:complete', {
+      commandName: '/ملخص',
+      latencyMs:   Date.now() - startTime,
+      _analytics: {
+        event_type: 'command', req, topic_filter: topic_filter || null,
+        message_length: '/ملخص'.length, response_length: fullText.length,
+        embedding_tokens: 0, generation_tokens: genOutputTokens,
+        latency_ms: Date.now() - startTime, score: 0,
+        sources_count: sources.length, cache_hit: false,
+        estimated_cost: cost.total_cost,
+      },
+    });
 
   } catch (err) {
     console.error('[commands] /ملخص error:', err.message);
@@ -355,14 +367,18 @@ async function handleQuiz({ req, res, writeChunk, startTime, topic_filter }) {
       generationOutputTokens: genOutputTokens,
     });
 
-    logEvent({
-      event_type: 'command', req, topic_filter: topic_filter || null,
-      message_length: '/اختبار'.length, response_length: fullText.length,
-      embedding_tokens: 0, generation_tokens: genOutputTokens,
-      latency_ms: Date.now() - startTime, score: 0,
-      sources_count: sources.length, cache_hit: false,
-      estimated_cost: cost.total_cost,
-    }).catch(() => {});
+    eventBus.emit('command:complete', {
+      commandName: '/اختبار',
+      latencyMs:   Date.now() - startTime,
+      _analytics: {
+        event_type: 'command', req, topic_filter: topic_filter || null,
+        message_length: '/اختبار'.length, response_length: fullText.length,
+        embedding_tokens: 0, generation_tokens: genOutputTokens,
+        latency_ms: Date.now() - startTime, score: 0,
+        sources_count: sources.length, cache_hit: false,
+        estimated_cost: cost.total_cost,
+      },
+    });
 
   } catch (err) {
     console.error('[commands] /اختبار error:', err.message);

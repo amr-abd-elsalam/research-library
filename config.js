@@ -291,6 +291,49 @@ const config = {
     metricsWindow:    2000,    // أقصى عدد observations لكل histogram (sliding window)
   },
 
+  // ═══════════════════════════════════════════════════════════
+  // 16. نظام الإضافات (PLUGINS)
+  //    — يسمح بتوسيع المنصة بدون تعديل الكود المصدري
+  //    — معطّل افتراضياً — فعّله من هنا
+  //    — الـ plugins تقدر تضيف: hooks على الـ pipeline، أوامر جديدة، listeners
+  //    — لا تحتاج أي dependency خارجية
+  // ═══════════════════════════════════════════════════════════
+  PLUGINS: {
+    enabled:          false,    // true = تفعيل نظام الـ plugins | false = معطّل بالكامل (zero overhead)
+    allowFilePlugins: false,    // true = تحميل plugins من مجلد ./plugins/ | false = inline فقط (أأمن)
+    dir:              './plugins',  // مجلد الـ plugins (نسبي من root المشروع) — يُقرأ فقط لو allowFilePlugins: true
+    registered: [
+      // ── Inline Plugins ───────────────────────────────────
+      // كل plugin هو object فيه:
+      // {
+      //   name:        'my-plugin',           // اسم فريد (مطلوب)
+      //   version:     '1.0.0',               // رقم الإصدار
+      //   description: 'وصف قصير',            // يظهر في الـ inspect endpoint لاحقاً
+      //   hooks: {                             // optional — hooks على الـ pipeline
+      //     onInit:          async () => {},   // يتنفذ مرة عند الـ bootstrap
+      //     beforePipeline:  (ctx, trace) => {},
+      //     afterPipeline:   (ctx, trace) => {},
+      //     beforeStage:     { 'stageSearch': (ctx, trace, stageName) => {} },
+      //     afterStage:      { '*': (ctx, trace, stageName) => {} },  // wildcard
+      //   },
+      //   commands: [                          // optional — أوامر إضافية
+      //     {
+      //       name: '/باقات',
+      //       aliases: ['/packages'],
+      //       description: 'عرض الباقات والأسعار',
+      //       text: 'الباقات المتاحة:\n- أساسية: 99$/شهر\n- متقدمة: 199$/شهر',
+      //     },
+      //   ],
+      //   listeners: [                         // optional — EventBus listeners
+      //     {
+      //       event: 'pipeline:complete',
+      //       handler: (data) => { console.log('plugin saw:', data.correlationId); },
+      //     },
+      //   ],
+      // },
+    ],
+  },
+
 };
 
 export default deepFreeze(config);

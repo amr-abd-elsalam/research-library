@@ -11,9 +11,11 @@
 import config from '../config.js';
 import { getCollectionInfo, QdrantTimeoutError, QdrantNotFoundError, QdrantConnectionError } from './services/qdrant.js';
 import { embedText, GeminiTimeoutError, GeminiAPIError } from './services/gemini.js';
-import { commandRegistry } from './services/commandRegistry.js';
+import { commandRegistry, createTextCommand } from './services/commandRegistry.js';
 import { pipelineHooks } from './services/hookRegistry.js';
 import { registerAllListeners } from './services/listeners/index.js';
+import { pluginRegistry } from './services/pluginRegistry.js';
+import { eventBus } from './services/eventBus.js';
 
 // ── Timeout helper (for bootstrap-specific timeouts) ──────────
 function raceTimeout(promise, ms) {
@@ -53,6 +55,67 @@ class BootstrapManager {
 
     // ── Register EventBus listeners (Phase 13) ───────────────
     registerAllListeners();
+
+    // ── Load & initialize plugins (Phase 15) ─────────────────
+    if (config.PLUGINS?.enabled === true) {
+      const inlineCount = pluginRegistry.loadFromConfig();
+      const fileCount   = await pluginRegistry.loadFromDirectory();
+
+      // Register plugin hooks on PipelineHookRegistry
+      const pluginHooks = pluginRegistry.collectHooks();
+      for (const fn of pluginHooks.beforePipeline) {
+        pipelineHooks.register('beforePipeline', fn);
+      }
+      for (const fn of pluginHooks.afterPipeline) {
+        pipelineHooks.register('afterPipeline', fn);
+      }
+      for (const [stageName, fns] of pluginHooks.beforeStage) {
+        for (const fn of fns) {
+          pipelineHooks.register('beforeStage', stageName, fn);
+        }
+      }
+      for (const [stageName, fns] of pluginHooks.afterStage) {
+        for (const fn of fns) {
+          pipelineHooks.register('afterStage', stageName, fn);
+        }
+      }
+
+      // Register plugin commands on CommandRegistry
+      const pluginCommands = pluginRegistry.collectCommands();
+      for (const cmd of pluginCommands) {
+        if (typeof cmd.execute === 'function') {
+          // Smart command with custom execute function
+          commandRegistry.register({
+            name:            cmd.name,
+            aliases:         Array.isArray(cmd.aliases) ? cmd.aliases : [],
+            description:     cmd.description || '',
+            category:        'plugin',
+            requiresContent: cmd.requiresContent !== undefined ? cmd.requiresContent : false,
+            execute:         cmd.execute,
+          });
+        } else if (typeof cmd.text === 'string') {
+          // Static text command — use createTextCommand factory
+          commandRegistry.register(createTextCommand({
+            name:        cmd.name,
+            aliases:     Array.isArray(cmd.aliases) ? cmd.aliases : [],
+            description: cmd.description || '',
+            text:        cmd.text,
+            category:    'plugin',
+          }));
+        }
+      }
+
+      // Register plugin EventBus listeners
+      const pluginListeners = pluginRegistry.collectListeners();
+      for (const { event, handler } of pluginListeners) {
+        eventBus.on(event, handler);
+      }
+
+      // Initialize plugins (runs onInit hooks)
+      await pluginRegistry.initialize();
+
+      console.log(`[plugins] ${pluginRegistry.size} plugin(s) loaded (${inlineCount} inline, ${fileCount} file-based), ${pluginCommands.length} command(s), ${pluginListeners.length} listener(s)`);
+    }
 
     // ── Stages 3+4: qdrant + gemini (parallel) ───────────────
     const [qdrantStage, geminiStage] = await Promise.all([
@@ -183,6 +246,7 @@ class BootstrapManager {
     const sectionCount = Object.keys(config).length;
     const cmdCount     = commandRegistry.size;
     const hookCount    = pipelineHooks.size;
+    const pluginCount  = pluginRegistry.size;
 
     if (problems.length > 0) {
       return {
@@ -193,7 +257,7 @@ class BootstrapManager {
 
     return {
       status: 'ok',
-      detail: { sections: sectionCount, commands: cmdCount, hooks: hookCount },
+      detail: { sections: sectionCount, commands: cmdCount, hooks: hookCount, plugins: pluginCount },
     };
   }
 
