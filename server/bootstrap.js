@@ -13,6 +13,7 @@ import { getCollectionInfo, QdrantTimeoutError, QdrantNotFoundError, QdrantConne
 import { embedText, GeminiTimeoutError, GeminiAPIError } from './services/gemini.js';
 import { commandRegistry } from './services/commandRegistry.js';
 import { pipelineHooks } from './services/hookRegistry.js';
+import { registerAllListeners } from './services/listeners/index.js';
 
 // ── Timeout helper (for bootstrap-specific timeouts) ──────────
 function raceTimeout(promise, ms) {
@@ -49,6 +50,9 @@ class BootstrapManager {
 
     // ── Stage 2: config_check (sync) ─────────────────────────
     stages.push(await this.#runStage('config_check', () => this.#checkConfig()));
+
+    // ── Register EventBus listeners (Phase 13) ───────────────
+    registerAllListeners();
 
     // ── Stages 3+4: qdrant + gemini (parallel) ───────────────
     const [qdrantStage, geminiStage] = await Promise.all([

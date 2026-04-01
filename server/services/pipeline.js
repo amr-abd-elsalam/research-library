@@ -14,6 +14,7 @@ import { TranscriptStore }                    from './transcript.js';
 import { EventTrace }                         from './eventTrace.js';
 import { pipelineHooks }                      from './hookRegistry.js';
 import { eventBus }                           from './eventBus.js';
+import { estimateTokens, estimateRequestCost } from './costTracker.js';
 import config                                 from '../../config.js';
 
 // ── Singleton ContextManager (same as previous chat.js) ────────
@@ -367,14 +368,71 @@ if (config.PIPELINE?.enableHooks !== false) {
     });
   });
 
-  // Emit when the full pipeline completes
+  // Emit when the full pipeline completes — enriched data for listeners
   pipelineHooks.register('afterPipeline', (_ctx, trace) => {
+    // ── Token estimation (moved from chat.js postPipeline) ────
+    const embeddingTokens  = estimateTokens(_ctx.effectiveMessage);
+    const rewriteTokens    = _ctx.effectiveMessage !== _ctx.message
+      ? estimateTokens(_ctx.effectiveMessage) + estimateTokens(_ctx.message) : 0;
+    const genInputTokens   = estimateTokens(_ctx.systemPrompt) + estimateTokens(_ctx.context) + estimateTokens(_ctx.message);
+    const genOutputTokens  = estimateTokens(_ctx.fullText);
+
+    const costEstimate = estimateRequestCost({
+      embeddingInputTokens:   embeddingTokens,
+      generationInputTokens:  genInputTokens,
+      generationOutputTokens: genOutputTokens,
+    });
+
     eventBus.emit('pipeline:complete', {
+      // ── Core fields (existing) ─────────────────────────────
       correlationId: trace.correlationId,
       aborted:       _ctx.aborted,
       abortReason:   _ctx.abortReason,
       totalMs:       Date.now() - _ctx.startTime,
       queryType:     _ctx.queryRoute?.type ?? null,
+
+      // ── Context fields (for session + cache listeners) ─────
+      message:          _ctx.message,
+      fullText:         _ctx.fullText,
+      sources:          _ctx.sources,
+      avgScore:         _ctx.avgScore,
+      sessionId:        _ctx.sessionId,
+      topicFilter:      _ctx.topicFilter,
+      effectiveMessage: _ctx.effectiveMessage,
+
+      // ── Token estimates (for session listener) ─────────────
+      _tokenEstimates: {
+        embedding: embeddingTokens,
+        input:     genInputTokens,
+        output:    genOutputTokens,
+        rewrite:   rewriteTokens,
+      },
+
+      // ── Cache entry (for cache listener) ───────────────────
+      _cacheKey: `chat:${_ctx.topicFilter ?? 'all'}:${_ctx.message.trim().toLowerCase()}`,
+      _cacheEntry: (!_ctx.aborted && _ctx.fullText) ? {
+        text: _ctx.fullText, sources: _ctx.sources, score: _ctx.avgScore,
+      } : null,
+
+      // ── Analytics entry (for analytics listener) ───────────
+      _analytics: {
+        event_type:        'chat',
+        req:               _ctx.req,
+        topic_filter:      _ctx.topicFilter || null,
+        query_type:        _ctx.queryRoute?.type,
+        message_length:    _ctx.message.length,
+        response_length:   (_ctx.fullText || '').length,
+        embedding_tokens:  embeddingTokens,
+        generation_tokens: genOutputTokens,
+        latency_ms:        Date.now() - _ctx.startTime,
+        score:             _ctx.avgScore,
+        sources_count:     _ctx.sources?.length || 0,
+        cache_hit:         false,
+        estimated_cost:    costEstimate.total_cost,
+        rewritten_query:   _ctx.effectiveMessage !== _ctx.message ? _ctx.effectiveMessage : undefined,
+        follow_up:         _ctx.queryRoute?.isFollowUp || false,
+      },
+      _traceCompact: trace.toCompact(),
     });
   });
 }

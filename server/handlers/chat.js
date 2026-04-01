@@ -3,14 +3,11 @@ import { QdrantNotFoundError, QdrantTimeoutError, QdrantConnectionError } from '
 import { cache }           from '../services/cache.js';
 import { getValidTopicIds } from './topics.js';
 import { logEvent }        from '../services/analytics.js';
-import { estimateTokens, estimateRequestCost } from '../services/costTracker.js';
 import { matchCommand, executeCommand } from '../services/commands.js';
 import config              from '../../config.js';
-import { appendMessage }   from '../services/sessions.js';
 import { EventTrace }      from '../services/eventTrace.js';
+import { eventBus }        from '../services/eventBus.js';
 import { PipelineContext, chatPipeline, writeChunk } from '../services/pipeline.js';
-
-const CACHE_TTL = 3600;
 
 // ── Helpers (kept in chat.js — not part of pipeline) ───────────
 function buildCacheKey(topic_filter, message) {
@@ -44,31 +41,29 @@ async function streamCachedResponse(res, cached, req, message, topic_filter, ses
   });
   res.end();
 
-  // ── Analytics (fire-and-forget) ────────────────────────────
-  logEvent({
-    event_type:       'chat',
-    req,
-    topic_filter:     topic_filter || null,
-    message_length:   message.length,
-    response_length:  cached.text.length,
-    embedding_tokens: 0,
-    generation_tokens:0,
-    latency_ms:       Date.now() - startTime,
-    score:            cached.score,
-    sources_count:    cached.sources?.length || 0,
-    cache_hit:        true,
-    estimated_cost:   0,
-  }).catch(() => {});
-
-  // ── Session persistence (fire-and-forget, sequential) ──────
-  if (session_id && config.SESSIONS.enabled) {
-    appendMessage(session_id, 'user', message)
-      .then(() => appendMessage(session_id, 'assistant', cached.text, {
-        sources:    cached.sources,
-        score:      cached.score,
-      }))
-      .catch(() => {});
-  }
+  // ── Emit cache hit event (listeners handle analytics + session) ──
+  eventBus.emit('pipeline:cacheHit', {
+    message,
+    fullText:    cached.text,
+    sources:     cached.sources,
+    avgScore:    cached.score,
+    sessionId:   session_id,
+    topicFilter: topic_filter,
+    _analytics: {
+      event_type:       'chat',
+      req,
+      topic_filter:     topic_filter || null,
+      message_length:   message.length,
+      response_length:  cached.text.length,
+      embedding_tokens: 0,
+      generation_tokens:0,
+      latency_ms:       Date.now() - startTime,
+      score:            cached.score,
+      sources_count:    cached.sources?.length || 0,
+      cache_hit:        true,
+      estimated_cost:   0,
+    },
+  });
 }
 
 // ── validateTopicFilter ────────────────────────────────────────
@@ -80,65 +75,11 @@ function validateTopicFilter(topic_filter) {
   return topic_filter;
 }
 
-// ── Post-pipeline (fire-and-forget) ────────────────────────────
-async function postPipeline(ctx, trace, startTime) {
-  // 1. Token estimation
-  const embeddingTokens  = estimateTokens(ctx.effectiveMessage);
-  const rewriteTokens    = ctx.effectiveMessage !== ctx.message
-    ? estimateTokens(ctx.effectiveMessage) + estimateTokens(ctx.message) : 0;
-  const genInputTokens   = estimateTokens(ctx.systemPrompt) + estimateTokens(ctx.context) + estimateTokens(ctx.message);
-  const genOutputTokens  = estimateTokens(ctx.fullText);
-
-  // 2. Cache set (only if not aborted)
-  if (!ctx.aborted && ctx.fullText) {
-    cache.set(buildCacheKey(ctx.topicFilter, ctx.message), {
-      text: ctx.fullText, sources: ctx.sources, score: ctx.avgScore,
-    }, CACHE_TTL);
-  }
-
-  // 3. Session persistence
-  if (ctx.sessionId && config.SESSIONS.enabled) {
-    appendMessage(ctx.sessionId, 'user', ctx.message)
-      .then(() => appendMessage(ctx.sessionId, 'assistant', ctx.fullText, {
-        sources: ctx.sources,
-        score:   ctx.avgScore,
-        query_type: ctx.queryRoute?.type,
-        tokens: {
-          embedding: embeddingTokens,
-          input:     genInputTokens,
-          output:    genOutputTokens,
-          rewrite:   rewriteTokens,
-        },
-      }))
-      .catch(() => {});
-  }
-
-  // 4. Analytics
-  const costEstimate = estimateRequestCost({
-    embeddingInputTokens:   embeddingTokens,
-    generationInputTokens:  genInputTokens,
-    generationOutputTokens: genOutputTokens,
-  });
-
-  logEvent({
-    event_type:        'chat',
-    req:               ctx.req,
-    topic_filter:      ctx.topicFilter || null,
-    query_type:        ctx.queryRoute?.type,
-    message_length:    ctx.message.length,
-    response_length:   ctx.fullText.length,
-    embedding_tokens:  embeddingTokens,
-    generation_tokens: genOutputTokens,
-    latency_ms:        Date.now() - startTime,
-    score:             ctx.avgScore,
-    sources_count:     ctx.sources?.length || 0,
-    cache_hit:         false,
-    estimated_cost:    costEstimate.total_cost,
-    rewritten_query:   ctx.effectiveMessage !== ctx.message ? ctx.effectiveMessage : undefined,
-    follow_up:         ctx.queryRoute?.isFollowUp || false,
-    ...(config.PIPELINE?.traceInAnalytics ? { trace: trace.toCompact() } : {}),
-  }).catch(() => {});
-}
+// ── postPipeline removed in Phase 13 — logic moved to EventBus listeners ──
+// Analytics  → server/services/listeners/analyticsListener.js
+// Cache      → server/services/listeners/cacheListener.js
+// Session    → server/services/listeners/sessionListener.js
+// Token estimation + enriched data → afterPipeline hook in pipeline.js
 
 // ── Pipeline error handler ─────────────────────────────────────
 function handlePipelineError(err, res, ctx, trace, startTime) {
@@ -148,7 +89,44 @@ function handlePipelineError(err, res, ctx, trace, startTime) {
     writeChunk(res, { text: '\n\n⚠️ تم قطع الإجابة بسبب انتهاء المهلة.' });
     writeChunk(res, { done: true, sources: ctx.sources, score: ctx.avgScore, partial: true });
     if (!res.writableEnded) res.end();
-    postPipeline(ctx, trace, startTime).catch(() => {});
+    // Note: the afterPipeline hook already ran (or will run) via PipelineRunner,
+    // emitting pipeline:complete with enriched data for listeners.
+    // For partial responses where the pipeline errored mid-stream,
+    // we emit a dedicated event so listeners can still log/persist.
+    eventBus.emit('pipeline:complete', {
+      correlationId: trace.correlationId,
+      aborted:       false,
+      abortReason:   null,
+      totalMs:       Date.now() - startTime,
+      queryType:     ctx.queryRoute?.type ?? null,
+      message:       ctx.message,
+      fullText:      ctx.fullText,
+      sources:       ctx.sources,
+      avgScore:      ctx.avgScore,
+      sessionId:     ctx.sessionId,
+      topicFilter:   ctx.topicFilter,
+      effectiveMessage: ctx.effectiveMessage,
+      _tokenEstimates: null,
+      _cacheKey:     null,
+      _cacheEntry:   null,
+      _analytics: {
+        event_type:        'chat',
+        req:               ctx.req,
+        topic_filter:      ctx.topicFilter || null,
+        query_type:        ctx.queryRoute?.type,
+        message_length:    ctx.message.length,
+        response_length:   ctx.fullText.length,
+        embedding_tokens:  0,
+        generation_tokens: 0,
+        latency_ms:        Date.now() - startTime,
+        score:             ctx.avgScore,
+        sources_count:     ctx.sources?.length || 0,
+        cache_hit:         false,
+        estimated_cost:    0,
+        follow_up:         ctx.queryRoute?.isFollowUp || false,
+      },
+      _traceCompact: trace.toCompact(),
+    });
     return;
   }
 
@@ -283,8 +261,10 @@ export async function handleChat(req, res) {
     }
     res.end();
 
-    // ── 8. Post-pipeline (fire-and-forget) ──────────────────
-    postPipeline(ctx, trace, startTime).catch(() => {});
+    // ── 8. Post-pipeline handled by EventBus listeners ──────
+    // The enriched afterPipeline hook in pipeline.js emits
+    // 'pipeline:complete' with all data needed by listeners
+    // (analytics, cache, session). No explicit call needed.
 
   } catch (err) {
     // ── 9. Error handling (Gemini-specific + generic) ───────
