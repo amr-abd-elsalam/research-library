@@ -9,10 +9,12 @@ import { routeQuery, getTopK }         from '../services/queryRouter.js';
 import { getPromptForType }            from '../services/promptTemplates.js';
 import config              from '../../config.js';
 import { appendMessage }   from '../services/sessions.js';
+import { ContextManager }  from '../services/contextManager.js';
 
 const LOW_SCORE_THRESHOLD   = 0.30;
 const CACHE_TTL             = 3600;
 const SNIPPET_MAX_CHARS     = 150;
+const contextManager        = new ContextManager();
 
 // ── Helpers ────────────────────────────────────────────────────
 function writeChunk(res, payload) {
@@ -217,7 +219,7 @@ export async function handleChat(req, res) {
       return;
     }
 
-    // ── 3. Check confidence ──────────────────────────────────
+    // ── 3. Check confidence (from ORIGINAL hits — before trimming) ──
     const avg = avgScore(hits);
     if (avg < LOW_SCORE_THRESHOLD || hits.length === 0) {
       writeChunk(res, { text: 'لا تتضمن المكتبة معلومات كافية حول هذا السؤال.' });
@@ -226,18 +228,24 @@ export async function handleChat(req, res) {
       return;
     }
 
-    // ── 4. Build context ─────────────────────────────────────
-    const context = buildContext(hits);
-    const sources = buildSources(hits);
+    // ── 4. Build context (via ContextManager budget) ─────────
+    const systemPrompt = getPromptForType(queryRoute.type);
+    const window = contextManager.buildWindow({
+      systemPrompt,
+      ragHits: hits,
+      history,
+      message,
+    });
+    const context = buildContext(window.hits);
+    const sources = buildSources(window.hits);
 
     // ── 5. Stream Gemini ─────────────────────────────────────
-    const systemPrompt = getPromptForType(queryRoute.type);
     let fullText = '';
     try {
       await streamGenerate(
         systemPrompt,
         context,
-        history,
+        window.history,
         message,
         (chunk) => {
           fullText += chunk;
@@ -270,6 +278,13 @@ export async function handleChat(req, res) {
     writeChunk(res, { done: true, sources, score: avg });
     res.end();
 
+    // ── 6.1. Token estimation (needed by both session & analytics)
+    const embeddingTokens  = estimateTokens(message);
+    const genInputTokens   = estimateTokens(systemPrompt)
+                           + estimateTokens(context)
+                           + estimateTokens(message);
+    const genOutputTokens  = estimateTokens(fullText);
+
     // ── 6.5. Session persistence (fire-and-forget, sequential)
     if (session_id && config.SESSIONS.enabled) {
       appendMessage(session_id, 'user', message)
@@ -277,17 +292,16 @@ export async function handleChat(req, res) {
           sources,
           score:      avg,
           query_type: queryRoute.type,
+          tokens: {
+            embedding: embeddingTokens,
+            input:     genInputTokens,
+            output:    genOutputTokens,
+          },
         }))
         .catch(() => {});
     }
 
     // ── 7. Analytics (fire-and-forget) ───────────────────────
-    const embeddingTokens  = estimateTokens(message);
-    const genInputTokens   = estimateTokens(systemPrompt)
-                           + estimateTokens(context)
-                           + estimateTokens(message);
-    const genOutputTokens  = estimateTokens(fullText);
-
     const costEstimate = estimateRequestCost({
       embeddingInputTokens:   embeddingTokens,
       generationInputTokens:  genInputTokens,

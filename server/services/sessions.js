@@ -149,6 +149,11 @@ export async function createSession(ipHash, topicFilter = null) {
     ip_hash:      ipHash || 'unknown',
     topic_filter: topicFilter,
     messages:     [],
+    token_usage: {
+      embedding_tokens:  0,
+      generation_input:  0,
+      generation_output: 0,
+    },
   };
 
   const filePath = path.join(dirPath, `${sessionId}.json`);
@@ -206,6 +211,18 @@ export async function appendMessage(sessionId, role, text, metadata = {}) {
     if (metadata.sources !== undefined) message.sources = metadata.sources;
     if (metadata.score !== undefined)   message.score = metadata.score;
     if (metadata.query_type !== undefined) message.query_type = metadata.query_type;
+  }
+
+  // Accumulate token usage if provided
+  if (metadata.tokens) {
+    session.token_usage = session.token_usage || {
+      embedding_tokens:  0,
+      generation_input:  0,
+      generation_output: 0,
+    };
+    session.token_usage.embedding_tokens  += metadata.tokens.embedding  || 0;
+    session.token_usage.generation_input  += metadata.tokens.input      || 0;
+    session.token_usage.generation_output += metadata.tokens.output     || 0;
   }
 
   session.messages.push(message);
