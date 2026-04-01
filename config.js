@@ -278,6 +278,16 @@ const config = {
 - نسّق إجابتك بشكل واضح ومقروء باستخدام عناوين ونقاط عند الحاجة.
 - إذا كان السؤال عاماً، قدّم ملخصاً شاملاً مما هو متاح في المكتبة.`,
 
+  // ═══════════════════════════════════════════════════════════
+  // 15. Pipeline (PIPELINE)
+  //    — تحكم في سلوك الـ RAG pipeline
+  //    — لا تحتاج تعديل عادةً
+  // ═══════════════════════════════════════════════════════════
+  PIPELINE: {
+    enableTracing:    true,    // تسجيل مراحل كل request (EventTrace)
+    traceInAnalytics: false,   // حفظ الـ trace المضغوط في JSONL analytics log
+  },
+
 };
 
 export default deepFreeze(config);

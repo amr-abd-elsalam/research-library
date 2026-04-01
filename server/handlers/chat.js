@@ -1,64 +1,21 @@
-import { embedText, streamGenerate, GeminiTimeoutError, GeminiSafetyError, GeminiEmptyError, GeminiAPIError } from '../services/gemini.js';
-import { search, QdrantNotFoundError, QdrantTimeoutError, QdrantConnectionError }                             from '../services/qdrant.js';
+import { GeminiTimeoutError, GeminiSafetyError, GeminiEmptyError } from '../services/gemini.js';
+import { QdrantNotFoundError, QdrantTimeoutError, QdrantConnectionError } from '../services/qdrant.js';
 import { cache }           from '../services/cache.js';
 import { getValidTopicIds } from './topics.js';
 import { logEvent }        from '../services/analytics.js';
 import { estimateTokens, estimateRequestCost } from '../services/costTracker.js';
 import { matchCommand, executeCommand } from '../services/commands.js';
-import { routeQuery, getTopK }         from '../services/queryRouter.js';
-import { getPromptForType }            from '../services/promptTemplates.js';
 import config              from '../../config.js';
 import { appendMessage }   from '../services/sessions.js';
-import { ContextManager }  from '../services/contextManager.js';
-import { TranscriptStore } from '../services/transcript.js';
-import { rewriteQuery }    from '../services/queryRewriter.js';
+import { EventTrace }      from '../services/eventTrace.js';
+import { PipelineContext, chatPipeline, writeChunk } from '../services/pipeline.js';
 
-const LOW_SCORE_THRESHOLD   = 0.30;
-const CACHE_TTL             = 3600;
-const SNIPPET_MAX_CHARS     = 150;
-const contextManager        = new ContextManager();
+const CACHE_TTL = 3600;
 
-// ── Helpers ────────────────────────────────────────────────────
-function writeChunk(res, payload) {
-  res.write(`data: ${JSON.stringify(payload)}\n\n`);
-}
-
+// ── Helpers (kept in chat.js — not part of pipeline) ───────────
 function buildCacheKey(topic_filter, message) {
   const normalized = message.trim().toLowerCase();
   return `chat:${topic_filter ?? 'all'}:${normalized}`;
-}
-
-function buildContext(hits) {
-  return hits
-    .map((h, i) => {
-      const p    = h.payload;
-      const path = Array.isArray(p.section_path)
-        ? p.section_path.join(' > ')
-        : p.section_title || '';
-      return `[${i + 1}] ${path}\n${p.parent_content || p.content}`;
-    })
-    .join('\n\n---\n\n');
-}
-
-function buildSources(hits) {
-  return hits.map(h => {
-    const p       = h.payload;
-    const content = p.parent_content || p.content || '';
-    const snippet = content.slice(0, SNIPPET_MAX_CHARS) +
-      (content.length > SNIPPET_MAX_CHARS ? '...' : '');
-    return {
-      file:    p.file_name    || '',
-      section: p.section_title || '',
-      snippet,
-      content,
-      score:   Math.round(h.score * 10000) / 10000,
-    };
-  });
-}
-
-function avgScore(hits) {
-  if (!hits.length) return 0;
-  return hits.reduce((s, h) => s + h.score, 0) / hits.length;
 }
 
 // ── streamCachedResponse ───────────────────────────────────────
@@ -123,11 +80,134 @@ function validateTopicFilter(topic_filter) {
   return topic_filter;
 }
 
+// ── Post-pipeline (fire-and-forget) ────────────────────────────
+async function postPipeline(ctx, trace, startTime) {
+  // 1. Token estimation
+  const embeddingTokens  = estimateTokens(ctx.effectiveMessage);
+  const rewriteTokens    = ctx.effectiveMessage !== ctx.message
+    ? estimateTokens(ctx.effectiveMessage) + estimateTokens(ctx.message) : 0;
+  const genInputTokens   = estimateTokens(ctx.systemPrompt) + estimateTokens(ctx.context) + estimateTokens(ctx.message);
+  const genOutputTokens  = estimateTokens(ctx.fullText);
+
+  // 2. Cache set (only if not aborted)
+  if (!ctx.aborted && ctx.fullText) {
+    cache.set(buildCacheKey(ctx.topicFilter, ctx.message), {
+      text: ctx.fullText, sources: ctx.sources, score: ctx.avgScore,
+    }, CACHE_TTL);
+  }
+
+  // 3. Session persistence
+  if (ctx.sessionId && config.SESSIONS.enabled) {
+    appendMessage(ctx.sessionId, 'user', ctx.message)
+      .then(() => appendMessage(ctx.sessionId, 'assistant', ctx.fullText, {
+        sources: ctx.sources,
+        score:   ctx.avgScore,
+        query_type: ctx.queryRoute?.type,
+        tokens: {
+          embedding: embeddingTokens,
+          input:     genInputTokens,
+          output:    genOutputTokens,
+          rewrite:   rewriteTokens,
+        },
+      }))
+      .catch(() => {});
+  }
+
+  // 4. Analytics
+  const costEstimate = estimateRequestCost({
+    embeddingInputTokens:   embeddingTokens,
+    generationInputTokens:  genInputTokens,
+    generationOutputTokens: genOutputTokens,
+  });
+
+  logEvent({
+    event_type:        'chat',
+    req:               ctx.req,
+    topic_filter:      ctx.topicFilter || null,
+    query_type:        ctx.queryRoute?.type,
+    message_length:    ctx.message.length,
+    response_length:   ctx.fullText.length,
+    embedding_tokens:  embeddingTokens,
+    generation_tokens: genOutputTokens,
+    latency_ms:        Date.now() - startTime,
+    score:             ctx.avgScore,
+    sources_count:     ctx.sources?.length || 0,
+    cache_hit:         false,
+    estimated_cost:    costEstimate.total_cost,
+    rewritten_query:   ctx.effectiveMessage !== ctx.message ? ctx.effectiveMessage : undefined,
+    follow_up:         ctx.queryRoute?.isFollowUp || false,
+    ...(config.PIPELINE?.traceInAnalytics ? { trace: trace.toCompact() } : {}),
+  }).catch(() => {});
+}
+
+// ── Pipeline error handler ─────────────────────────────────────
+function handlePipelineError(err, res, ctx, trace, startTime) {
+  // GeminiTimeoutError during streaming (partial response exists)
+  if (err instanceof GeminiTimeoutError && ctx.fullText.length > 0) {
+    ctx.partial = true;
+    writeChunk(res, { text: '\n\n⚠️ تم قطع الإجابة بسبب انتهاء المهلة.' });
+    writeChunk(res, { done: true, sources: ctx.sources, score: ctx.avgScore, partial: true });
+    if (!res.writableEnded) res.end();
+    postPipeline(ctx, trace, startTime).catch(() => {});
+    return;
+  }
+
+  // GeminiTimeoutError before streaming (embed or pre-stream)
+  if (err instanceof GeminiTimeoutError) {
+    if (!res.writableEnded) {
+      writeChunk(res, { error: true, message: 'انتهت مهلة الاتصال', code: 'TIMEOUT' });
+      res.end();
+    }
+    return;
+  }
+
+  // Qdrant errors
+  if (err instanceof QdrantNotFoundError) {
+    if (!res.writableEnded) {
+      writeChunk(res, { error: true, message: 'قاعدة البيانات غير جاهزة', code: 'SERVICE_UNAVAILABLE' });
+      res.end();
+    }
+    return;
+  }
+  if (err instanceof QdrantTimeoutError) {
+    if (!res.writableEnded) {
+      writeChunk(res, { error: true, message: 'انتهت مهلة الاتصال', code: 'TIMEOUT' });
+      res.end();
+    }
+    return;
+  }
+
+  // Gemini safety block
+  if (err instanceof GeminiSafetyError) {
+    if (!res.writableEnded) {
+      writeChunk(res, { error: true, message: 'لا يمكن معالجة هذا السؤال، يرجى إعادة الصياغة', code: 'SAFETY_BLOCKED' });
+      res.end();
+    }
+    return;
+  }
+
+  // Gemini empty response
+  if (err instanceof GeminiEmptyError) {
+    if (!res.writableEnded) {
+      writeChunk(res, { error: true, message: 'لم يتمكن النظام من توليد إجابة، يرجى المحاولة', code: 'EMPTY_RESPONSE' });
+      res.end();
+    }
+    return;
+  }
+
+  // Generic / unknown error
+  console.error('[chat] pipeline error:', err.message);
+  if (!res.writableEnded) {
+    writeChunk(res, { error: true, message: 'حدث خطأ في المعالجة', code: 'SERVER_ERROR' });
+    res.end();
+  }
+}
+
 // ── handler ───────────────────────────────────────────────────
 export async function handleChat(req, res) {
   const { message, topic_filter: rawFilter, history, session_id } = req._validatedBody;
 
-  // ── Validate topic_filter ──────────────────────────────────
+  // ── 1. Topic validation (stays here) ────────────────────────
   const topic_filter = validateTopicFilter(rawFilter);
   if (topic_filter === 'INVALID') {
     res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -138,7 +218,7 @@ export async function handleChat(req, res) {
     return;
   }
 
-  // ── Command check ──────────────────────────────────────────
+  // ── 2. Command check (stays here — commands bypass pipeline) ──
   const cmd = matchCommand(message);
   if (cmd) {
     const startTime = Date.now();
@@ -166,7 +246,7 @@ export async function handleChat(req, res) {
     return;
   }
 
-  // ── Cache check ────────────────────────────────────────────
+  // ── 3. Cache check (stays here — cache bypasses pipeline) ──
   const cacheKey = buildCacheKey(topic_filter, message);
   const cached   = cache.get(cacheKey);
   if (cached) {
@@ -174,195 +254,40 @@ export async function handleChat(req, res) {
     return;
   }
 
-  // ── Start SSE stream ───────────────────────────────────────
+  // ── 4. Start SSE stream ─────────────────────────────────────
   const startTime = Date.now();
-
   res.writeHead(200, {
     'Content-Type':  'text/event-stream',
     'Cache-Control': 'no-cache',
     'Connection':    'keep-alive',
   });
-
-  // Disable timeout for SSE (prevents server.timeout from killing stream)
   req.setTimeout?.(120_000);
   res.setTimeout?.(0);
 
+  // ── 5. Build pipeline context + trace ───────────────────────
+  const ctx   = new PipelineContext({
+    message, topicFilter: topic_filter, history, sessionId: session_id, req, res,
+  });
+  const trace = new EventTrace();
+
   try {
-    // ── 0. Build TranscriptStore from incoming history ───────
-    const transcript = new TranscriptStore(
-      (history || []).map(h => ({ role: h.role === 'model' ? 'assistant' : h.role, text: h.text }))
-    );
+    // ── 6. Run pipeline ─────────────────────────────────────
+    await chatPipeline.run(ctx, trace);
 
-    // ── 0.5. Follow-up detection + query rewriting ──────────
-    const queryRoute = routeQuery(message);
-    let effectiveMessage = message;
-
-    if (
-      queryRoute.isFollowUp &&
-      config.FOLLOWUP?.enabled &&
-      queryRoute.followUpConfidence >= (config.FOLLOWUP?.minConfidence ?? 0.33) &&
-      transcript.size > 0
-    ) {
-      const rewriteResult = await rewriteQuery(
-        message,
-        transcript.replayForAPI(config.FOLLOWUP?.maxHistoryItems ?? 4)
-      );
-      if (rewriteResult.wasRewritten) {
-        effectiveMessage = rewriteResult.rewritten;
-      }
-    }
-
-    // ── 1. Embed question ────────────────────────────────────
-    let queryVector;
-    try {
-      queryVector = await embedText(effectiveMessage);
-    } catch (err) {
-      if (err instanceof GeminiTimeoutError) {
-        writeChunk(res, { error: true, message: 'انتهت مهلة الاتصال', code: 'TIMEOUT' });
-      } else {
-        writeChunk(res, { error: true, message: 'حدث خطأ في المعالجة', code: 'SERVER_ERROR' });
-      }
-      res.end();
-      return;
-    }
-
-    // ── 2. Search Qdrant (queryRoute already computed in step 0.5)
-    const topK       = getTopK(queryRoute.type);
-
-    let hits;
-    try {
-      hits = await search(queryVector, topK, topic_filter);
-    } catch (err) {
-      if (err instanceof QdrantNotFoundError) {
-        writeChunk(res, { error: true, message: 'قاعدة البيانات غير جاهزة', code: 'SERVICE_UNAVAILABLE' });
-      } else if (err instanceof QdrantTimeoutError) {
-        writeChunk(res, { error: true, message: 'انتهت مهلة الاتصال', code: 'TIMEOUT' });
-      } else {
-        writeChunk(res, { error: true, message: 'حدث خطأ في المعالجة', code: 'SERVER_ERROR' });
-      }
-      res.end();
-      return;
-    }
-
-    // ── 3. Check confidence (from ORIGINAL hits — before trimming) ──
-    const avg = avgScore(hits);
-    if (avg < LOW_SCORE_THRESHOLD || hits.length === 0) {
+    // ── 7. Handle result ────────────────────────────────────
+    if (ctx.aborted && ctx.abortReason === 'low_confidence') {
       writeChunk(res, { text: 'لا تتضمن المكتبة معلومات كافية حول هذا السؤال.' });
-      writeChunk(res, { done: true, sources: [], score: avg });
-      res.end();
-      return;
+      writeChunk(res, { done: true, sources: [], score: ctx.avgScore });
+    } else {
+      writeChunk(res, { done: true, sources: ctx.sources, score: ctx.avgScore });
     }
-
-    // ── 4. Build context (via ContextManager budget) ─────────
-    const systemPrompt = getPromptForType(queryRoute.type);
-    const window = contextManager.buildWindow({
-      systemPrompt,
-      ragHits: hits,
-      history,
-      message,
-    });
-    const context = buildContext(window.hits);
-    const sources = buildSources(window.hits);
-
-    // ── 5. Stream Gemini ─────────────────────────────────────
-    let fullText = '';
-    try {
-      await streamGenerate(
-        systemPrompt,
-        context,
-        window.history,
-        message,
-        (chunk) => {
-          fullText += chunk;
-          writeChunk(res, { text: chunk });
-        },
-      );
-    } catch (err) {
-      if (err instanceof GeminiSafetyError) {
-        writeChunk(res, { error: true, message: 'لا يمكن معالجة هذا السؤال، يرجى إعادة الصياغة', code: 'SAFETY_BLOCKED' });
-        res.end();
-        return;
-      }
-      if (err instanceof GeminiEmptyError) {
-        writeChunk(res, { error: true, message: 'لم يتمكن النظام من توليد إجابة، يرجى المحاولة', code: 'EMPTY_RESPONSE' });
-        res.end();
-        return;
-      }
-      if (err instanceof GeminiTimeoutError) {
-        writeChunk(res, { text: '\n\n⚠️ تم قطع الإجابة بسبب انتهاء المهلة.' });
-        writeChunk(res, { done: true, sources, score: avg, partial: true });
-        res.end();
-        return;
-      }
-      writeChunk(res, { error: true, message: 'حدث خطأ في المعالجة', code: 'SERVER_ERROR' });
-      res.end();
-      return;
-    }
-
-    // ── 6. Done ──────────────────────────────────────────────
-    writeChunk(res, { done: true, sources, score: avg });
     res.end();
 
-    // ── 6.1. Token estimation (needed by both session & analytics)
-    const embeddingTokens  = estimateTokens(effectiveMessage);
-    const rewriteTokens    = effectiveMessage !== message
-                           ? estimateTokens(effectiveMessage) + estimateTokens(message)
-                           : 0;
-    const genInputTokens   = estimateTokens(systemPrompt)
-                           + estimateTokens(context)
-                           + estimateTokens(message);
-    const genOutputTokens  = estimateTokens(fullText);
-
-    // ── 6.5. Session persistence (fire-and-forget, sequential)
-    if (session_id && config.SESSIONS.enabled) {
-      appendMessage(session_id, 'user', message)
-        .then(() => appendMessage(session_id, 'assistant', fullText, {
-          sources,
-          score:      avg,
-          query_type: queryRoute.type,
-          tokens: {
-            embedding: embeddingTokens,
-            input:     genInputTokens,
-            output:    genOutputTokens,
-            rewrite:   rewriteTokens,
-          },
-        }))
-        .catch(() => {});
-    }
-
-    // ── 7. Analytics (fire-and-forget) ───────────────────────
-    const costEstimate = estimateRequestCost({
-      embeddingInputTokens:   embeddingTokens,
-      generationInputTokens:  genInputTokens,
-      generationOutputTokens: genOutputTokens,
-    });
-
-    logEvent({
-      event_type:        'chat',
-      req,
-      topic_filter:      topic_filter || null,
-      query_type:        queryRoute.type,
-      message_length:    message.length,
-      response_length:   fullText.length,
-      embedding_tokens:  embeddingTokens,
-      generation_tokens: genOutputTokens,
-      latency_ms:        Date.now() - startTime,
-      score:             avg,
-      sources_count:     sources.length,
-      cache_hit:         false,
-      estimated_cost:    costEstimate.total_cost,
-      rewritten_query:   effectiveMessage !== message ? effectiveMessage : undefined,
-      follow_up:         queryRoute.isFollowUp || false,
-    }).catch(() => {});
-
-    // ── 8. Cache ─────────────────────────────────────────────
-    cache.set(cacheKey, { text: fullText, sources, score: avg }, CACHE_TTL);
+    // ── 8. Post-pipeline (fire-and-forget) ──────────────────
+    postPipeline(ctx, trace, startTime).catch(() => {});
 
   } catch (err) {
-    console.error('[chat] unhandled error:', err.message);
-    if (!res.writableEnded) {
-      writeChunk(res, { error: true, message: 'حدث خطأ في المعالجة', code: 'SERVER_ERROR' });
-      res.end();
-    }
+    // ── 9. Error handling (Gemini-specific + generic) ───────
+    handlePipelineError(err, res, ctx, trace, startTime);
   }
 }
