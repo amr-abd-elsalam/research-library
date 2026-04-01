@@ -65,6 +65,19 @@ class EventBus {
     }
     return count;
   }
+
+  /**
+   * Returns a map of event names → listener count.
+   * Used by the inspect endpoint for system introspection.
+   * @returns {Object<string, number>}
+   */
+  listenerCounts() {
+    const counts = {};
+    for (const [event, arr] of this.#listeners) {
+      counts[event] = arr.length;
+    }
+    return counts;
+  }
 }
 
 // ── Singleton instance ─────────────────────────────────────────

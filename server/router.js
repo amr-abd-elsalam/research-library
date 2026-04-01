@@ -9,6 +9,7 @@ import { handleConfig }   from './handlers/configHandler.js';
 import { handleAdminStats } from './handlers/adminStats.js';
 import { handleMetrics }    from './handlers/metricsHandler.js';
 import { handleAdminLog }   from './handlers/adminLogHandler.js';
+import { handleInspect }    from './handlers/inspectHandler.js';
 import { handleAuthVerify }  from './handlers/authHandler.js';
 import { handleCreateSession, handleGetSession, handleDeleteSession, handleListSessions, extractSessionId } from './handlers/sessions.js';
 import { bootstrap } from './bootstrap.js';
@@ -108,6 +109,14 @@ export async function router(req, res) {
     requireAdmin(req, res);
     if (res.writableEnded) return;
     await handleAdminLog(req, res);
+    return;
+  }
+
+  // GET /api/admin/inspect
+  if (method === 'GET' && matchRoute(url, '/api/admin/inspect')) {
+    requireAdmin(req, res);
+    if (res.writableEnded) return;
+    await handleInspect(req, res);
     return;
   }
 

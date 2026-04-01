@@ -1,0 +1,88 @@
+// server/handlers/inspectHandler.js
+// ═══════════════════════════════════════════════════════════════
+// GET /api/admin/inspect — Phase 17
+// System introspection: returns a complete snapshot of all
+// registered commands, hooks, listeners, plugins, metrics,
+// logger, and operational log state.
+// Protected by admin auth. Read-only — no mutations.
+// ═══════════════════════════════════════════════════════════════
+
+import { commandRegistry }  from '../services/commandRegistry.js';
+import { pipelineHooks }    from '../services/hookRegistry.js';
+import { eventBus }         from '../services/eventBus.js';
+import { pluginRegistry }   from '../services/pluginRegistry.js';
+import { metrics }          from '../services/metrics.js';
+import { logger }           from '../services/logger.js';
+import { operationalLog }   from '../services/operationalLog.js';
+import { bootstrap }        from '../bootstrap.js';
+import config               from '../../config.js';
+
+export async function handleInspect(_req, res) {
+  try {
+    const payload = {
+      timestamp: new Date().toISOString(),
+
+      // ── Config overview ────────────────────────────────────
+      config: {
+        sections:        Object.keys(config).length,
+        sectionNames:    Object.keys(config),
+        pipelineHooks:   config.PIPELINE?.enableHooks !== false,
+        metricsEnabled:  config.PIPELINE?.metricsEnabled !== false,
+        pluginsEnabled:  config.PLUGINS?.enabled === true,
+        sessionsEnabled: config.SESSIONS?.enabled === true,
+        logLevel:        config.LOGGING?.level ?? 'info',
+      },
+
+      // ── Registered commands ────────────────────────────────
+      commands: {
+        total: commandRegistry.size,
+        list:  commandRegistry.list(),
+      },
+
+      // ── Pipeline hooks breakdown ───────────────────────────
+      hooks: pipelineHooks.inspect(),
+
+      // ── EventBus listener wiring ───────────────────────────
+      eventBus: {
+        totalListeners: eventBus.size,
+        byEvent:        eventBus.listenerCounts(),
+      },
+
+      // ── Plugin registry ────────────────────────────────────
+      plugins: {
+        enabled:     config.PLUGINS?.enabled === true,
+        total:       pluginRegistry.size,
+        initialized: pluginRegistry.initialized,
+        list:        pluginRegistry.list(),
+      },
+
+      // ── Metrics collector ──────────────────────────────────
+      metrics: metrics.counts(),
+
+      // ── Logger status ──────────────────────────────────────
+      logger: {
+        level:         config.LOGGING?.level ?? 'info',
+        listenerCount: logger.listenerCount,
+      },
+
+      // ── Operational log status ─────────────────────────────
+      operationalLog: {
+        size:       operationalLog.size,
+        maxEntries: config.LOGGING?.maxEntries ?? 500,
+      },
+
+      // ── Bootstrap readiness ────────────────────────────────
+      bootstrap: bootstrap.getReadinessPayload(),
+    };
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(payload));
+
+  } catch (err) {
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      error: 'حدث خطأ في فحص النظام',
+      code:  'INSPECT_ERROR',
+    }));
+  }
+}

@@ -680,6 +680,94 @@ img { max-width: 100%; display: block; }
 .admin-log-warn { background: rgba(245, 158, 11, 0.05); }
 
 /* ══════════════════════════════════════════════════════════
+   8d. SYSTEM INSPECTION (Phase 17)
+══════════════════════════════════════════════════════════ */
+.admin-inspect-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.admin-inspect-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color var(--speed) var(--ease);
+}
+.admin-inspect-card:hover {
+  border-color: var(--border-accent);
+}
+.admin-inspect-icon { font-size: 1.5rem; }
+.admin-inspect-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--accent-light);
+  font-family: var(--font-en);
+}
+.admin-inspect-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.admin-inspect-details h3 {
+  margin: 1.2rem 0 0.6rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.admin-inspect-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+.admin-inspect-item {
+  display: grid;
+  grid-template-columns: 180px 100px 1fr;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(255,255,255,0.02);
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  align-items: center;
+}
+.admin-inspect-cmd-name,
+.admin-inspect-plugin-name {
+  font-weight: 600;
+  font-family: var(--font-en);
+  font-size: 0.8rem;
+  color: var(--text-primary);
+}
+.admin-inspect-cmd-cat,
+.admin-inspect-plugin-status {
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.admin-inspect-cmd-desc {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.admin-inspect-event {
+  font-family: var(--font-en);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+.admin-inspect-count {
+  color: var(--accent-light);
+  font-weight: 600;
+  font-size: 0.85rem;
+  font-family: var(--font-en);
+}
+
+/* ══════════════════════════════════════════════════════════
    13. RESPONSIVE
 ══════════════════════════════════════════════════════════ */
 @media (max-width: 960px) {
@@ -688,6 +776,8 @@ img { max-width: 100%; display: block; }
   .admin-cost-grid { grid-template-columns: repeat(2, 1fr); }
   .admin-metrics-top-grid { grid-template-columns: repeat(2, 1fr); }
   .admin-metrics-stage-row { grid-template-columns: 110px 1fr 50px; }
+  .admin-inspect-grid { grid-template-columns: repeat(3, 1fr); }
+  .admin-inspect-item { grid-template-columns: 140px 80px 1fr; }
 }
 
 @media (max-width: 640px) {
@@ -716,6 +806,10 @@ img { max-width: 100%; display: block; }
   .admin-log-module,
   .admin-log-corr,
   .admin-log-detail { display: none; }
+
+  .admin-inspect-grid { grid-template-columns: repeat(2, 1fr); }
+  .admin-inspect-item { grid-template-columns: 1fr; gap: 2px; }
+  .admin-inspect-cmd-desc { display: none; }
 
   .admin-content { padding: 16px 12px 32px; gap: 24px; }
 

@@ -147,6 +147,27 @@ class PipelineHookRegistry {
 
     return count;
   }
+
+  /**
+   * Returns a summary of registered hooks for system introspection.
+   * @returns {{ beforePipeline: number, afterPipeline: number, beforeStage: Object<string, number>, afterStage: Object<string, number> }}
+   */
+  inspect() {
+    const beforeStage = {};
+    for (const [name, fns] of this.#hooks.beforeStage) {
+      beforeStage[name] = fns.length;
+    }
+    const afterStage = {};
+    for (const [name, fns] of this.#hooks.afterStage) {
+      afterStage[name] = fns.length;
+    }
+    return {
+      beforePipeline: this.#hooks.beforePipeline.length,
+      afterPipeline:  this.#hooks.afterPipeline.length,
+      beforeStage,
+      afterStage,
+    };
+  }
 }
 
 // ── Singleton instance ─────────────────────────────────────────

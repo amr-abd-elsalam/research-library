@@ -52,6 +52,9 @@
     // Log (Phase 16)
     logEntries:    $('admin-log-entries'),
     logFilter:     $('admin-log-filter'),
+    // Inspect (Phase 17)
+    inspectGrid:    $('admin-inspect-grid'),
+    inspectDetails: $('admin-inspect-details'),
   };
 
   // ══════════════════════════════════════════════════════════
@@ -136,6 +139,10 @@
 
   async function fetchLog() {
     return adminFetch('/api/admin/log', { limit: 200 });
+  }
+
+  async function fetchInspect() {
+    return adminFetch('/api/admin/inspect');
   }
 
   async function fetchConfig() {
@@ -850,6 +857,250 @@
   }
 
   // ══════════════════════════════════════════════════════════
+  //  SYSTEM INSPECTION (Phase 17)
+  // ══════════════════════════════════════════════════════════
+  function renderInspect(data) {
+    var grid = DOM.inspectGrid;
+    var details = DOM.inspectDetails;
+    if (!grid) return;
+
+    while (grid.firstChild) grid.removeChild(grid.firstChild);
+    if (details) while (details.firstChild) details.removeChild(details.firstChild);
+
+    if (!data) return;
+
+    // ── Summary cards ──────────────────────────────────────
+    var hookTotal = (data.hooks ? data.hooks.beforePipeline || 0 : 0)
+      + (data.hooks ? data.hooks.afterPipeline || 0 : 0);
+    var bsKeys = data.hooks && data.hooks.beforeStage ? Object.keys(data.hooks.beforeStage) : [];
+    for (var bi = 0; bi < bsKeys.length; bi++) hookTotal += data.hooks.beforeStage[bsKeys[bi]];
+    var asKeys = data.hooks && data.hooks.afterStage ? Object.keys(data.hooks.afterStage) : [];
+    for (var ai = 0; ai < asKeys.length; ai++) hookTotal += data.hooks.afterStage[asKeys[ai]];
+
+    var metricsActive = (data.metrics ? (data.metrics.counterNames || 0) + (data.metrics.histogramNames || 0) + (data.metrics.gaugeNames || 0) : 0);
+
+    var cards = [
+      { label: '\u0623\u0648\u0627\u0645\u0631 \u0645\u0633\u062c\u0644\u0629',       value: data.commands ? data.commands.total || 0 : 0,       icon: '\u2318' },
+      { label: 'Pipeline Hooks',      value: hookTotal,                                  icon: '\uD83D\uDD17' },
+      { label: 'EventBus Listeners',  value: data.eventBus ? data.eventBus.totalListeners || 0 : 0, icon: '\uD83D\uDCE1' },
+      { label: 'Plugins',             value: data.plugins ? data.plugins.total || 0 : 0, icon: '\uD83E\uDDE9' },
+      { label: 'Metrics Active',      value: metricsActive,                              icon: '\uD83D\uDCCA' },
+      { label: '\u0633\u062c\u0644 \u062a\u0634\u063a\u064a\u0644\u064a', value: (data.operationalLog ? data.operationalLog.size || 0 : 0) + '/' + (data.operationalLog ? data.operationalLog.maxEntries || 500 : 500), icon: '\uD83D\uDCCB' },
+    ];
+
+    for (var ci = 0; ci < cards.length; ci++) {
+      var card = document.createElement('div');
+      card.className = 'admin-inspect-card';
+
+      var iconSpan = document.createElement('span');
+      iconSpan.className = 'admin-inspect-icon';
+      iconSpan.textContent = cards[ci].icon;
+      card.appendChild(iconSpan);
+
+      var valSpan = document.createElement('span');
+      valSpan.className = 'admin-inspect-value';
+      valSpan.textContent = String(cards[ci].value);
+      card.appendChild(valSpan);
+
+      var lblSpan = document.createElement('span');
+      lblSpan.className = 'admin-inspect-label';
+      lblSpan.textContent = cards[ci].label;
+      card.appendChild(lblSpan);
+
+      grid.appendChild(card);
+    }
+
+    // ── Detail sections ──────────────────────────────────
+    if (!details) return;
+
+    // Commands list
+    if (data.commands && data.commands.list && data.commands.list.length > 0) {
+      var cmdTitle = document.createElement('h3');
+      cmdTitle.textContent = '\u0627\u0644\u0623\u0648\u0627\u0645\u0631 \u0627\u0644\u0645\u0633\u062c\u0644\u0629';
+      details.appendChild(cmdTitle);
+
+      var cmdList = document.createElement('div');
+      cmdList.className = 'admin-inspect-list';
+      for (var cj = 0; cj < data.commands.list.length; cj++) {
+        var cmd = data.commands.list[cj];
+        var aliases = cmd.aliases && cmd.aliases.length ? ' (' + cmd.aliases.join(', ') + ')' : '';
+        var item = document.createElement('div');
+        item.className = 'admin-inspect-item';
+
+        var nameEl = document.createElement('span');
+        nameEl.className = 'admin-inspect-cmd-name';
+        nameEl.textContent = cmd.name + aliases;
+        item.appendChild(nameEl);
+
+        var catEl = document.createElement('span');
+        catEl.className = 'admin-inspect-cmd-cat';
+        catEl.textContent = cmd.category;
+        item.appendChild(catEl);
+
+        var descEl = document.createElement('span');
+        descEl.className = 'admin-inspect-cmd-desc';
+        descEl.textContent = cmd.description || '';
+        item.appendChild(descEl);
+
+        cmdList.appendChild(item);
+      }
+      details.appendChild(cmdList);
+    }
+
+    // EventBus breakdown
+    if (data.eventBus && data.eventBus.byEvent) {
+      var ebTitle = document.createElement('h3');
+      ebTitle.textContent = 'EventBus Listeners';
+      details.appendChild(ebTitle);
+
+      var ebList = document.createElement('div');
+      ebList.className = 'admin-inspect-list';
+      var ebKeys = Object.keys(data.eventBus.byEvent);
+      for (var ei = 0; ei < ebKeys.length; ei++) {
+        var ebItem = document.createElement('div');
+        ebItem.className = 'admin-inspect-item';
+
+        var evName = document.createElement('span');
+        evName.className = 'admin-inspect-event';
+        evName.textContent = ebKeys[ei];
+        ebItem.appendChild(evName);
+
+        var evCount = document.createElement('span');
+        evCount.className = 'admin-inspect-count';
+        evCount.textContent = String(data.eventBus.byEvent[ebKeys[ei]]);
+        ebItem.appendChild(evCount);
+
+        var evSpacer = document.createElement('span');
+        ebItem.appendChild(evSpacer);
+
+        ebList.appendChild(ebItem);
+      }
+      details.appendChild(ebList);
+    }
+
+    // Hooks breakdown
+    if (hookTotal > 0) {
+      var hkTitle = document.createElement('h3');
+      hkTitle.textContent = 'Pipeline Hooks';
+      details.appendChild(hkTitle);
+
+      var hkList = document.createElement('div');
+      hkList.className = 'admin-inspect-list';
+
+      function addHookRow(parent, label, count) {
+        var row = document.createElement('div');
+        row.className = 'admin-inspect-item';
+        var l = document.createElement('span');
+        l.className = 'admin-inspect-event';
+        l.textContent = label;
+        row.appendChild(l);
+        var c = document.createElement('span');
+        c.className = 'admin-inspect-count';
+        c.textContent = String(count);
+        row.appendChild(c);
+        var s = document.createElement('span');
+        row.appendChild(s);
+        parent.appendChild(row);
+      }
+
+      addHookRow(hkList, 'beforePipeline', data.hooks.beforePipeline || 0);
+      addHookRow(hkList, 'afterPipeline', data.hooks.afterPipeline || 0);
+
+      for (var bsi = 0; bsi < bsKeys.length; bsi++) {
+        addHookRow(hkList, 'beforeStage:' + bsKeys[bsi], data.hooks.beforeStage[bsKeys[bsi]]);
+      }
+      for (var asi = 0; asi < asKeys.length; asi++) {
+        addHookRow(hkList, 'afterStage:' + asKeys[asi], data.hooks.afterStage[asKeys[asi]]);
+      }
+
+      details.appendChild(hkList);
+    }
+
+    // Plugins list
+    if (data.plugins && data.plugins.list && data.plugins.list.length > 0) {
+      var plTitle = document.createElement('h3');
+      plTitle.textContent = '\u0627\u0644\u0625\u0636\u0627\u0641\u0627\u062a \u0627\u0644\u0645\u062d\u0645\u0644\u0629';
+      details.appendChild(plTitle);
+
+      var plList = document.createElement('div');
+      plList.className = 'admin-inspect-list';
+      for (var pi = 0; pi < data.plugins.list.length; pi++) {
+        var p = data.plugins.list[pi];
+        var plItem = document.createElement('div');
+        plItem.className = 'admin-inspect-item';
+
+        var plName = document.createElement('span');
+        plName.className = 'admin-inspect-plugin-name';
+        plName.textContent = p.name + ' v' + p.version;
+        plItem.appendChild(plName);
+
+        var plStatus = document.createElement('span');
+        plStatus.className = 'admin-inspect-plugin-status';
+        plStatus.textContent = p.enabled ? '\u0645\u0641\u0639\u0651\u0644' : '\u0645\u0639\u0637\u0651\u0644';
+        plItem.appendChild(plStatus);
+
+        var plDesc = document.createElement('span');
+        plDesc.className = 'admin-inspect-cmd-desc';
+        plDesc.textContent = p.description || '';
+        plItem.appendChild(plDesc);
+
+        plList.appendChild(plItem);
+      }
+      details.appendChild(plList);
+    }
+
+    // Config & Bootstrap summary
+    var sysTitle = document.createElement('h3');
+    sysTitle.textContent = '\u062d\u0627\u0644\u0629 \u0627\u0644\u0646\u0638\u0627\u0645';
+    details.appendChild(sysTitle);
+
+    var sysList = document.createElement('div');
+    sysList.className = 'admin-inspect-list';
+
+    function addSysRow(parent, label, value) {
+      var row = document.createElement('div');
+      row.className = 'admin-inspect-item';
+      var l = document.createElement('span');
+      l.className = 'admin-inspect-event';
+      l.textContent = label;
+      row.appendChild(l);
+      var v = document.createElement('span');
+      v.className = 'admin-inspect-count';
+      v.textContent = String(value);
+      row.appendChild(v);
+      var s = document.createElement('span');
+      row.appendChild(s);
+      parent.appendChild(row);
+    }
+
+    addSysRow(sysList, 'Config Sections', data.config ? data.config.sections || 0 : 0);
+    addSysRow(sysList, 'Log Level', data.config ? data.config.logLevel || 'info' : 'info');
+    addSysRow(sysList, 'Sessions Enabled', data.config && data.config.sessionsEnabled ? '\u0646\u0639\u0645' : '\u0644\u0627');
+    addSysRow(sysList, 'Plugins Enabled', data.config && data.config.pluginsEnabled ? '\u0646\u0639\u0645' : '\u0644\u0627');
+    addSysRow(sysList, 'Metrics Enabled', data.config && data.config.metricsEnabled ? '\u0646\u0639\u0645' : '\u0644\u0627');
+    addSysRow(sysList, 'Bootstrap', (data.bootstrap && data.bootstrap.ready ? '\u062c\u0627\u0647\u0632' : '\u063a\u064a\u0631 \u062c\u0627\u0647\u0632') + ' (' + (data.bootstrap ? data.bootstrap.durationMs || 0 : 0) + 'ms)');
+    addSysRow(sysList, 'Logger Listeners', data.logger ? data.logger.listenerCount || 0 : 0);
+
+    details.appendChild(sysList);
+  }
+
+  function showInspectSkeleton() {
+    var grid = DOM.inspectGrid;
+    if (!grid) return;
+    while (grid.firstChild) grid.removeChild(grid.firstChild);
+    for (var i = 0; i < 6; i++) {
+      var s = document.createElement('div');
+      s.className = 'admin-skeleton';
+      s.style.height = '90px';
+      s.style.borderRadius = '10px';
+      grid.appendChild(s);
+    }
+    if (DOM.inspectDetails) {
+      while (DOM.inspectDetails.firstChild) DOM.inspectDetails.removeChild(DOM.inspectDetails.firstChild);
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
   //  SECTION ERROR STATE
   // ══════════════════════════════════════════════════════════
   function showSectionError(container, msg, retryFn) {
@@ -887,6 +1138,7 @@
     showCostSkeleton();
     showMetricsSkeleton();
     showLogSkeleton();
+    showInspectSkeleton();
 
     // Parallel fetch
     var results = await Promise.allSettled([
@@ -895,6 +1147,7 @@
       fetchSessions(DEFAULTS.sessionsPageSize, 0),
       fetchMetrics(),
       fetchLog(),
+      fetchInspect(),
     ]);
 
     // Stats
@@ -939,6 +1192,13 @@
       renderLog(results[4].value);
     } else {
       renderLog(null);
+    }
+
+    // Inspect (Phase 17)
+    if (results[5].status === 'fulfilled' && results[5].value) {
+      renderInspect(results[5].value);
+    } else {
+      renderInspect(null);
     }
 
     // Last update

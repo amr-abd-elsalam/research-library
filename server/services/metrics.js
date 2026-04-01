@@ -154,6 +154,21 @@ class MetricsCollector {
     };
   }
 
+  // ── Counts (introspection) ───────────────────────────────────
+  /**
+   * Returns summary counts for system introspection.
+   * Lighter than snapshot() — no data, just overview.
+   * @returns {{ counterNames: number, histogramNames: number, gaugeNames: number, enabled: boolean }}
+   */
+  counts() {
+    return {
+      counterNames:   this.#counters.size,
+      histogramNames: this.#histograms.size,
+      gaugeNames:     this.#gauges.size,
+      enabled:        this.#enabled,
+    };
+  }
+
   // ── Reset (testing) ──────────────────────────────────────────
   /**
    * Clears all metrics. Intended for testing only.
