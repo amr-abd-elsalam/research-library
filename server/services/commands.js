@@ -160,6 +160,7 @@ async function handleHelp({ res, writeChunk, startTime, req }) {
     const aliasStr = c.aliases.length ? ` (${c.aliases.join(', ')})` : '';
     text += `- **${c.name}**${aliasStr} — ${c.description}\n`;
   }
+  text += '\n💡 بعض الأوامر تقبل معاملات — مثلاً: `/مصادر 5` أو `/ملخص الباقات` أو `/اختبار 3`';
   text += '\nاكتب أي أمر في حقل الإدخال للاستخدام.';
 
   writeChunk({ text });
@@ -182,9 +183,18 @@ async function handleHelp({ res, writeChunk, startTime, req }) {
 // ═══════════════════════════════════════════════════════════════
 // /مصادر
 // ═══════════════════════════════════════════════════════════════
-async function handleSources({ res, writeChunk, startTime, req, topic_filter }) {
+async function handleSources({ res, writeChunk, startTime, req, topic_filter, args }) {
   try {
     const points = await fetchPoints(topic_filter);
+
+    // Parse optional limit argument (1-20)
+    let limit = 0; // 0 = show all
+    if (args && args.length > 0) {
+      const parsed = parseInt(args[0], 10);
+      if (!Number.isNaN(parsed) && parsed >= 1) {
+        limit = Math.min(parsed, 20);
+      }
+    }
 
     const fileMap = new Map();
     for (const p of points) {
@@ -194,9 +204,13 @@ async function handleSources({ res, writeChunk, startTime, req, topic_filter }) 
       if (section) fileMap.get(file).add(section);
     }
 
+    // Apply limit to displayed files
+    const allFiles = [...fileMap.entries()];
+    const displayFiles = limit > 0 ? allFiles.slice(0, limit) : allFiles;
+
     let text = '### المصادر المتاحة في المكتبة\n\n';
     let fileIndex = 0;
-    for (const [file, sections] of fileMap) {
+    for (const [file, sections] of displayFiles) {
       fileIndex++;
       text += `**${fileIndex}. ${file}**\n`;
       for (const sec of sections) {
@@ -204,7 +218,11 @@ async function handleSources({ res, writeChunk, startTime, req, topic_filter }) 
       }
       text += '\n';
     }
-    text += `إجمالي: **${fileMap.size}** ملف، **${points.length}** مقطع نصي.`;
+    if (limit > 0 && allFiles.length > limit) {
+      text += `عرض أول **${limit}** ملف من أصل **${allFiles.length}** ملف، **${points.length}** مقطع نصي.`;
+    } else {
+      text += `إجمالي: **${fileMap.size}** ملف، **${points.length}** مقطع نصي.`;
+    }
 
     writeChunk({ text });
     writeChunk({ done: true, sources: [], score: 0 });
@@ -232,7 +250,7 @@ async function handleSources({ res, writeChunk, startTime, req, topic_filter }) 
 // ═══════════════════════════════════════════════════════════════
 // /ملخص
 // ═══════════════════════════════════════════════════════════════
-async function handleSummary({ req, res, writeChunk, startTime, topic_filter }) {
+async function handleSummary({ req, res, writeChunk, startTime, topic_filter, rawArgs }) {
   try {
     const points = await fetchPoints(topic_filter);
     if (!points.length) {
@@ -245,6 +263,12 @@ async function handleSummary({ req, res, writeChunk, startTime, topic_filter }) 
     const context = pointsToContext(points, 15);
     const sources = pointsToSources(points, 15);
 
+    // Topic hint from arguments (e.g. '/ملخص الباقات والأسعار')
+    const topicHint = rawArgs ? rawArgs.trim() : '';
+    const focusInstruction = topicHint
+      ? `\n- ركّز بشكل خاص على: ${topicHint}`
+      : '';
+
     const summaryPrompt = `أنت مساعد بحثي ذكي. المطلوب منك تقديم ملخص شامل ومنظم لكل المحتوى المقدّم إليك.
 
 التعليمات:
@@ -252,13 +276,17 @@ async function handleSummary({ req, res, writeChunk, startTime, topic_filter }) 
 - غطّي كل المواضيع الرئيسية الموجودة في المحتوى.
 - لا تخترع معلومات — لخّص فقط ما هو موجود.
 - اكتب بالعربية بأسلوب واضح ومقروء.
-- لا تذكر أسماء الملفات أو أرقام المراجع.`;
+- لا تذكر أسماء الملفات أو أرقام المراجع.${focusInstruction}`;
+
+    const userQuery = topicHint
+      ? `قدّم ملخصاً شاملاً لكل المحتوى المتاح في المكتبة مع التركيز على: ${topicHint}`
+      : 'قدّم ملخصاً شاملاً لكل المحتوى المتاح في المكتبة';
 
     let fullText = '';
     try {
       await streamGenerate(
         summaryPrompt, context, [],
-        'قدّم ملخصاً شاملاً لكل المحتوى المتاح في المكتبة',
+        userQuery,
         (chunk) => { fullText += chunk; writeChunk({ text: chunk }); },
       );
     } catch (err) {
@@ -312,7 +340,7 @@ async function handleSummary({ req, res, writeChunk, startTime, topic_filter }) 
 // ═══════════════════════════════════════════════════════════════
 // /اختبار
 // ═══════════════════════════════════════════════════════════════
-async function handleQuiz({ req, res, writeChunk, startTime, topic_filter }) {
+async function handleQuiz({ req, res, writeChunk, startTime, topic_filter, args }) {
   try {
     const points = await fetchPoints(topic_filter);
     if (!points.length) {
@@ -325,10 +353,19 @@ async function handleQuiz({ req, res, writeChunk, startTime, topic_filter }) {
     const context = pointsToContext(points, 10);
     const sources = pointsToSources(points, 10);
 
-    const quizPrompt = `أنت مساعد تعليمي ذكي. المطلوب منك توليد 5 أسئلة اختبارية من المحتوى المقدّم.
+    // Parse optional question count argument (1-10, default 5)
+    let questionCount = 5;
+    if (args && args.length > 0) {
+      const parsed = parseInt(args[0], 10);
+      if (!Number.isNaN(parsed) && parsed >= 1) {
+        questionCount = Math.min(parsed, 10);
+      }
+    }
+
+    const quizPrompt = `أنت مساعد تعليمي ذكي. المطلوب منك توليد ${questionCount} أسئلة اختبارية من المحتوى المقدّم.
 
 التعليمات:
-- ولّد 5 أسئلة اختيار من متعدد (4 خيارات لكل سؤال).
+- ولّد ${questionCount} أسئلة اختيار من متعدد (4 خيارات لكل سؤال).
 - حدد الإجابة الصحيحة لكل سؤال.
 - الأسئلة يجب أن تكون من المحتوى المقدّم فقط.
 - نوّع مستوى الصعوبة بين سهل ومتوسط وصعب.
@@ -339,7 +376,7 @@ async function handleQuiz({ req, res, writeChunk, startTime, topic_filter }) {
     try {
       await streamGenerate(
         quizPrompt, context, [],
-        'ولّد 5 أسئلة اختبارية اختيار من متعدد من المحتوى المتاح',
+        `ولّد ${questionCount} أسئلة اختبارية اختيار من متعدد من المحتوى المتاح`,
         (chunk) => { fullText += chunk; writeChunk({ text: chunk }); },
       );
     } catch (err) {

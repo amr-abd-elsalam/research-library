@@ -7,6 +7,7 @@ import { logger }          from '../services/logger.js';
 import { getValidTopicIds } from './topics.js';
 import { logEvent }        from '../services/analytics.js';
 import { matchCommand, executeCommand } from '../services/commands.js';
+import { commandRegistry }              from '../services/commandRegistry.js';
 import config              from '../../config.js';
 import { EventTrace }      from '../services/eventTrace.js';
 import { eventBus }        from '../services/eventBus.js';
@@ -141,7 +142,8 @@ async function _handleChat(req, res) {
   }
 
   // ── 2. Command check (stays here — commands bypass pipeline) ──
-  const cmd = matchCommand(message);
+  const parsed = matchCommand(message) ? commandRegistry.parseMessage(message) : null;
+  const cmd = parsed?.command || null;
   if (cmd) {
     const startTime = Date.now();
     res.writeHead(200, {

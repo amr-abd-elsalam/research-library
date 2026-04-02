@@ -39,6 +39,7 @@ export async function handleInspect(_req, res) {
       commands: {
         total: commandRegistry.size,
         list:  commandRegistry.list(),
+        graph: commandRegistry.graph(),
       },
 
       // ── Pipeline hooks breakdown ───────────────────────────

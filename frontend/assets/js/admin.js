@@ -55,6 +55,10 @@
     // Inspect (Phase 17)
     inspectGrid:    $('admin-inspect-grid'),
     inspectDetails: $('admin-inspect-details'),
+    // Commands (Phase 20)
+    commandsGraph:  $('admin-commands-graph'),
+    commandsMetrics:$('admin-commands-metrics'),
+    commandsEmpty:  $('admin-commands-empty'),
   };
 
   // ══════════════════════════════════════════════════════════
@@ -143,6 +147,22 @@
 
   async function fetchInspect() {
     return adminFetch('/api/admin/inspect');
+  }
+
+  async function fetchCommandGraph() {
+    // Public endpoint — no auth needed, but we send it anyway (harmless)
+    var url = new URL('/api/commands', window.location.origin);
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, DEFAULTS.fetchTimeoutMs);
+    try {
+      var res = await fetch(url.toString(), { signal: controller.signal });
+      clearTimeout(timer);
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (_) {
+      clearTimeout(timer);
+      return null;
+    }
   }
 
   async function fetchConfig() {
@@ -1101,6 +1121,156 @@
   }
 
   // ══════════════════════════════════════════════════════════
+  //  COMMAND METRICS (Phase 20)
+  // ══════════════════════════════════════════════════════════
+  function renderCommandMetrics(graphData, metricsData) {
+    var graphEl  = DOM.commandsGraph;
+    var metricsEl = DOM.commandsMetrics;
+    var emptyEl  = DOM.commandsEmpty;
+    if (!graphEl || !metricsEl) return;
+
+    while (graphEl.firstChild) graphEl.removeChild(graphEl.firstChild);
+    while (metricsEl.firstChild) metricsEl.removeChild(metricsEl.firstChild);
+
+    if (!graphData) {
+      if (emptyEl) emptyEl.classList.remove('hidden');
+      return;
+    }
+
+    if (emptyEl) emptyEl.classList.add('hidden');
+
+    // ── Category cards ──────────────────────────────────────
+    var categories = [
+      { label: 'أوامر مدمجة',  count: graphData.builtins ? graphData.builtins.length : 0 },
+      { label: 'أوامر مخصصة',  count: graphData.custom ? graphData.custom.length : 0 },
+      { label: 'أوامر إضافات',  count: graphData.plugins ? graphData.plugins.length : 0 },
+      { label: 'الإجمالي',      count: graphData.total || 0 },
+    ];
+
+    for (var ci = 0; ci < categories.length; ci++) {
+      var catCard = document.createElement('div');
+      catCard.className = 'admin-cmd-category';
+
+      var catCount = document.createElement('div');
+      catCount.className = 'admin-cmd-category-count';
+      catCount.textContent = String(categories[ci].count);
+      catCard.appendChild(catCount);
+
+      var catLabel = document.createElement('div');
+      catLabel.className = 'admin-cmd-category-label';
+      catLabel.textContent = categories[ci].label;
+      catCard.appendChild(catLabel);
+
+      graphEl.appendChild(catCard);
+    }
+
+    // ── Per-command execution breakdown ──────────────────────
+    // Extract command metrics from metricsData
+    var counters   = (metricsData && metricsData.metrics && metricsData.metrics.counters) || {};
+    var histograms = (metricsData && metricsData.metrics && metricsData.metrics.histograms) || {};
+
+    var cmdCounters = counters['command_execution_total'] || {};
+    var cmdHist     = histograms['command_duration_ms'] || {};
+
+    // Build command execution list
+    var cmdRows = [];
+    var maxCount = 0;
+
+    // Combine all known commands from graph + any metrics keys
+    var allCmds = {};
+    var lists = [graphData.builtins || [], graphData.custom || [], graphData.plugins || []];
+    for (var li = 0; li < lists.length; li++) {
+      for (var lj = 0; lj < lists[li].length; lj++) {
+        allCmds[lists[li][lj].name] = true;
+      }
+    }
+
+    // Parse counters — keys are like '[["command","/ملخص"]]'
+    for (var ck in cmdCounters) {
+      var cmdName = ck;
+      try {
+        var parsed = JSON.parse(ck);
+        if (Array.isArray(parsed) && parsed.length > 0 && Array.isArray(parsed[0])) {
+          cmdName = parsed[0][1] || ck;
+        }
+      } catch (_) { /* keep raw key */ }
+      allCmds[cmdName] = true;
+    }
+
+    for (var name in allCmds) {
+      // Find counter for this command
+      var countKey = '[["command","' + name + '"]]';
+      var count = cmdCounters[countKey] || 0;
+
+      // Find histogram for this command
+      var histData = cmdHist[countKey] || {};
+      var p50 = histData.p50 || 0;
+      var p95 = histData.p95 || 0;
+      var avgLatency = p50; // Use p50 as representative avg
+
+      cmdRows.push({ name: name, count: count, latency: avgLatency, p95: p95 });
+      if (count > maxCount) maxCount = count;
+    }
+
+    // Sort by count descending
+    cmdRows.sort(function (a, b) { return b.count - a.count; });
+
+    if (cmdRows.length === 0) return;
+
+    if (maxCount === 0) maxCount = 1;
+
+    for (var ri = 0; ri < cmdRows.length; ri++) {
+      var row = cmdRows[ri];
+      var rowEl = document.createElement('div');
+      rowEl.className = 'admin-cmd-row';
+
+      var nameEl = document.createElement('div');
+      nameEl.className = 'admin-cmd-name';
+      nameEl.textContent = row.name;
+      rowEl.appendChild(nameEl);
+
+      var barWrap = document.createElement('div');
+      barWrap.className = 'admin-cmd-bar';
+      var barFill = document.createElement('div');
+      barFill.className = 'admin-cmd-bar-fill';
+      var pct = Math.max((row.count / maxCount) * 100, 2);
+      barFill.style.width = pct + '%';
+      barWrap.appendChild(barFill);
+      rowEl.appendChild(barWrap);
+
+      var countEl = document.createElement('div');
+      countEl.className = 'admin-cmd-count';
+      countEl.textContent = String(row.count) + ' مرة';
+      rowEl.appendChild(countEl);
+
+      var latEl = document.createElement('div');
+      latEl.className = 'admin-cmd-latency';
+      latEl.textContent = row.latency + 'ms';
+      latEl.title = 'P50: ' + row.latency + 'ms · P95: ' + row.p95 + 'ms';
+      rowEl.appendChild(latEl);
+
+      metricsEl.appendChild(rowEl);
+    }
+  }
+
+  function showCommandsSkeleton() {
+    var graphEl = DOM.commandsGraph;
+    if (!graphEl) return;
+    while (graphEl.firstChild) graphEl.removeChild(graphEl.firstChild);
+    for (var i = 0; i < 4; i++) {
+      var s = document.createElement('div');
+      s.className = 'admin-skeleton';
+      s.style.height = '70px';
+      s.style.borderRadius = '10px';
+      graphEl.appendChild(s);
+    }
+    if (DOM.commandsMetrics) {
+      while (DOM.commandsMetrics.firstChild) DOM.commandsMetrics.removeChild(DOM.commandsMetrics.firstChild);
+    }
+    if (DOM.commandsEmpty) DOM.commandsEmpty.classList.add('hidden');
+  }
+
+  // ══════════════════════════════════════════════════════════
   //  SECTION ERROR STATE
   // ══════════════════════════════════════════════════════════
   function showSectionError(container, msg, retryFn) {
@@ -1139,6 +1309,7 @@
     showMetricsSkeleton();
     showLogSkeleton();
     showInspectSkeleton();
+    showCommandsSkeleton();
 
     // Parallel fetch
     var results = await Promise.allSettled([
@@ -1148,6 +1319,7 @@
       fetchMetrics(),
       fetchLog(),
       fetchInspect(),
+      fetchCommandGraph(),
     ]);
 
     // Stats
@@ -1200,6 +1372,11 @@
     } else {
       renderInspect(null);
     }
+
+    // Command metrics (Phase 20) — uses graphData [6] + metricsData [3]
+    var commandGraphData = (results[6].status === 'fulfilled') ? results[6].value : null;
+    var metricsDataForCmds = (results[3].status === 'fulfilled') ? results[3].value : null;
+    renderCommandMetrics(commandGraphData, metricsDataForCmds);
 
     // Last update
     updateTimestamp();

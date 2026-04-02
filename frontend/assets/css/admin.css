@@ -680,6 +680,99 @@ img { max-width: 100%; display: block; }
 .admin-log-warn { background: rgba(245, 158, 11, 0.05); }
 
 /* ══════════════════════════════════════════════════════════
+   8e. COMMAND METRICS (Phase 20)
+══════════════════════════════════════════════════════════ */
+.admin-commands-graph {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.admin-cmd-category {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  text-align: center;
+  transition: border-color var(--speed) var(--ease);
+}
+
+.admin-cmd-category:hover {
+  border-color: var(--border-accent);
+}
+
+.admin-cmd-category-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.admin-cmd-category-count {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--accent-light);
+  font-family: var(--font-en);
+}
+
+.admin-commands-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-cmd-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 80px 80px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+}
+
+.admin-cmd-name {
+  font-weight: 600;
+  color: var(--accent-light);
+  direction: ltr;
+  font-family: var(--font-en);
+  font-size: 0.85rem;
+}
+
+.admin-cmd-bar {
+  height: 6px;
+  background: var(--bg-elevated);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.admin-cmd-bar-fill {
+  height: 100%;
+  background: var(--gradient-brand);
+  border-radius: 3px;
+  transition: width 0.4s var(--ease);
+}
+
+.admin-cmd-count,
+.admin-cmd-latency {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-family: var(--font-en);
+}
+
+@media (max-width: 640px) {
+  .admin-cmd-row {
+    grid-template-columns: 100px 1fr 60px;
+  }
+  .admin-cmd-latency {
+    display: none;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
    8d. SYSTEM INSPECTION (Phase 17)
 ══════════════════════════════════════════════════════════ */
 .admin-inspect-grid {

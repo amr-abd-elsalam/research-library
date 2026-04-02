@@ -12,6 +12,7 @@ import { handleAdminLog }   from './handlers/adminLogHandler.js';
 import { handleInspect }    from './handlers/inspectHandler.js';
 import { handleAuthVerify }  from './handlers/authHandler.js';
 import { handleCreateSession, handleGetSession, handleDeleteSession, handleListSessions, extractSessionId, extractSessionAction, handleResumeSession, handleExportSession } from './handlers/sessions.js';
+import { handleCommands } from './handlers/commandsHandler.js';
 import { bootstrap } from './bootstrap.js';
 
 // ── URL matcher (strips query string + trailing slash) ─────────
@@ -73,6 +74,12 @@ export async function router(req, res) {
     await applyRateLimit(req, res, 'topics');
     if (res.writableEnded) return;
     await handleTopics(req, res);
+    return;
+  }
+
+  // GET /api/commands (Phase 20 — public, no auth)
+  if (method === 'GET' && matchRoute(url, '/api/commands')) {
+    await handleCommands(req, res);
     return;
   }
 

@@ -95,27 +95,121 @@ class CommandRegistry {
   }
 
   /**
+   * Parses a message into command + arguments.
+   * @param {string} message — full user message (e.g. '/ملخص الفصل الأول')
+   * @returns {{ command: CommandEntry, args: string[], rawArgs: string }|null}
+   */
+  parseMessage(message) {
+    if (!message || typeof message !== 'string') return null;
+
+    const trimmed = message.trim();
+    const spaceIdx = trimmed.indexOf(' ');
+
+    // No space — command without arguments
+    if (spaceIdx === -1) {
+      const cmd = this.match(trimmed);
+      return cmd ? { command: cmd, args: [], rawArgs: '' } : null;
+    }
+
+    // Split on first space
+    const token   = trimmed.slice(0, spaceIdx);
+    const rawArgs = trimmed.slice(spaceIdx + 1).trim();
+    const cmd     = this.match(token);
+
+    if (!cmd) return null;
+
+    const args = rawArgs ? rawArgs.split(/\s+/).filter(Boolean) : [];
+    return { command: cmd, args, rawArgs };
+  }
+
+  /**
+   * Searches registered commands by query string.
+   * Case-insensitive search across name, description, and aliases.
+   * @param {string} query — search term
+   * @param {number} [limit=10] — max results to return
+   * @returns {{ name: string, description: string, category: string, aliases: string[] }[]}
+   */
+  search(query, limit = 10) {
+    if (!query || typeof query !== 'string') return this.list().slice(0, limit);
+
+    const needle  = query.trim().toLowerCase();
+    const results = [];
+
+    for (const [, cmd] of this.#commands) {
+      const haystack = [cmd.name, cmd.description, ...cmd.aliases]
+        .join(' ')
+        .toLowerCase();
+
+      if (haystack.includes(needle)) {
+        results.push({
+          name:        cmd.name,
+          description: cmd.description,
+          category:    cmd.category,
+          aliases:     cmd.aliases,
+        });
+      }
+      if (results.length >= limit) break;
+    }
+
+    return results;
+  }
+
+  /**
+   * Returns commands categorized by type.
+   * @returns {{ builtins: object[], custom: object[], plugins: object[], total: number }}
+   */
+  graph() {
+    const builtins = [];
+    const custom   = [];
+    const plugins  = [];
+
+    for (const [, cmd] of this.#commands) {
+      const entry = {
+        name:        cmd.name,
+        description: cmd.description,
+        aliases:     cmd.aliases,
+      };
+      switch (cmd.category) {
+        case 'builtin': builtins.push(entry); break;
+        case 'plugin':  plugins.push(entry);  break;
+        default:        custom.push(entry);   break;
+      }
+    }
+
+    return { builtins, custom, plugins, total: this.#commands.size };
+  }
+
+  /**
    * Executes a command with lifecycle hooks.
+   * Enriches context with parsed args (backward compatible — existing commands ignore extra fields).
    * @param {CommandEntry} entry
    * @param {object} context — opts passed to the handler
    */
   async execute(entry, context) {
+    // Enrich context with parsed arguments
+    const parsed = this.parseMessage(context.message);
+    const enrichedContext = {
+      ...context,
+      args:    parsed?.args    || [],
+      rawArgs: parsed?.rawArgs || '',
+    };
+
     // Run beforeExecute hooks
     for (const hook of this.#hooks.beforeExecute) {
       try {
-        await hook(entry, context);
+        await hook(entry, enrichedContext);
       } catch (err) {
         logger.warn('commandRegistry', 'beforeExecute hook error', { error: err.message });
       }
     }
 
     // Execute the command — errors propagate to caller
-    await entry.execute(context);
+    await entry.execute(enrichedContext);
 
     // Run afterExecute hooks
     for (const hook of this.#hooks.afterExecute) {
       try {
-        await hook(entry, context);
+        await hook(entry, enrichedContext);
       } catch (err) {
         logger.warn('commandRegistry', 'afterExecute hook error', { error: err.message });
       }
