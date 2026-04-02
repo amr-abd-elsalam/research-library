@@ -21,6 +21,7 @@ import { logger } from './services/logger.js';
 import { operationalLog } from './services/operationalLog.js';
 import { metricsPersister } from './services/metricsPersister.js';
 import { contextPersister } from './services/contextPersister.js';
+import { feedbackCollector } from './services/feedbackCollector.js';
 
 // ── Timeout helper (for bootstrap-specific timeouts) ──────────
 function raceTimeout(promise, ms) {
@@ -76,6 +77,11 @@ class BootstrapManager {
     // ── Context Persistence Directory (Phase 31) ─────────────
     if (contextPersister.enabled) {
       await contextPersister.ensureDir();
+    }
+
+    // ── Feedback Data Directory (Phase 33) ───────────────────
+    if (feedbackCollector.enabled) {
+      await feedbackCollector.ensureDir();
     }
 
     // ── Register EventBus listeners (Phase 13) ───────────────

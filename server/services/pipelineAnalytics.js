@@ -439,6 +439,28 @@ class PipelineAnalytics {
       });
     }
 
+    // 11. Negative feedback rate high (Phase 33)
+    const feedbackBucket = counters.feedback_total;
+    if (feedbackBucket) {
+      let feedbackPositive = 0;
+      let feedbackNegative = 0;
+      for (const key in feedbackBucket) {
+        const ratingLabel = this.#extractLabel(key, 'rating');
+        if (ratingLabel === 'positive') feedbackPositive += feedbackBucket[key] || 0;
+        if (ratingLabel === 'negative') feedbackNegative += feedbackBucket[key] || 0;
+      }
+      const totalFeedback = feedbackPositive + feedbackNegative;
+      if (totalFeedback > 10 && (feedbackNegative / totalFeedback) > 0.30) {
+        recs.push({
+          type: 'quality', severity: 'warning',
+          title: 'معدل التقييم السلبي مرتفع',
+          message: `${((feedbackNegative / totalFeedback) * 100).toFixed(0)}% من التقييمات سلبية (${feedbackNegative} من ${totalFeedback}). راجع الإجابات ذات التقييم السلبي وحسّن المحتوى.`,
+          metric: 'feedback_total',
+          suggestedAction: 'راجع GET /api/admin/feedback لمعرفة التقييمات السلبية + أضف أو حسّن محتوى المكتبة',
+        });
+      }
+    }
+
     return recs;
   }
 

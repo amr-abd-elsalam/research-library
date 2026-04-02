@@ -113,6 +113,7 @@ async function loadConfig() {
       SESSIONS:   Object.freeze(data.SESSIONS     || CLIENT_CONFIG.SESSIONS),
       RESPONSE:   Object.freeze(data.RESPONSE     || { defaultMode: 'stream', allowedModes: ['stream'], conciseMaxSentences: 3 }),
       SUGGESTIONS: Object.freeze(data.SUGGESTIONS  || { enabled: false, maxSuggestions: 3 }),
+      FEEDBACK:    Object.freeze(data.FEEDBACK      || { enabled: false, allowComments: true }),
     });
 
     console.log('[config] ✅ تم تحميل الإعدادات من السيرفر');

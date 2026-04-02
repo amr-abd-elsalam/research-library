@@ -461,6 +461,16 @@ const ChatModule = (() => {
             if (fullText && refs) _setupCopyButton(refs, fullText);
             if (fullText) _pushHistory('model', fullText);
 
+            // Store correlationId on message element (Phase 33)
+            if (parsed.correlationId && refs && refs.msgEl) {
+              refs.msgEl.setAttribute('data-correlation-id', parsed.correlationId);
+            }
+
+            // Feedback buttons (Phase 33)
+            if (refs && refs.msgEl && CLIENT_CONFIG.FEEDBACK && CLIENT_CONFIG.FEEDBACK.enabled) {
+              _addFeedbackButtons(refs.msgEl);
+            }
+
             // Dynamic suggestions (Phase 29)
             if (parsed.suggestions && parsed.suggestions.length > 0) {
               _renderDynamicSuggestions(parsed.suggestions);
@@ -951,6 +961,72 @@ const ChatModule = (() => {
       messagesList.appendChild(container);
       AppModule.scrollToBottom();
     }
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     FEEDBACK BUTTONS (Phase 33)
+  ══════════════════════════════════════════════════════════ */
+
+  function _addFeedbackButtons(msgEl) {
+    var bar = document.createElement('div');
+    bar.className = 'ai8v-feedback-bar';
+
+    var btnUp = document.createElement('button');
+    btnUp.type = 'button';
+    btnUp.className = 'feedback-btn feedback-positive';
+    btnUp.textContent = '\uD83D\uDC4D';
+    btnUp.setAttribute('aria-label', 'إجابة مفيدة');
+
+    var btnDown = document.createElement('button');
+    btnDown.type = 'button';
+    btnDown.className = 'feedback-btn feedback-negative';
+    btnDown.textContent = '\uD83D\uDC4E';
+    btnDown.setAttribute('aria-label', 'إجابة غير مفيدة');
+
+    bar.appendChild(btnUp);
+    bar.appendChild(btnDown);
+
+    // Find the msg-body inside the message element
+    var body = msgEl.querySelector('.msg-body');
+    if (body) {
+      body.appendChild(bar);
+    } else {
+      msgEl.appendChild(bar);
+    }
+
+    function handleFeedback(rating) {
+      var corrId = msgEl.getAttribute('data-correlation-id');
+      if (!corrId) return;
+
+      // Disable both buttons
+      btnUp.disabled = true;
+      btnDown.disabled = true;
+      bar.classList.add('feedback-submitted');
+
+      // Highlight selected
+      if (rating === 'positive') {
+        btnUp.classList.add('selected');
+      } else {
+        btnDown.classList.add('selected');
+      }
+
+      // Send feedback to server (silent — no alerts on failure)
+      var payload = { correlationId: corrId, rating: rating };
+      var sid = _getSessionId();
+      if (sid) payload.session_id = sid;
+
+      fetch('/api/feedback', {
+        method: 'POST',
+        headers: Object.assign(
+          { 'Content-Type': 'application/json' },
+          AuthModule.getAccessHeaders()
+        ),
+        body: JSON.stringify(payload),
+      }).catch(function() { /* silent graceful degradation */ });
+    }
+
+    btnUp.addEventListener('click', function() { handleFeedback('positive'); });
+    btnDown.addEventListener('click', function() { handleFeedback('negative'); });
   }
 
   // Called from bootstrap after permissions are loaded

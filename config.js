@@ -484,6 +484,18 @@ const config = {
     templates:      [],       // templates إضافية — فارغ = builtin templates فقط (reserved for future customization)
   },
 
+  // ═══════════════════════════════════════════════════════════
+  // 21. تقييم جودة الإجابات (FEEDBACK)
+  //    — يسمح للمستخدم بتقييم كل إجابة (إعجاب/عدم إعجاب)
+  //    — يربط التقييم بـ correlationId لتتبع الطلب الأصلي
+  //    — معطّل افتراضياً — فعّله من هنا
+  // ═══════════════════════════════════════════════════════════
+  FEEDBACK: {
+    enabled:          false,    // true = تفعيل نظام التقييم (👍👎) | false = مخفي بالكامل (zero overhead)
+    allowComments:    true,     // true = يسمح للمستخدم بإضافة تعليق نصي مع التقييم | false = تقييم فقط بدون نص
+    maxCommentLength: 200,      // أقصى أحرف في التعليق
+  },
+
 };
 
 export default deepFreeze(config);

@@ -42,6 +42,7 @@ async function streamCachedResponse(res, cached, req, message, topic_filter, ses
     done:    true,
     sources: cached.sources,
     score:   cached.score,
+    correlationId: null,
   });
   res.end();
 
@@ -254,6 +255,7 @@ async function _handleChat(req, res) {
             aborted:   ctx.aborted,
             queryType: ctx.queryRoute?.type ?? null,
             suggestions,
+            correlationId: trace.correlationId,
           };
           if (config.RESPONSE?.structuredIncludeTrace === true) {
             payload.trace = trace.toJSON();
@@ -264,9 +266,9 @@ async function _handleChat(req, res) {
           // ── Stream/concise mode: SSE finish (existing behavior) ──
           if (ctx.aborted && ctx.abortReason === 'low_confidence') {
             writeChunk(res, { text: 'لا تتضمن المكتبة معلومات كافية حول هذا السؤال.' });
-            writeChunk(res, { done: true, sources: [], score: ctx.avgScore, suggestions: [] });
+            writeChunk(res, { done: true, sources: [], score: ctx.avgScore, suggestions: [], correlationId: trace.correlationId });
           } else {
-            writeChunk(res, { done: true, sources: ctx.sources, score: ctx.avgScore, suggestions });
+            writeChunk(res, { done: true, sources: ctx.sources, score: ctx.avgScore, suggestions, correlationId: trace.correlationId });
           }
           res.end();
         }

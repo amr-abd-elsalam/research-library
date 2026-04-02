@@ -45,6 +45,11 @@ function buildPayload() {
       maxSuggestions:  config.SUGGESTIONS?.maxSuggestions ?? 3,
     },
 
+    FEEDBACK: {
+      enabled:        config.FEEDBACK?.enabled === true,
+      allowComments:  config.FEEDBACK?.allowComments !== false,
+    },
+
     // TIERS: moved to GET /api/whoami (Phase 27 — per-request, not static config)
   });
   return cachedPayload;

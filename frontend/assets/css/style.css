@@ -1269,6 +1269,53 @@ img { max-width: 100%; display: block; }
 }
 
 /* ══════════════════════════════════════════════════════════
+   19. FEEDBACK BUTTONS (Phase 33)
+══════════════════════════════════════════════════════════ */
+.ai8v-feedback-bar {
+  display:     flex;
+  align-items: center;
+  gap:         8px;
+  margin-top:  8px;
+  opacity:     0.5;
+  transition:  opacity var(--speed) var(--ease);
+}
+
+.ai8v-feedback-bar:hover {
+  opacity: 1;
+}
+
+.feedback-btn {
+  background:    transparent;
+  border:        1px solid rgba(52, 211, 153, 0.15);
+  border-radius: 16px;
+  padding:       4px 10px;
+  cursor:        pointer;
+  font-size:     14px;
+  line-height:   1;
+  transition:    all var(--speed) var(--ease);
+  color:         var(--text-muted);
+}
+
+.feedback-btn:hover {
+  background:   rgba(52, 211, 153, 0.08);
+  border-color: rgba(52, 211, 153, 0.3);
+}
+
+.feedback-btn.selected {
+  background:   var(--accent-dim);
+  border-color: var(--accent-border);
+}
+
+.feedback-btn:disabled {
+  cursor:  default;
+  opacity: 0.5;
+}
+
+.feedback-submitted .feedback-btn:not(.selected) {
+  opacity: 0.3;
+}
+
+/* ══════════════════════════════════════════════════════════
    15. AUTH GATE
 ══════════════════════════════════════════════════════════ */
 .auth-overlay {

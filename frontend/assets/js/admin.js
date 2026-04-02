@@ -64,6 +64,10 @@
     insightsDistributions:   $('admin-insights-distributions'),
     insightsRecommendations: $('admin-insights-recommendations'),
     insightsEmpty:           $('admin-insights-empty'),
+    // Feedback (Phase 33)
+    feedbackCounts:  $('admin-feedback-counts'),
+    feedbackRecent:  $('admin-feedback-recent'),
+    feedbackEmpty:   $('admin-feedback-empty'),
   };
 
   // ══════════════════════════════════════════════════════════
@@ -168,6 +172,10 @@
       clearTimeout(timer);
       return null;
     }
+  }
+
+  async function fetchFeedback() {
+    return adminFetch('/api/admin/feedback', { limit: 50 });
   }
 
   async function fetchConfig() {
@@ -1506,6 +1514,120 @@
   }
 
   // ══════════════════════════════════════════════════════════
+  //  FEEDBACK (Phase 33)
+  // ══════════════════════════════════════════════════════════
+  function renderFeedback(data) {
+    var countsEl = DOM.feedbackCounts;
+    var recentEl = DOM.feedbackRecent;
+    var emptyEl  = DOM.feedbackEmpty;
+    if (!countsEl || !recentEl) return;
+
+    while (countsEl.firstChild) countsEl.removeChild(countsEl.firstChild);
+    while (recentEl.firstChild) recentEl.removeChild(recentEl.firstChild);
+
+    if (!data || !data.counts) {
+      if (emptyEl) emptyEl.classList.remove('hidden');
+      return;
+    }
+
+    var c = data.counts;
+    var total = (c.totalPositive || 0) + (c.totalNegative || 0);
+
+    if (total === 0) {
+      if (emptyEl) emptyEl.classList.remove('hidden');
+      return;
+    }
+
+    if (emptyEl) emptyEl.classList.add('hidden');
+
+    // ── Counts cards ──────────────────────────────────────────
+    var cards = [
+      { label: 'إعجاب', value: c.totalPositive || 0, cls: 'admin-fb-positive' },
+      { label: 'عدم إعجاب', value: c.totalNegative || 0, cls: 'admin-fb-negative' },
+      { label: 'الإجمالي', value: total, cls: '' },
+      { label: 'معدل الرضا', value: total > 0 ? Math.round((c.totalPositive / total) * 100) + '%' : '—', cls: '' },
+    ];
+
+    for (var i = 0; i < cards.length; i++) {
+      var card = document.createElement('div');
+      card.className = 'admin-fb-card ' + cards[i].cls;
+
+      var valEl = document.createElement('div');
+      valEl.className = 'admin-fb-card-value';
+      valEl.textContent = String(cards[i].value);
+      card.appendChild(valEl);
+
+      var lblEl = document.createElement('div');
+      lblEl.className = 'admin-fb-card-label';
+      lblEl.textContent = cards[i].label;
+      card.appendChild(lblEl);
+
+      countsEl.appendChild(card);
+    }
+
+    // ── Recent entries ──────────────────────────────────────────
+    var recent = data.recent || [];
+    if (recent.length === 0) return;
+
+    var title = document.createElement('div');
+    title.className = 'admin-fb-recent-title';
+    title.textContent = 'آخر التقييمات';
+    recentEl.appendChild(title);
+
+    var max = Math.min(recent.length, 20);
+    for (var j = recent.length - 1; j >= Math.max(0, recent.length - max); j--) {
+      var entry = recent[j];
+      var row = document.createElement('div');
+      row.className = 'admin-fb-entry ' + (entry.rating === 'positive' ? 'admin-fb-entry-pos' : 'admin-fb-entry-neg');
+
+      var icon = document.createElement('span');
+      icon.className = 'admin-fb-entry-icon';
+      icon.textContent = entry.rating === 'positive' ? '\uD83D\uDC4D' : '\uD83D\uDC4E';
+      row.appendChild(icon);
+
+      var time = document.createElement('span');
+      time.className = 'admin-fb-entry-time';
+      try {
+        time.textContent = new Date(entry.timestamp).toLocaleString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      } catch (_) {
+        time.textContent = entry.timestamp ? entry.timestamp.slice(0, 16) : '';
+      }
+      row.appendChild(time);
+
+      var corrEl = document.createElement('span');
+      corrEl.className = 'admin-fb-entry-corr';
+      corrEl.textContent = entry.correlationId ? entry.correlationId.slice(0, 8) : '—';
+      row.appendChild(corrEl);
+
+      if (entry.comment) {
+        var commentEl = document.createElement('span');
+        commentEl.className = 'admin-fb-entry-comment';
+        commentEl.textContent = entry.comment;
+        row.appendChild(commentEl);
+      }
+
+      recentEl.appendChild(row);
+    }
+  }
+
+  function showFeedbackSkeleton() {
+    var countsEl = DOM.feedbackCounts;
+    if (!countsEl) return;
+    while (countsEl.firstChild) countsEl.removeChild(countsEl.firstChild);
+    for (var i = 0; i < 4; i++) {
+      var s = document.createElement('div');
+      s.className = 'admin-skeleton';
+      s.style.height = '80px';
+      s.style.borderRadius = '10px';
+      countsEl.appendChild(s);
+    }
+    if (DOM.feedbackRecent) {
+      while (DOM.feedbackRecent.firstChild) DOM.feedbackRecent.removeChild(DOM.feedbackRecent.firstChild);
+    }
+    if (DOM.feedbackEmpty) DOM.feedbackEmpty.classList.add('hidden');
+  }
+
+  // ══════════════════════════════════════════════════════════
   //  SECTION ERROR STATE
   // ══════════════════════════════════════════════════════════
   function showSectionError(container, msg, retryFn) {
@@ -1546,6 +1668,7 @@
     showInspectSkeleton();
     showCommandsSkeleton();
     showInsightsSkeleton();
+    showFeedbackSkeleton();
 
     // Parallel fetch
     var results = await Promise.allSettled([
@@ -1556,6 +1679,7 @@
       fetchLog(),
       fetchInspect(),
       fetchCommandGraph(),
+      fetchFeedback(),
     ]);
 
     // Stats
@@ -1617,6 +1741,13 @@
     var commandGraphData = (results[6].status === 'fulfilled') ? results[6].value : null;
     var metricsDataForCmds = (results[3].status === 'fulfilled') ? results[3].value : null;
     renderCommandMetrics(commandGraphData, metricsDataForCmds);
+
+    // Feedback (Phase 33)
+    if (results[7].status === 'fulfilled' && results[7].value) {
+      renderFeedback(results[7].value);
+    } else {
+      renderFeedback(null);
+    }
 
     // Last update
     updateTimestamp();

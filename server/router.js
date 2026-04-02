@@ -14,6 +14,7 @@ import { handleAuthVerify }  from './handlers/authHandler.js';
 import { handleCreateSession, handleGetSession, handleDeleteSession, handleListSessions, extractSessionId, extractSessionAction, handleResumeSession, handleExportSession } from './handlers/sessions.js';
 import { handleCommands } from './handlers/commandsHandler.js';
 import { handleWhoami }   from './handlers/whoamiHandler.js';
+import { handleSubmitFeedback, handleAdminFeedback } from './handlers/feedbackHandler.js';
 import { bootstrap } from './bootstrap.js';
 
 // ── URL matcher (strips query string + trailing slash) ─────────
@@ -92,6 +93,16 @@ export async function router(req, res) {
     return;
   }
 
+  // POST /api/feedback (Phase 33 — user feedback submission)
+  if (method === 'POST' && matchRoute(url, '/api/feedback')) {
+    requireAccess(req, res);
+    if (res.writableEnded) return;
+    await validateBody(req, res);
+    if (res.writableEnded) return;
+    await handleSubmitFeedback(req, res);
+    return;
+  }
+
   // POST /api/chat
   if (method === 'POST' && matchRoute(url, '/api/chat')) {
     requireAccess(req, res);
@@ -125,6 +136,14 @@ export async function router(req, res) {
     requireAdmin(req, res);
     if (res.writableEnded) return;
     await handleAdminLog(req, res);
+    return;
+  }
+
+  // GET /api/admin/feedback (Phase 33 — admin feedback overview)
+  if (method === 'GET' && matchRoute(url, '/api/admin/feedback')) {
+    requireAdmin(req, res);
+    if (res.writableEnded) return;
+    await handleAdminFeedback(req, res);
     return;
   }
 

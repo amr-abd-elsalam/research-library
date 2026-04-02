@@ -79,6 +79,45 @@ export async function validateBody(req, res) {
     return;
   }
 
+  // ── 3b. Feedback validation (Phase 33) ─────────────────────────
+  const reqPath = (req.url || '').split('?')[0];
+  if (reqPath === '/api/feedback' || reqPath === '/api/feedback/') {
+    // correlationId — required, non-empty string
+    if (typeof parsed.correlationId !== 'string' || parsed.correlationId.trim().length === 0) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        error: 'correlationId مطلوب',
+        code:  'VALIDATION_ERROR',
+      }));
+      return;
+    }
+    // rating — required, must be 'positive' or 'negative'
+    if (parsed.rating !== 'positive' && parsed.rating !== 'negative') {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        error: 'rating يجب أن يكون positive أو negative',
+        code:  'VALIDATION_ERROR',
+      }));
+      return;
+    }
+    // comment — optional, string, trimmed
+    let comment = null;
+    if (parsed.comment !== undefined && parsed.comment !== null) {
+      const maxLen = config.FEEDBACK?.maxCommentLength ?? 200;
+      comment = String(parsed.comment).trim().slice(0, maxLen);
+    }
+    // session_id — optional, string
+    const sessionId = typeof parsed.session_id === 'string' ? parsed.session_id : null;
+
+    req._validatedBody = {
+      correlationId: parsed.correlationId.trim(),
+      rating:        parsed.rating,
+      comment:       comment,
+      session_id:    sessionId,
+    };
+    return;
+  }
+
   // ── 4. Validate message ────────────────────────────────────────
   const message = parsed.message;
   if (typeof message !== 'string' || message.trim().length === 0) {

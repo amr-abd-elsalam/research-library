@@ -1089,3 +1089,118 @@ img { max-width: 100%; display: block; }
 
   .admin-card-value { font-size: 22px; }
 }
+
+/* ══════════════════════════════════════════════════════════
+   14. FEEDBACK SECTION (Phase 33)
+══════════════════════════════════════════════════════════ */
+.admin-feedback-counts {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.admin-fb-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  text-align: center;
+  transition: border-color var(--speed) var(--ease);
+}
+
+.admin-fb-card:hover {
+  border-color: var(--border-accent);
+}
+
+.admin-fb-card-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: var(--font-en);
+}
+
+.admin-fb-card-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.admin-fb-positive .admin-fb-card-value {
+  color: var(--status-ok);
+}
+
+.admin-fb-negative .admin-fb-card-value {
+  color: var(--status-error);
+}
+
+.admin-fb-recent-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.admin-feedback-recent {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.admin-fb-entry {
+  display: grid;
+  grid-template-columns: 30px 140px 80px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+}
+
+.admin-fb-entry-pos {
+  border-right: 3px solid var(--status-ok);
+}
+
+.admin-fb-entry-neg {
+  border-right: 3px solid var(--status-error);
+}
+
+.admin-fb-entry-icon {
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+.admin-fb-entry-time {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-family: var(--font-en);
+}
+
+.admin-fb-entry-corr {
+  color: var(--accent);
+  font-family: var(--font-en);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.admin-fb-entry-comment {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 960px) {
+  .admin-feedback-counts { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .admin-feedback-counts { grid-template-columns: 1fr; }
+  .admin-fb-entry {
+    grid-template-columns: 30px 1fr 60px;
+  }
+  .admin-fb-entry-comment { display: none; }
+}
