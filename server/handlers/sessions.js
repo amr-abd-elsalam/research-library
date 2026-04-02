@@ -15,6 +15,9 @@ import {
   exportSession,
 } from '../services/sessions.js';
 import { sessionBudget } from '../services/sessionBudget.js';
+import { conversationContext } from '../services/conversationContext.js';
+import { contextPersister } from '../services/contextPersister.js';
+import { logger } from '../services/logger.js';
 
 // ── Custom Error ───────────────────────────────────────────────
 export class SessionHandlerError extends Error {
@@ -252,6 +255,21 @@ export async function handleResumeSession(req, res) {
       res.writeHead(404, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'الجلسة غير موجودة', code: 'SESSION_NOT_FOUND' }));
       return;
+    }
+
+    // Restore ConversationContext from persisted file (Phase 31)
+    try {
+      if (contextPersister.enabled) {
+        const ctxData = await contextPersister.read(parsed.id);
+        if (ctxData) {
+          const restored = conversationContext.restore(parsed.id, ctxData);
+          if (restored) {
+            logger.debug('sessions', `restored conversation context for session ${parsed.id.slice(0, 8)}`);
+          }
+        }
+      }
+    } catch (err) {
+      logger.warn('sessions', 'context restoration failed (non-fatal)', { error: err.message });
     }
 
     // Attach budget info if available

@@ -126,6 +126,70 @@ class ConversationContext {
   }
 
   /**
+   * Serializes the session context state to a JSON-safe object.
+   * Used by contextPersister to write to disk.
+   * @param {string} sessionId
+   * @returns {{ turns: number, entities: string[], recentTopics: string[], lastQueryType: string|null, contextSummary: string|null, lastActiveAt: number, _version: number }|null}
+   */
+  serialize(sessionId) {
+    if (!this.#active || !sessionId) return null;
+    const state = this.#sessions.get(sessionId);
+    if (!state) return null;
+    return {
+      turns:          state.turns,
+      entities:       [...state.entities],
+      recentTopics:   [...state.recentTopics],
+      lastQueryType:  state.lastQueryType,
+      contextSummary: state.contextSummary,
+      lastActiveAt:   state.lastActiveAt,
+      _version:       1,
+    };
+  }
+
+  /**
+   * Restores session context state from a previously serialized object.
+   * Used by handleResumeSession to recover context from disk.
+   * @param {string} sessionId
+   * @param {object} data — output of serialize() or read from file
+   * @returns {boolean} true if restored successfully
+   */
+  restore(sessionId, data) {
+    if (!this.#active || !sessionId || !data) return false;
+
+    // Version check — only version 1 is supported
+    if (data._version !== 1) {
+      logger.warn('conversationContext', `unknown context version ${data._version} for session ${sessionId.slice(0, 8)}`);
+      return false;
+    }
+
+    // Sanitize and rebuild state
+    const entities = Array.isArray(data.entities)
+      ? data.entities.filter(e => typeof e === 'string').slice(0, this.#maxEntities)
+      : [];
+
+    const recentTopics = Array.isArray(data.recentTopics)
+      ? data.recentTopics.filter(t => typeof t === 'string').slice(0, 5)
+      : [];
+
+    this.#sessions.set(sessionId, {
+      turns:          typeof data.turns === 'number' ? data.turns : 0,
+      entities,
+      recentTopics,
+      lastQueryType:  typeof data.lastQueryType === 'string' ? data.lastQueryType : null,
+      contextSummary: typeof data.contextSummary === 'string' ? data.contextSummary : null,
+      lastActiveAt:   typeof data.lastActiveAt === 'number' ? data.lastActiveAt : Date.now(),
+    });
+
+    logger.debug('conversationContext', `restored context for session ${sessionId.slice(0, 8)}`, {
+      turns: data.turns,
+      entities: entities.length,
+      topics: recentTopics.length,
+    });
+
+    return true;
+  }
+
+  /**
    * Checks if session has enough accumulated context for local rewriting
    * (avoiding an API call for simple follow-up questions).
    * @param {string} sessionId

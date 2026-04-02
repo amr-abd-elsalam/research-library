@@ -244,6 +244,10 @@ const config = {
     evictionEnabled:      true,        // true = حذف الـ sessions الخاملة تلقائياً | false = تعيش للأبد (السلوك الحالي بالظبط). يعمل فقط لما intelligentCompaction: true
     evictionIdleMs:       1800000,     // مللي ثانية — session تبقى idle بعدها قبل الحذف (minimum 60000). 1800000 = 30 دقيقة
     evictionIntervalMs:   300000,      // مللي ثانية بين كل sweep (minimum 60000). 300000 = 5 دقائق
+
+    // ── Context Persistence (Phase 31) ────────────────────────
+    persistContext:        false,       // true = حفظ الـ context على الديسك واستعادته عند resume | false = ذاكرة فقط (السلوك الحالي بالظبط). يعمل فقط لما intelligentCompaction: true
+    contextDir:           './data/context',  // مجلد حفظ ملفات الـ context — كل session = ملف JSON واحد ({sessionId}.json). يتعمل تلقائياً لو مش موجود
   },
 
   // ═══════════════════════════════════════════════════════════

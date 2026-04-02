@@ -20,6 +20,7 @@ import { conversationContext } from './services/conversationContext.js';
 import { logger } from './services/logger.js';
 import { operationalLog } from './services/operationalLog.js';
 import { metricsPersister } from './services/metricsPersister.js';
+import { contextPersister } from './services/contextPersister.js';
 
 // ── Timeout helper (for bootstrap-specific timeouts) ──────────
 function raceTimeout(promise, ms) {
@@ -71,6 +72,11 @@ class BootstrapManager {
 
     // ── Snapshot Recovery (Phase 23) ─────────────────────────
     await metricsPersister.restore();
+
+    // ── Context Persistence Directory (Phase 31) ─────────────
+    if (contextPersister.enabled) {
+      await contextPersister.ensureDir();
+    }
 
     // ── Register EventBus listeners (Phase 13) ───────────────
     registerAllListeners();

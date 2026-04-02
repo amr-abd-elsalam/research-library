@@ -23,6 +23,7 @@ import { metricsPersister }      from '../services/metricsPersister.js';
 import { executionRouter }       from '../services/executionRouter.js';
 import { conversationContext }   from '../services/conversationContext.js';
 import { suggestionsEngine }     from '../services/suggestionsEngine.js';
+import { contextPersister }      from '../services/contextPersister.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -103,6 +104,9 @@ export async function handleInspect(_req, res) {
 
       // ── Conversation context (Phase 28) ────────────────────
       conversationContext: conversationContext.counts(),
+
+      // ── Context persistence (Phase 31) ─────────────────────
+      contextPersister: contextPersister.counts(),
 
       // ── Suggestions engine (Phase 29) ──────────────────────
       suggestionsEngine: suggestionsEngine.counts(),

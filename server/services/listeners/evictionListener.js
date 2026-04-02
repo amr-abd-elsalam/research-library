@@ -13,6 +13,7 @@ import { metrics } from '../metrics.js';
 import { logger } from '../logger.js';
 import { sessionBudget } from '../sessionBudget.js';
 import { clearSuggestions } from './suggestionsListener.js';
+import { contextPersister } from '../contextPersister.js';
 
 export function register() {
   eventBus.on('session:evicted', (data) => {
@@ -29,10 +30,15 @@ export function register() {
       sessionBudget.remove(sessionId);
     } catch (_) { /* graceful — budget cleanup is optional */ }
 
-    // 3. Record metric
+    // 3. Remove persisted context file (Phase 31)
+    try {
+      contextPersister.remove(sessionId).catch(() => {});
+    } catch (_) { /* graceful — context file cleanup is optional */ }
+
+    // 4. Record metric
     metrics.increment('eviction_total', {});
 
-    // 4. Log
+    // 5. Log
     logger.debug('evictionListener', `cleaned up evicted session ${sessionId.slice(0, 8)}`);
   });
 }

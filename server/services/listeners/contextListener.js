@@ -8,6 +8,7 @@
 
 import { eventBus } from '../eventBus.js';
 import { conversationContext } from '../conversationContext.js';
+import { contextPersister } from '../contextPersister.js';
 
 export function register() {
 
@@ -27,6 +28,14 @@ export function register() {
       turns:     conversationContext.getContext(data.sessionId)?.turns ?? 0,
       timestamp: Date.now(),
     });
+
+    // Persist context to disk (Phase 31 — debounced, fire-and-forget)
+    try {
+      if (contextPersister.enabled && data.sessionId) {
+        const serialized = conversationContext.serialize(data.sessionId);
+        if (serialized) contextPersister.scheduleWrite(data.sessionId, serialized);
+      }
+    } catch (_) { /* graceful — persistence is optional */ }
   });
 
   // ── Record cache hits (they represent user intent too) ─────
@@ -45,5 +54,13 @@ export function register() {
       turns:     conversationContext.getContext(data.sessionId)?.turns ?? 0,
       timestamp: Date.now(),
     });
+
+    // Persist context to disk (Phase 31 — debounced, fire-and-forget)
+    try {
+      if (contextPersister.enabled && data.sessionId) {
+        const serialized = conversationContext.serialize(data.sessionId);
+        if (serialized) contextPersister.scheduleWrite(data.sessionId, serialized);
+      }
+    } catch (_) { /* graceful — persistence is optional */ }
   });
 }
