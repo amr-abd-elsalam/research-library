@@ -39,6 +39,12 @@ function buildPayload() {
       allowedModes:        config.RESPONSE?.allowedModes ?? ['stream'],
       conciseMaxSentences: config.RESPONSE?.conciseMaxSentences ?? 3,
     },
+
+    TIERS: {
+      enabled:     config.TIERS?.enabled === true,
+      defaultTier: config.TIERS?.defaultTier || 'member',
+      guestTier:   config.TIERS?.guestTier || 'guest',
+    },
   });
   return cachedPayload;
 }

@@ -33,7 +33,7 @@ class ExecutionRouter {
    */
   resolve(message, context) {
     const t0 = Date.now();
-    const { topicFilter, history, sessionId } = context;
+    const { topicFilter, history, sessionId, permissionContext } = context;
 
     // ── 1. Explicit command check (/ملخص, /مصادر, etc.) ────
     const parsed = matchCommand(message)
@@ -41,11 +41,18 @@ class ExecutionRouter {
       : null;
 
     if (parsed?.command) {
-      this.#emitRouted('command', t0);
-      return {
-        action: 'command',
-        data:   { command: parsed.command, parsed },
-      };
+      // Permission check — if denied, fall through to next checks (NOT error)
+      if (permissionContext && !permissionContext.allowsCommand(parsed.command.name)) {
+        logger.debug('executionRouter', `command '${parsed.command.name}' denied for tier '${permissionContext.tier}'`);
+        this.#emitRouted('permission_denied', t0);
+        // Fall through — don't return. Message will go to cache/budget/pipeline checks
+      } else {
+        this.#emitRouted('command', t0);
+        return {
+          action: 'command',
+          data:   { command: parsed.command, parsed },
+        };
+      }
     }
 
     // ── 2. Intent classification (NL commands — Phase 21) ───
@@ -56,11 +63,18 @@ class ExecutionRouter {
       queryIntent.confidence < 1.0 &&
       queryIntent.commandMatch?.command
     ) {
-      this.#emitRouted('nl_command', t0);
-      return {
-        action: 'nl_command',
-        data:   { command: queryIntent.commandMatch.command, intent: queryIntent },
-      };
+      // Permission check — if denied, fall through
+      if (permissionContext && !permissionContext.allowsCommand(queryIntent.commandMatch.command.name)) {
+        logger.debug('executionRouter', `NL command '${queryIntent.commandMatch.command.name}' denied for tier '${permissionContext.tier}'`);
+        this.#emitRouted('permission_denied', t0);
+        // Fall through to cache/budget/pipeline
+      } else {
+        this.#emitRouted('nl_command', t0);
+        return {
+          action: 'nl_command',
+          data:   { command: queryIntent.commandMatch.command, intent: queryIntent },
+        };
+      }
     }
 
     // ── 3. Cache lookup ─────────────────────────────────────
@@ -87,7 +101,16 @@ class ExecutionRouter {
       }
     }
 
-    // ── 5. Default: pipeline execution ──────────────────────
+    // ── 5. Topic restriction check (Phase 26) ───────────────
+    if (permissionContext && topicFilter && !permissionContext.allowsTopic(topicFilter)) {
+      this.#emitRouted('topic_denied', t0);
+      return {
+        action: 'topic_denied',
+        data:   { topicFilter, tier: permissionContext.tier },
+      };
+    }
+
+    // ── 6. Default: pipeline execution ──────────────────────
     this.#emitRouted('pipeline', t0);
     return {
       action: 'pipeline',

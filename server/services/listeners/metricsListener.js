@@ -61,6 +61,15 @@ function register() {
     metrics.increment('requests_total', { type: 'cache_hit' });
     metrics.increment('cache_hits_total');
   });
+
+  // ── Permission denial tracking (Phase 26) ─────────────────
+  eventBus.on('execution:routed', (data) => {
+    if (data.action === 'permission_denied') {
+      metrics.increment('permission_denied_total', { reason: 'command' });
+    } else if (data.action === 'topic_denied') {
+      metrics.increment('permission_denied_total', { reason: 'topic' });
+    }
+  });
 }
 
 export { register };

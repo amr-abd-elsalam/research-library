@@ -98,6 +98,14 @@ export async function handleInspect(_req, res) {
 
       // ── Execution router (Phase 24) ────────────────────────
       executionRouter: executionRouter.counts(),
+
+      // ── Permission Tiers (Phase 26) ────────────────────────
+      tiers: {
+        enabled:      config.TIERS?.enabled === true,
+        definedTiers: config.TIERS?.enabled ? Object.keys(config.TIERS?.definitions || {}) : [],
+        defaultTier:  config.TIERS?.defaultTier || null,
+        guestTier:    config.TIERS?.guestTier || null,
+      },
     };
 
     res.writeHead(200, { 'Content-Type': 'application/json' });

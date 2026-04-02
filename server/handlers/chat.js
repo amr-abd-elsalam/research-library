@@ -11,6 +11,7 @@ import { eventBus }        from '../services/eventBus.js';
 import { PipelineContext, chatPipeline, writeChunk } from '../services/pipeline.js';
 import { metrics }         from '../services/metrics.js';
 import config              from '../../config.js';
+import { buildPermissionContext } from '../services/permissionContext.js';
 
 // ── Active requests counter (for gauge) ────────────────────────
 let activeRequests = 0;
@@ -131,14 +132,18 @@ async function _handleChat(req, res) {
     return;
   }
 
-  // ── 2. Route resolution (replaces 4 sequential checks) ────
+  // ── 2. Build permission context from request auth state (Phase 26) ──
+  const permissionContext = buildPermissionContext(req);
+
+  // ── 3. Route resolution (replaces 4 sequential checks) ────
   const route = executionRouter.resolve(message, {
     topicFilter: topic_filter,
     history,
     sessionId: session_id,
+    permissionContext,
   });
 
-  // ── 3. Execute based on route action ──────────────────────
+  // ── 4. Execute based on route action ──────────────────────
   switch (route.action) {
 
     case 'command':
@@ -186,6 +191,15 @@ async function _handleChat(req, res) {
       });
       writeChunk(res, { done: true, sources: [], score: 0, budgetExceeded: true });
       res.end();
+      return;
+    }
+
+    case 'topic_denied': {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        error: 'الموضوع غير مسموح لمستوى الوصول الحالي',
+        code: 'TOPIC_NOT_ALLOWED',
+      }));
       return;
     }
 

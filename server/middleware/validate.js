@@ -175,5 +175,20 @@ export async function validateBody(req, res) {
       return;
     }
   }
+
+  // ── 10. Tier-based mode restriction (Phase 26) ─────────────
+  if (config.TIERS?.enabled === true && responseMode !== null) {
+    const { buildPermissionContext } = await import('../services/permissionContext.js');
+    const permCtx = buildPermissionContext(req);
+    if (!permCtx.allowsMode(responseMode)) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        error: 'وضع الرد غير مسموح لمستوى الوصول الحالي',
+        code: 'MODE_NOT_ALLOWED',
+      }));
+      return;
+    }
+  }
+
   req._validatedBody.response_mode = responseMode;
 }

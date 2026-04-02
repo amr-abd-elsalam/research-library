@@ -420,6 +420,41 @@ const config = {
     structuredIncludeTrace: false,                             // true = يضيف trace data في الـ structured JSON response (للتصحيح)
   },
 
+  // ═══════════════════════════════════════════════════════════
+  // 19. مستويات الصلاحيات (TIERS)
+  //    — تحكم أدق في ما يستطيع كل مستوى وصول القيام به
+  //    — معطّل افتراضياً — كل المستخدمين لهم نفس الصلاحيات
+  //    — لما يتفعّل: الـ auth state (guest/member/admin) بيحدد الـ tier
+  //    — كل tier يحدد: أوامر مسموحة، أوضاع رد، مواضيع، حد tokens
+  //    — القيمة '*' = الكل مسموح (wildcard)
+  //    — لا تحتاج تعديل عادةً
+  // ═══════════════════════════════════════════════════════════
+  TIERS: {
+    enabled:     false,       // true = تفعيل مستويات الصلاحيات | false = الكل متساوي (السلوك الحالي بالظبط)
+    defaultTier: 'member',    // المستوى الافتراضي لأي مستخدم authenticated (PIN أو token)
+    guestTier:   'guest',     // المستوى لأي مستخدم بدون auth (لو وضع الوصول public)
+    definitions: {
+      guest: {
+        allowedCommands:      ['/مساعدة'],                  // أوامر مسموحة فقط ('*' = الكل)
+        allowedModes:         ['stream'],                    // أوضاع الرد المسموحة ('*' = الكل)
+        allowedTopics:        '*',                           // المواضيع المسموحة ('*' = الكل، أو array of topic IDs)
+        maxTokensPerSession:  10000,                         // حد tokens خاص بالمستوى (0 = يستخدم SESSIONS.maxTokensPerSession)
+      },
+      member: {
+        allowedCommands:      '*',
+        allowedModes:         ['stream', 'concise'],
+        allowedTopics:        '*',
+        maxTokensPerSession:  0,                             // 0 = يستخدم الحد العام من SESSIONS.maxTokensPerSession
+      },
+      premium: {
+        allowedCommands:      '*',
+        allowedModes:         '*',                           // يشمل structured — مفيد لـ API integrations
+        allowedTopics:        '*',
+        maxTokensPerSession:  0,
+      },
+    },
+  },
+
 };
 
 export default deepFreeze(config);

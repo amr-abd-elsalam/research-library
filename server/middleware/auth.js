@@ -68,6 +68,9 @@ export function requireAdmin(req, res) {
     }));
     return;
   }
+
+  // Flag successful admin auth (Phase 26 — used by buildPermissionContext)
+  req._isAdmin = true;
 }
 
 // ── requireAccess ──────────────────────────────────────────────
@@ -99,6 +102,7 @@ export function requireAccess(req, res) {
       }));
       return;
     }
+    req._authenticated = true; // Phase 26 — used by buildPermissionContext
     return;
   }
 
@@ -126,6 +130,7 @@ export function requireAccess(req, res) {
       }));
       return;
     }
+    req._authenticated = true; // Phase 26 — used by buildPermissionContext
     return;
   }
 
