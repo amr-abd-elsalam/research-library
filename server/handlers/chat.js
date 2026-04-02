@@ -8,6 +8,7 @@ import { getValidTopicIds } from './topics.js';
 import { logEvent }        from '../services/analytics.js';
 import { matchCommand, executeCommand } from '../services/commands.js';
 import { commandRegistry }              from '../services/commandRegistry.js';
+import { queryIntentClassifier }        from '../services/queryIntentClassifier.js';
 import config              from '../../config.js';
 import { EventTrace }      from '../services/eventTrace.js';
 import { eventBus }        from '../services/eventBus.js';
@@ -170,6 +171,41 @@ async function _handleChat(req, res) {
     return;
   }
 
+  // ── 2.5. Intent classification — natural language commands (Phase 21) ──
+  let queryIntent = null;
+  if (!cmd) {
+    const intentResult = queryIntentClassifier.classify(message, history);
+    queryIntent = intentResult;
+
+    if (intentResult.intent === 'command' && intentResult.confidence < 1.0 && intentResult.commandMatch?.command) {
+      // Natural language resolved to a command — execute it
+      const nlCmd = intentResult.commandMatch.command;
+      const startTime = Date.now();
+      res.writeHead(200, {
+        'Content-Type':  'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection':    'keep-alive',
+      });
+      req.setTimeout?.(120_000);
+      res.setTimeout?.(0);
+
+      try {
+        await executeCommand(nlCmd, {
+          req, res, message, topic_filter, history,
+          writeChunk: (payload) => writeChunk(res, payload),
+          startTime,
+        });
+      } catch (err) {
+        logger.error('chat', 'nl-command error', { error: err.message });
+        if (!res.writableEnded) {
+          writeChunk(res, { error: true, message: 'حدث خطأ في تنفيذ الأمر', code: 'COMMAND_ERROR' });
+          res.end();
+        }
+      }
+      return;
+    }
+  }
+
   // ── 3. Cache check (stays here — cache bypasses pipeline) ──
   const cacheKey = buildCacheKey(topic_filter, message);
   const cached   = cache.get(cacheKey);
@@ -212,6 +248,9 @@ async function _handleChat(req, res) {
     message, topicFilter: topic_filter, history, sessionId: session_id, req, res,
   });
   const trace = new EventTrace();
+
+  // Pass intent classification to pipeline (Phase 21 — for stage gating + observability)
+  if (queryIntent) ctx._queryIntent = queryIntent;
 
   try {
     // ── 6. Run pipeline ─────────────────────────────────────

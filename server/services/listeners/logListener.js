@@ -18,6 +18,7 @@ function register() {
       aborted:    data.aborted,
       abortReason: data.abortReason || null,
       sourcesCount: data.sources?.length ?? 0,
+      intent:     data._queryIntent?.intent || null,
     }, data.correlationId);
   });
 

@@ -583,6 +583,9 @@ const ChatModule = (() => {
   function init() {
     const { chatTextarea, btnSend, btnClear } = AppModule.DOM;
 
+    // Initialize command autocomplete (Phase 21)
+    _initAutocomplete();
+
     if (chatTextarea) {
       chatTextarea.addEventListener('input', () => {
         chatTextarea.style.height = 'auto';
@@ -763,10 +766,110 @@ const ChatModule = (() => {
     messagesList.appendChild(msg);
   }
 
+  /* ══════════════════════════════════════════════════════════
+     COMMAND AUTOCOMPLETE (Phase 21)
+  ══════════════════════════════════════════════════════════ */
+
+  let _commandsCache = null;
+
+  async function _fetchCommands() {
+    if (_commandsCache) return _commandsCache;
+    try {
+      const res = await fetch('/api/commands');
+      if (res.ok) {
+        _commandsCache = await res.json();
+      }
+    } catch { /* ignore — autocomplete is optional enhancement */ }
+    return _commandsCache;
+  }
+
+  function _showAutocomplete(commands) {
+    const container = document.getElementById('command-autocomplete');
+    if (!container || !commands || commands.length === 0) {
+      _hideAutocomplete();
+      return;
+    }
+
+    while (container.firstChild) container.removeChild(container.firstChild);
+
+    for (let i = 0; i < commands.length; i++) {
+      const cmd = commands[i];
+      const item = document.createElement('div');
+      item.className = 'cmd-ac-item';
+      item.setAttribute('data-cmd', cmd.name);
+
+      const nameEl = document.createElement('span');
+      nameEl.className = 'cmd-ac-name';
+      nameEl.textContent = cmd.name;
+      item.appendChild(nameEl);
+
+      const descEl = document.createElement('span');
+      descEl.className = 'cmd-ac-desc';
+      descEl.textContent = cmd.description || '';
+      item.appendChild(descEl);
+
+      item.addEventListener('click', function() {
+        const textarea = AppModule.DOM.chatTextarea;
+        if (textarea) {
+          textarea.value = cmd.name + ' ';
+          textarea.focus();
+          textarea.dispatchEvent(new Event('input'));
+        }
+        _hideAutocomplete();
+      });
+
+      container.appendChild(item);
+    }
+
+    container.classList.remove('hidden');
+  }
+
+  function _hideAutocomplete() {
+    const container = document.getElementById('command-autocomplete');
+    if (container) {
+      container.classList.add('hidden');
+      while (container.firstChild) container.removeChild(container.firstChild);
+    }
+  }
+
+  function _initAutocomplete() {
+    const textarea = document.getElementById('chat-textarea');
+    if (!textarea) return;
+
+    textarea.addEventListener('input', async function() {
+      const val = textarea.value.trim();
+      const prefix = CLIENT_CONFIG.COMMANDS?.prefix || '/';
+
+      if (val.startsWith(prefix) && val.length >= 1) {
+        const data = await _fetchCommands();
+        if (data) {
+          const allCmds = [].concat(
+            data.builtins || [],
+            data.custom   || [],
+            data.plugins  || []
+          );
+          const q = val.toLowerCase();
+          const filtered = allCmds.filter(function(c) {
+            return c.name.toLowerCase().indexOf(q) !== -1 ||
+              (c.aliases || []).some(function(a) { return a.toLowerCase().indexOf(q) !== -1; });
+          });
+          _showAutocomplete(filtered.length > 0 ? filtered : allCmds);
+        }
+      } else {
+        _hideAutocomplete();
+      }
+    });
+
+    textarea.addEventListener('blur', function() {
+      setTimeout(_hideAutocomplete, 200);
+    });
+  }
+
   return Object.freeze({
     init,
     send,
     clear,
+    _initAutocomplete,
   });
 
 })();

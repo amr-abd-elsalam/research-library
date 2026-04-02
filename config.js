@@ -309,6 +309,26 @@ const config = {
       failureThreshold: 3,       // عدد الفشل المتتالي قبل فتح الـ circuit
       resetAfterMs:     30000,   // مللي ثانية قبل المحاولة مرة تانية (half-open)
     },
+
+    // ── Intent Classifier (Phase 21) ──────────────────────────
+    // يكتشف intent المستخدم: command (بدون /) أو meta (عن المنصة) أو search (RAG)
+    // لما يكتشف command intent → ينفذ الأمر بدون pipeline
+    // لما يكتشف meta intent → ممكن يعمل skip لـ stages عبر stageGating
+    intentClassifier: {
+      enabled:           true,    // true = تفعيل intent classification | false = كل رسالة تروح pipeline
+      commandThreshold:  0.6,     // حد أدنى confidence لتحويل رسالة لأمر (0-1). 0.6 = متوازن
+      patterns:          [],      // patterns إضافية — فارغ = builtin patterns فقط
+                                  // شكل كل pattern: { pattern: "regex string", command: "/اسم_الأمر" }
+    },
+
+    // ── Stage Gating (Phase 21) ────────────────────────────────
+    // يسمح بعمل skip لـ stages محددة حسب نوع الـ intent
+    // فارغ {} = كل الـ stages تتنفذ دائماً (السلوك الحالي بالظبط)
+    // مثال: { meta: ['stageEmbed', 'stageSearch'] } → meta queries تتجاوز الـ embedding والبحث
+    // ⚠️ لا تعمل skip لـ stageTranscriptInit أو stageStream — ضرورية لكل request
+    stageGating: {
+      // meta: ['stageEmbed', 'stageSearch'],  // uncomment لتفعيل — يوفّر latency + tokens لـ meta queries
+    },
   },
 
   // ═══════════════════════════════════════════════════════════

@@ -25,6 +25,14 @@ function register() {
     if (data.aborted) {
       metrics.increment('aborted_total', { reason: data.abortReason || 'unknown' });
     }
+
+    // Intent classification (Phase 21)
+    if (data._queryIntent) {
+      metrics.increment('intent_classification_total', {
+        intent:    data._queryIntent.intent || 'search',
+        matchType: data._queryIntent.commandMatch?.matchType || 'none',
+      });
+    }
   });
 
   // ── Stage complete (per-stage timing) ──────────────────────

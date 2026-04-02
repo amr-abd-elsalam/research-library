@@ -1381,3 +1381,76 @@ img { max-width: 100%; display: block; }
     width:          calc(100% - 24px);
   }
 }
+
+/* ══════════════════════════════════════════════════════════
+   17. COMMAND AUTOCOMPLETE (Phase 21)
+══════════════════════════════════════════════════════════ */
+.chat-input-wrap {
+  position: relative;
+}
+
+.cmd-autocomplete {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 100;
+  margin-bottom: 4px;
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.3);
+}
+
+.cmd-autocomplete.hidden {
+  display: none;
+}
+
+.cmd-ac-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  transition: background var(--speed) var(--ease);
+}
+
+.cmd-ac-item:last-child {
+  border-bottom: none;
+}
+
+.cmd-ac-item:hover {
+  background: var(--bg-hover);
+}
+
+.cmd-ac-name {
+  font-family: var(--font-en);
+  color: var(--accent);
+  direction: ltr;
+  font-weight: 600;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.cmd-ac-desc {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-align: end;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 60%;
+}
+
+@media (max-width: 640px) {
+  .cmd-ac-desc {
+    display: none;
+  }
+  .cmd-ac-item {
+    padding: 8px 12px;
+  }
+}

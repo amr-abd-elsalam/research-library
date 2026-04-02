@@ -245,6 +245,14 @@ class PipelineRunner {
       // Stop if a previous stage signalled abort
       if (ctx.aborted) break;
 
+      // ── Stage gating (Phase 21) — skip stages based on intent ──
+      if (ctx._skipStages && ctx._skipStages.has(stage.name)) {
+        trace.record(stage.name, 0, 'skip', { reason: 'stage_gating' });
+        // Still fire afterStage hooks (for metrics/observability)
+        if (this.#hooks) await this.#hooks.run('afterStage', stage.name, ctx, trace);
+        continue;
+      }
+
       // ── beforeStage hooks ───────────────────────────────
       if (this.#hooks) await this.#hooks.run('beforeStage', stage.name, ctx, trace);
 
@@ -392,6 +400,20 @@ const chatPipeline = new PipelineRunner([
 
 if (config.PIPELINE?.enableHooks !== false) {
 
+  // Stage gating based on query intent (Phase 21)
+  const gatingConfig = config.PIPELINE?.stageGating;
+  if (gatingConfig && typeof gatingConfig === 'object' && Object.keys(gatingConfig).length > 0) {
+    pipelineHooks.register('beforePipeline', (ctx, _trace) => {
+      const intent = ctx._queryIntent?.intent;
+      if (intent && gatingConfig[intent]) {
+        const stagesToSkip = gatingConfig[intent];
+        if (Array.isArray(stagesToSkip) && stagesToSkip.length > 0) {
+          ctx._skipStages = new Set(stagesToSkip);
+        }
+      }
+    });
+  }
+
   // Emit after each stage completes (enriched with duration for metrics)
   pipelineHooks.register('afterStage', '*', (_ctx, trace, stageName) => {
     // Read latest stage entry from trace for duration + status
@@ -472,6 +494,9 @@ if (config.PIPELINE?.enableHooks !== false) {
         follow_up:         _ctx.queryRoute?.isFollowUp || false,
       },
       _traceCompact: trace.toCompact(),
+
+      // ── Intent classification (Phase 21) ───────────────────
+      _queryIntent: _ctx._queryIntent ?? null,
     });
   });
 }

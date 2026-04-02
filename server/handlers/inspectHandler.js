@@ -17,6 +17,7 @@ import { operationalLog }   from '../services/operationalLog.js';
 import { bootstrap }        from '../bootstrap.js';
 import { allCircuitStats }  from '../services/circuitBreaker.js';
 import { sessionBudget }    from '../services/sessionBudget.js';
+import { queryIntentClassifier } from '../services/queryIntentClassifier.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -82,6 +83,9 @@ export async function handleInspect(_req, res) {
 
       // ── Session budget (Phase 19) ──────────────────────────
       sessionBudget: sessionBudget.counts(),
+
+      // ── Intent classifier (Phase 21) ───────────────────────
+      intentClassifier: queryIntentClassifier.counts(),
     };
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
