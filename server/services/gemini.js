@@ -1,5 +1,8 @@
 // server/services/gemini.js
 
+import { createCircuitBreaker } from './circuitBreaker.js';
+import { logger }               from './logger.js';
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 const API_KEY = process.env.GEMINI_API_KEY ?? '';
 
@@ -18,6 +21,9 @@ const AUTH_HEADERS = Object.freeze({
   'Content-Type':    'application/json',
   'x-goog-api-key':  API_KEY,
 });
+
+// ─── Circuit Breaker (Phase 18) ──────────────────────────────────────────────
+const geminiCB = createCircuitBreaker('gemini');
 
 // ─── Custom Errors ────────────────────────────────────────────────────────────
 export class GeminiTimeoutError extends Error {
@@ -44,7 +50,7 @@ export class GeminiAPIError extends Error {
  * @param {string} taskType   — RETRIEVAL_QUERY للسؤال | RETRIEVAL_DOCUMENT للمحتوى
  * Returns float[] of length 3072.
  */
-export async function embedText(text, taskType = 'RETRIEVAL_QUERY') {
+async function _embedText(text, taskType = 'RETRIEVAL_QUERY') {
   const controller = new AbortController();
   const timer      = setTimeout(() => controller.abort(), EMBED_TIMEOUT_MS);
 
@@ -82,13 +88,17 @@ export async function embedText(text, taskType = 'RETRIEVAL_QUERY') {
   }
 }
 
+export async function embedText(text, taskType = 'RETRIEVAL_QUERY') {
+  return geminiCB.execute(() => _embedText(text, taskType));
+}
+
 // ─── streamGenerate ───────────────────────────────────────────────────────────
 /**
  * Streams a generation from Gemini 2.5 Flash.
  * Calls onChunk(text) for each text delta.
  * Returns { finishReason } when done.
  */
-export async function streamGenerate(systemPrompt, context, history, question, onChunk) {
+async function _streamGenerate(systemPrompt, context, history, question, onChunk) {
   const controller = new AbortController();
   const timer      = setTimeout(() => controller.abort(), STREAM_TIMEOUT_MS);
 
@@ -191,4 +201,8 @@ export async function streamGenerate(systemPrompt, context, history, question, o
   if (!hasText) throw new GeminiEmptyError();
 
   return { finishReason };
+}
+
+export async function streamGenerate(systemPrompt, context, history, question, onChunk) {
+  return geminiCB.execute(() => _streamGenerate(systemPrompt, context, history, question, onChunk));
 }

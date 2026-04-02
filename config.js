@@ -289,6 +289,25 @@ const config = {
     enableHooks:      true,    // تفعيل pipeline hooks (beforeStage/afterStage/beforePipeline/afterPipeline)
     metricsEnabled:   true,    // تجميع مقاييس الأداء في الذاكرة (P50/P95/P99 latency, counters)
     metricsWindow:    2000,    // أقصى عدد observations لكل histogram (sliding window)
+
+    // ── Stage Retry (Phase 18) ────────────────────────────────
+    // أي stage مش مذكور هنا = 0 retries (default)
+    // ⚠️ لا تعمل retry للـ stageStream — streaming مش safe للإعادة
+    retryableStages: {
+      // stageEmbed:  { maxRetries: 1, backoffMs: 500 },
+      // stageSearch: { maxRetries: 1, backoffMs: 300 },
+    },
+
+    // ── Circuit Breaker (Phase 18) ────────────────────────────
+    // يحمي من external service failures (Gemini, Qdrant)
+    // لما service يفشل failureThreshold مرات متتالية → الـ circuit يتفتح
+    // → كل call يرجع error فوراً بدل ما ينتظر timeout
+    // → بعد resetAfterMs → يحاول مرة تانية (half-open)
+    circuitBreaker: {
+      enabled:          false,    // true = تفعيل circuit breaker | false = معطّل (zero overhead)
+      failureThreshold: 3,       // عدد الفشل المتتالي قبل فتح الـ circuit
+      resetAfterMs:     30000,   // مللي ثانية قبل المحاولة مرة تانية (half-open)
+    },
   },
 
   // ═══════════════════════════════════════════════════════════

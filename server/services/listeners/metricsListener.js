@@ -36,6 +36,11 @@ function register() {
     if (data.status === 'error') {
       metrics.increment('stage_errors_total', { stage: data.stageName });
     }
+
+    // Retry tracking (Phase 18) — stage ran more than once
+    if (data.attempt && data.attempt > 1) {
+      metrics.increment('stage_retries_total', { stage: data.stageName });
+    }
   });
 
   // ── Cache hit (cached responses that skip the pipeline) ────

@@ -1,6 +1,7 @@
 import { getCollectionInfo, QdrantTimeoutError, QdrantNotFoundError, QdrantConnectionError } from '../services/qdrant.js';
 import { embedText, GeminiTimeoutError, GeminiAPIError }                                     from '../services/gemini.js';
 import { cache }                                                                              from '../services/cache.js';
+import { allCircuitStats }                                                                    from '../services/circuitBreaker.js';
 import config                                                                                 from '../../config.js';
 import { bootstrap }                                                                          from '../bootstrap.js';
 
@@ -65,6 +66,7 @@ export async function handleHealth(req, res) {
       ready:      bootstrap.isReady,
       durationMs: bootstrap.report?.durationMs ?? null,
     },
+    circuits:  allCircuitStats(),
     brand:     config.BRAND.name,
     timestamp: new Date().toISOString(),
   });

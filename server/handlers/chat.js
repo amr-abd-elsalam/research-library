@@ -1,5 +1,6 @@
 import { GeminiTimeoutError, GeminiSafetyError, GeminiEmptyError } from '../services/gemini.js';
 import { QdrantNotFoundError, QdrantTimeoutError, QdrantConnectionError } from '../services/qdrant.js';
+import { pipelineErrorRecovery } from '../services/pipelineErrorRecovery.js';
 import { cache }           from '../services/cache.js';
 import { logger }          from '../services/logger.js';
 import { getValidTopicIds } from './topics.js';
@@ -86,103 +87,28 @@ function validateTopicFilter(topic_filter) {
 // Session    → server/services/listeners/sessionListener.js
 // Token estimation + enriched data → afterPipeline hook in pipeline.js
 
-// ── Pipeline error handler ─────────────────────────────────────
+// ── Pipeline error handler (Phase 18 — simplified via PipelineErrorRecovery) ──
 function handlePipelineError(err, res, ctx, trace, startTime) {
-  // GeminiTimeoutError during streaming (partial response exists)
-  if (err instanceof GeminiTimeoutError && ctx.fullText.length > 0) {
+  const classification = pipelineErrorRecovery.classify(err, ctx);
+
+  if (classification.isPartial) {
+    // Partial response exists — append warning and send what we have
     ctx.partial = true;
-    writeChunk(res, { text: '\n\n⚠️ تم قطع الإجابة بسبب انتهاء المهلة.' });
+    writeChunk(res, { text: '\n\n⚠️ ' + classification.userMessage });
     writeChunk(res, { done: true, sources: ctx.sources, score: ctx.avgScore, partial: true });
-    if (!res.writableEnded) res.end();
-    // Note: the afterPipeline hook already ran (or will run) via PipelineRunner,
-    // emitting pipeline:complete with enriched data for listeners.
-    // For partial responses where the pipeline errored mid-stream,
-    // we emit a dedicated event so listeners can still log/persist.
-    eventBus.emit('pipeline:complete', {
-      correlationId: trace.correlationId,
-      aborted:       false,
-      abortReason:   null,
-      totalMs:       Date.now() - startTime,
-      queryType:     ctx.queryRoute?.type ?? null,
-      message:       ctx.message,
-      fullText:      ctx.fullText,
-      sources:       ctx.sources,
-      avgScore:      ctx.avgScore,
-      sessionId:     ctx.sessionId,
-      topicFilter:   ctx.topicFilter,
-      effectiveMessage: ctx.effectiveMessage,
-      _tokenEstimates: null,
-      _cacheKey:     null,
-      _cacheEntry:   null,
-      _analytics: {
-        event_type:        'chat',
-        req:               ctx.req,
-        topic_filter:      ctx.topicFilter || null,
-        query_type:        ctx.queryRoute?.type,
-        message_length:    ctx.message.length,
-        response_length:   ctx.fullText.length,
-        embedding_tokens:  0,
-        generation_tokens: 0,
-        latency_ms:        Date.now() - startTime,
-        score:             ctx.avgScore,
-        sources_count:     ctx.sources?.length || 0,
-        cache_hit:         false,
-        estimated_cost:    0,
-        follow_up:         ctx.queryRoute?.isFollowUp || false,
-      },
-      _traceCompact: trace.toCompact(),
-    });
-    return;
+  } else {
+    // No partial content — send error
+    if (!res.headersSent) {
+      logger.error('chat', 'pipeline error', { error: err.message, category: classification.category }, trace?.correlationId);
+    }
+    writeChunk(res, { error: true, message: classification.userMessage, code: classification.code });
   }
 
-  // GeminiTimeoutError before streaming (embed or pre-stream)
-  if (err instanceof GeminiTimeoutError) {
-    if (!res.writableEnded) {
-      writeChunk(res, { error: true, message: 'انتهت مهلة الاتصال', code: 'TIMEOUT' });
-      res.end();
-    }
-    return;
-  }
+  if (!res.writableEnded) res.end();
 
-  // Qdrant errors
-  if (err instanceof QdrantNotFoundError) {
-    if (!res.writableEnded) {
-      writeChunk(res, { error: true, message: 'قاعدة البيانات غير جاهزة', code: 'SERVICE_UNAVAILABLE' });
-      res.end();
-    }
-    return;
-  }
-  if (err instanceof QdrantTimeoutError) {
-    if (!res.writableEnded) {
-      writeChunk(res, { error: true, message: 'انتهت مهلة الاتصال', code: 'TIMEOUT' });
-      res.end();
-    }
-    return;
-  }
-
-  // Gemini safety block
-  if (err instanceof GeminiSafetyError) {
-    if (!res.writableEnded) {
-      writeChunk(res, { error: true, message: 'لا يمكن معالجة هذا السؤال، يرجى إعادة الصياغة', code: 'SAFETY_BLOCKED' });
-      res.end();
-    }
-    return;
-  }
-
-  // Gemini empty response
-  if (err instanceof GeminiEmptyError) {
-    if (!res.writableEnded) {
-      writeChunk(res, { error: true, message: 'لم يتمكن النظام من توليد إجابة، يرجى المحاولة', code: 'EMPTY_RESPONSE' });
-      res.end();
-    }
-    return;
-  }
-
-  // Generic / unknown error
-  logger.error('chat', 'pipeline error', { error: err.message }, trace?.correlationId);
-  if (!res.writableEnded) {
-    writeChunk(res, { error: true, message: 'حدث خطأ في المعالجة', code: 'SERVER_ERROR' });
-    res.end();
+  // Emit pipeline:complete for listeners (analytics, session, etc.) if needed
+  if (classification.shouldEmitComplete) {
+    eventBus.emit('pipeline:complete', pipelineErrorRecovery.buildPartialCompleteEvent(ctx, trace, startTime));
   }
 }
 

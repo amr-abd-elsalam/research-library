@@ -1,9 +1,14 @@
 import { QdrantClient } from '@qdrant/js-client-rest';
+import { createCircuitBreaker } from './circuitBreaker.js';
+import { logger }               from './logger.js';
 
 const QDRANT_URL        = process.env.QDRANT_URL        || 'http://localhost:6333';
 const QDRANT_COLLECTION = process.env.QDRANT_COLLECTION || 'knowledge';
 
 const client = new QdrantClient({ url: QDRANT_URL, checkCompatibility: false });
+
+// ── Circuit Breaker (Phase 18) ─────────────────────────────────
+const qdrantCB = createCircuitBreaker('qdrant');
 
 // ── Custom Errors ──────────────────────────────────────────────
 export class QdrantTimeoutError    extends Error { constructor() { super('Qdrant timeout');     this.name = 'QdrantTimeoutError';    } }
@@ -25,7 +30,7 @@ function withTimeout(promise, ms, ErrorClass) {
 }
 
 // ── search ─────────────────────────────────────────────────────
-export async function search(queryVector, topK = 5, topicFilter = null) {
+async function _search(queryVector, topK = 5, topicFilter = null) {
   const params = {
     vector: queryVector,
     limit:  topK,
@@ -60,6 +65,10 @@ export async function search(queryVector, topK = 5, topicFilter = null) {
   }
 }
 
+export async function search(queryVector, topK = 5, topicFilter = null) {
+  return qdrantCB.execute(() => _search(queryVector, topK, topicFilter));
+}
+
 // ── scroll ─────────────────────────────────────────────────────
 export async function scroll(withPayload = true, limit = 10000) {
   try {
@@ -81,7 +90,7 @@ export async function scroll(withPayload = true, limit = 10000) {
 }
 
 // ── getCollectionInfo ──────────────────────────────────────────
-export async function getCollectionInfo() {
+async function _getCollectionInfo() {
   try {
     const result = await withTimeout(
       client.getCollection(QDRANT_COLLECTION),
@@ -94,4 +103,8 @@ export async function getCollectionInfo() {
     if (err?.status === 404) throw new QdrantNotFoundError();
     throw new QdrantConnectionError(err.message);
   }
+}
+
+export async function getCollectionInfo() {
+  return qdrantCB.execute(() => _getCollectionInfo());
 }

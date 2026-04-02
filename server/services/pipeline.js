@@ -15,6 +15,7 @@ import { EventTrace }                         from './eventTrace.js';
 import { pipelineHooks }                      from './hookRegistry.js';
 import { eventBus }                           from './eventBus.js';
 import { estimateTokens, estimateRequestCost } from './costTracker.js';
+import { CircuitOpenError }                   from './circuitBreaker.js';
 import config                                 from '../../config.js';
 
 // ── Singleton ContextManager (same as previous chat.js) ────────
@@ -223,14 +224,17 @@ async function stageStream(ctx, _trace) {
 class PipelineRunner {
   #stages;
   #hooks;
+  #retryConfig;
 
   /**
    * @param {Function[]} stages — ordered stage functions
    * @param {PipelineHookRegistry|null} [hooks=null] — optional hook registry
+   * @param {Object<string, {maxRetries: number, backoffMs: number}>} [retryConfig={}] — per-stage retry configuration
    */
-  constructor(stages, hooks = null) {
-    this.#stages = stages;
-    this.#hooks  = hooks;
+  constructor(stages, hooks = null, retryConfig = {}) {
+    this.#stages      = stages;
+    this.#hooks       = hooks;
+    this.#retryConfig = retryConfig;
   }
 
   async run(ctx, trace) {
@@ -244,19 +248,47 @@ class PipelineRunner {
       // ── beforeStage hooks ───────────────────────────────
       if (this.#hooks) await this.#hooks.run('beforeStage', stage.name, ctx, trace);
 
-      const t0 = Date.now();
-      try {
-        await stage(ctx, trace);
-        const elapsed = Date.now() - t0;
+      const stageRetry  = this.#retryConfig[stage.name];
+      const maxAttempts = (stageRetry?.maxRetries ?? 0) + 1;
+      let lastError     = null;
+      let t0            = Date.now();
 
-        // Record trace with stage-specific detail
-        const { status, detail } = buildStageRecord(stage.name, ctx, elapsed);
-        trace.record(stage.name, elapsed, status, detail);
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          t0 = Date.now();
+          await stage(ctx, trace);
+          const elapsed = Date.now() - t0;
 
-      } catch (err) {
+          // Record trace with stage-specific detail
+          const { status, detail } = buildStageRecord(stage.name, ctx, elapsed);
+          const traceDetail = attempt > 1 ? { ...detail, attempt } : detail;
+          trace.record(stage.name, elapsed, status, traceDetail);
+
+          lastError = null;
+          break; // success — exit retry loop
+
+        } catch (err) {
+          lastError = err;
+
+          // Don't retry CircuitOpenError — circuit is open by design
+          if (err instanceof CircuitOpenError) break;
+
+          if (attempt < maxAttempts) {
+            const backoffMs = stageRetry?.backoffMs ?? 300;
+            trace.record(stage.name, Date.now() - t0, 'retry', {
+              attempt,
+              backoffMs,
+              error: err.message,
+            });
+            await new Promise(r => setTimeout(r, backoffMs));
+          }
+        }
+      }
+
+      if (lastError) {
         const elapsed = Date.now() - t0;
-        trace.record(stage.name, elapsed, 'error', { error: err.message });
-        throw err;
+        trace.record(stage.name, elapsed, 'error', { error: lastError.message });
+        throw lastError;
       }
 
       // ── afterStage hooks ────────────────────────────────
@@ -351,7 +383,8 @@ const chatPipeline = new PipelineRunner([
   stageConfidenceCheck,
   stageBuildContext,
   stageStream,
-], config.PIPELINE?.enableHooks !== false ? pipelineHooks : null);
+], config.PIPELINE?.enableHooks !== false ? pipelineHooks : null,
+   config.PIPELINE?.retryableStages ?? {});
 
 // ═══════════════════════════════════════════════════════════════
 // Default Hooks — emit pipeline events to EventBus

@@ -15,6 +15,7 @@ import { metrics }          from '../services/metrics.js';
 import { logger }           from '../services/logger.js';
 import { operationalLog }   from '../services/operationalLog.js';
 import { bootstrap }        from '../bootstrap.js';
+import { allCircuitStats }  from '../services/circuitBreaker.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -73,6 +74,9 @@ export async function handleInspect(_req, res) {
 
       // ── Bootstrap readiness ────────────────────────────────
       bootstrap: bootstrap.getReadinessPayload(),
+
+      // ── Circuit breakers (Phase 18) ────────────────────────
+      circuits: allCircuitStats(),
     };
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
