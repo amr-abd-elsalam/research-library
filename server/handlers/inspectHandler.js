@@ -16,6 +16,7 @@ import { logger }           from '../services/logger.js';
 import { operationalLog }   from '../services/operationalLog.js';
 import { bootstrap }        from '../bootstrap.js';
 import { allCircuitStats }  from '../services/circuitBreaker.js';
+import { sessionBudget }    from '../services/sessionBudget.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -77,6 +78,9 @@ export async function handleInspect(_req, res) {
 
       // ── Circuit breakers (Phase 18) ────────────────────────
       circuits: allCircuitStats(),
+
+      // ── Session budget (Phase 19) ──────────────────────────
+      sessionBudget: sessionBudget.counts(),
     };
 
     res.writeHead(200, { 'Content-Type': 'application/json' });

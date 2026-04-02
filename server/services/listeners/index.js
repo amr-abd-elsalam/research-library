@@ -1,16 +1,18 @@
 // server/services/listeners/index.js
 // ═══════════════════════════════════════════════════════════════
-// Listener Registration Hub — Phase 13
+// Listener Registration Hub — Phase 13, updated Phase 19
 // Registers all EventBus listeners. Called once during bootstrap.
 // ═══════════════════════════════════════════════════════════════
 
-import { register as registerAnalytics } from './analyticsListener.js';
-import { register as registerCache }     from './cacheListener.js';
-import { register as registerSession }   from './sessionListener.js';
-import { register as registerMetrics }   from './metricsListener.js';
-import { register as registerCommand }   from './commandListener.js';
-import { register as registerLog }       from './logListener.js';
-import { register as registerCircuit }   from './circuitListener.js';
+import { register as registerAnalytics }     from './analyticsListener.js';
+import { register as registerCache }         from './cacheListener.js';
+import { register as registerSession }       from './sessionListener.js';
+import { register as registerMetrics }       from './metricsListener.js';
+import { register as registerCommand }       from './commandListener.js';
+import { register as registerLog }           from './logListener.js';
+import { register as registerCircuit }       from './circuitListener.js';
+import { register as registerSessionStats }  from './sessionStatsListener.js';
+import { logger }                            from '../logger.js';
 
 /**
  * Registers all EventBus listeners.
@@ -25,6 +27,7 @@ export function registerAllListeners() {
   registerCommand();
   registerLog();
   registerCircuit();
+  registerSessionStats();
 
-  console.log('[listeners] 7 EventBus listeners registered (analytics, cache, session, metrics, command, log, circuit)');
+  logger.info('listeners', '8 EventBus listeners registered (analytics, cache, session, metrics, command, log, circuit, sessionStats)');
 }

@@ -11,7 +11,10 @@ import {
   deleteSession,
   listSessions,
   hashIPFromRequest,
+  resumeSession,
+  exportSession,
 } from '../services/sessions.js';
+import { sessionBudget } from '../services/sessionBudget.js';
 
 // ── Custom Error ───────────────────────────────────────────────
 export class SessionHandlerError extends Error {
@@ -208,5 +211,98 @@ export async function handleListSessions(req, res) {
       error: 'فشل جلب قائمة الجلسات',
       code:  'SESSION_LIST_ERROR',
     }));
+  }
+}
+
+// ── Session action URL matcher ─────────────────────────────────
+const SESSION_ACTION_RE = /^\/api\/sessions\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/(resume|export)\/?$/i;
+
+/**
+ * Extracts session ID and action from URLs like /api/sessions/:id/resume
+ * @param {string} url
+ * @returns {{ id: string, action: string }|null}
+ */
+export function extractSessionAction(url) {
+  const i = url.indexOf('?');
+  const pathname = i === -1 ? url : url.slice(0, i);
+  const match = pathname.match(SESSION_ACTION_RE);
+  if (!match) return null;
+  return { id: match[1], action: match[2] };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// POST /api/sessions/:id/resume — Resume a previous session
+// ═══════════════════════════════════════════════════════════════
+export async function handleResumeSession(req, res) {
+  if (!config.SESSIONS.enabled) {
+    sessionsDisabledResponse(res);
+    return;
+  }
+
+  const parsed = extractSessionAction(req.url);
+  if (!parsed || parsed.action !== 'resume') {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'session_id مطلوب', code: 'BAD_REQUEST' }));
+    return;
+  }
+
+  try {
+    const result = await resumeSession(parsed.id);
+    if (!result) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'الجلسة غير موجودة', code: 'SESSION_NOT_FOUND' }));
+      return;
+    }
+
+    // Attach budget info if available
+    const budget = sessionBudget.get(parsed.id);
+    if (budget) {
+      result.budget = budget;
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(result));
+
+  } catch (err) {
+    console.error('[sessions:resume] error:', err.message);
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'حدث خطأ في استئناف الجلسة', code: 'RESUME_ERROR' }));
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GET /api/sessions/:id/export — Export session as Markdown
+// ═══════════════════════════════════════════════════════════════
+export async function handleExportSession(req, res) {
+  if (!config.SESSIONS.enabled) {
+    sessionsDisabledResponse(res);
+    return;
+  }
+
+  const parsed = extractSessionAction(req.url);
+  if (!parsed || parsed.action !== 'export') {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'session_id مطلوب', code: 'BAD_REQUEST' }));
+    return;
+  }
+
+  try {
+    const result = await exportSession(parsed.id);
+    if (!result) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'الجلسة غير موجودة', code: 'SESSION_NOT_FOUND' }));
+      return;
+    }
+
+    res.writeHead(200, {
+      'Content-Type':        'text/markdown; charset=utf-8',
+      'Content-Disposition': `attachment; filename="${result.fileName}"`,
+    });
+    res.end(result.markdown);
+
+  } catch (err) {
+    console.error('[sessions:export] error:', err.message);
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'حدث خطأ في تصدير الجلسة', code: 'EXPORT_ERROR' }));
   }
 }

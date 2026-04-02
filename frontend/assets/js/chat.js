@@ -8,9 +8,10 @@
 const ChatModule = (() => {
 
   /* ── History (sessionStorage) ─────────────────────────────── */
-  const HISTORY_KEY    = 'research_chat_history';
-  const SESSION_ID_KEY = 'research_session_id';
-  const MAX_HISTORY    = CLIENT_CONFIG.LIMITS.maxHistoryItems;
+  const HISTORY_KEY        = 'research_chat_history';
+  const SESSION_ID_KEY     = 'research_session_id';
+  const SESSION_PERSIST_KEY = 'research_session_persist';
+  const MAX_HISTORY        = CLIENT_CONFIG.LIMITS.maxHistoryItems;
 
   function _loadHistory() {
     try {
@@ -55,6 +56,7 @@ const ChatModule = (() => {
       if (!res.ok) return null;
       var data = await res.json();
       sessionStorage.setItem(SESSION_ID_KEY, data.session_id);
+      try { localStorage.setItem(SESSION_PERSIST_KEY, data.session_id); } catch (_) { /* ignore */ }
       return data.session_id;
     } catch (e) { return null; }
   }
@@ -526,6 +528,7 @@ const ChatModule = (() => {
 
     sessionStorage.removeItem(HISTORY_KEY);
     sessionStorage.removeItem(SESSION_ID_KEY);
+    try { localStorage.removeItem(SESSION_PERSIST_KEY); } catch (_) { /* ignore */ }
 
     AppModule.resetWelcomeState();
 
@@ -610,7 +613,62 @@ const ChatModule = (() => {
       _restoreFromServer(sid);
       return;
     }
+
+    // Check localStorage for persisted session (Phase 19 — cross-tab/browser-restart resume)
+    var persistedSid = null;
+    try { persistedSid = localStorage.getItem(SESSION_PERSIST_KEY); } catch (_) { /* ignore */ }
+    if (persistedSid && CLIENT_CONFIG.SESSIONS && CLIENT_CONFIG.SESSIONS.enabled) {
+      _showResumeBanner(persistedSid);
+      return;
+    }
+
     _restoreFromLocal();
+  }
+
+  /* ── Resume banner (Phase 19) ───────────────────────────── */
+  function _showResumeBanner(sid) {
+    var chatScroll = AppModule.DOM.chatScroll;
+    if (!chatScroll) { _restoreFromLocal(); return; }
+
+    var banner = document.createElement('div');
+    banner.className = 'resume-banner';
+    banner.setAttribute('role', 'alert');
+
+    var text = document.createElement('span');
+    text.className = 'resume-banner-text';
+    text.textContent = 'لديك محادثة سابقة — هل تريد المتابعة؟';
+    banner.appendChild(text);
+
+    var actions = document.createElement('div');
+    actions.className = 'resume-banner-actions';
+
+    var btnResume = document.createElement('button');
+    btnResume.className = 'resume-banner-btn resume-btn-yes';
+    btnResume.type = 'button';
+    btnResume.textContent = 'متابعة';
+
+    var btnNew = document.createElement('button');
+    btnNew.className = 'resume-banner-btn resume-btn-no';
+    btnNew.type = 'button';
+    btnNew.textContent = 'بدء جديدة';
+
+    actions.appendChild(btnResume);
+    actions.appendChild(btnNew);
+    banner.appendChild(actions);
+
+    chatScroll.insertBefore(banner, chatScroll.firstChild);
+
+    btnResume.addEventListener('click', function() {
+      banner.remove();
+      sessionStorage.setItem(SESSION_ID_KEY, sid);
+      _restoreFromServer(sid);
+    });
+
+    btnNew.addEventListener('click', function() {
+      banner.remove();
+      try { localStorage.removeItem(SESSION_PERSIST_KEY); } catch (_) { /* ignore */ }
+      _restoreFromLocal();
+    });
   }
 
   function _restoreFromLocal() {
@@ -648,6 +706,8 @@ const ChatModule = (() => {
         _restoreFromLocal();
         return;
       }
+      // Persist session_id for cross-session resume (Phase 19)
+      try { localStorage.setItem(SESSION_PERSIST_KEY, sid); } catch (_) { /* ignore */ }
       // Sync local history with server data
       var localHistory = [];
       messages.forEach(function(m) {

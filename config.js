@@ -217,10 +217,11 @@ const config = {
   //    — لا يحتاج أي خدمة خارجية (file-based)
   // ═══════════════════════════════════════════════════════════
   SESSIONS: {
-    enabled:      false,    // true = حفظ المحادثات على السيرفر | false = المتصفح فقط
-    maxMessages:  100,      // أقصى عدد رسائل في session واحدة
-    ttlDays:      30,       // مدة الاحتفاظ بالـ session (بالأيام)
-    maxSessions:  10000,    // أقصى عدد sessions محفوظة
+    enabled:              false,    // true = حفظ المحادثات على السيرفر | false = المتصفح فقط
+    maxMessages:          100,      // أقصى عدد رسائل في session واحدة
+    ttlDays:              30,       // مدة الاحتفاظ بالـ session (بالأيام)
+    maxSessions:          10000,    // أقصى عدد sessions محفوظة
+    maxTokensPerSession:  0,        // أقصى tokens per session (0 = بدون حد). مثلاً 50000 = ~25 سؤال متوسط
   },
 
   // ═══════════════════════════════════════════════════════════

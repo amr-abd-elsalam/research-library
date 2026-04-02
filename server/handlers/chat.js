@@ -1,6 +1,7 @@
 import { GeminiTimeoutError, GeminiSafetyError, GeminiEmptyError } from '../services/gemini.js';
 import { QdrantNotFoundError, QdrantTimeoutError, QdrantConnectionError } from '../services/qdrant.js';
 import { pipelineErrorRecovery } from '../services/pipelineErrorRecovery.js';
+import { sessionBudget }         from '../services/sessionBudget.js';
 import { cache }           from '../services/cache.js';
 import { logger }          from '../services/logger.js';
 import { getValidTopicIds } from './topics.js';
@@ -175,7 +176,26 @@ async function _handleChat(req, res) {
     return;
   }
 
-  // ── 4. Start SSE stream ─────────────────────────────────────
+  // ── 4. Budget check (Phase 19) ──────────────────────────────
+  if (session_id) {
+    const budgetCheck = sessionBudget.check(session_id);
+    if (budgetCheck.exceeded) {
+      res.writeHead(200, {
+        'Content-Type':  'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection':    'keep-alive',
+      });
+      res.setTimeout?.(0);
+      writeChunk(res, {
+        text: `⚠️ وصلت هذه المحادثة للحد الأقصى من الاستخدام (${budgetCheck.usage.totalTokens.toLocaleString()} token). يمكنك بدء محادثة جديدة للاستمرار.`,
+      });
+      writeChunk(res, { done: true, sources: [], score: 0, budgetExceeded: true });
+      res.end();
+      return;
+    }
+  }
+
+  // ── 5. Start SSE stream ─────────────────────────────────────
   const startTime = Date.now();
   res.writeHead(200, {
     'Content-Type':  'text/event-stream',

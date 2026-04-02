@@ -409,6 +409,107 @@ export async function cleanExpiredSessions(ttlDays) {
   return { deleted };
 }
 
+/**
+ * Returns a session with recent messages formatted for frontend resume.
+ * Read-only — does not modify the session file.
+ * @param {string} sessionId — UUID v4
+ * @param {number} [lastN=20] — last N messages to include
+ * @returns {Promise<object|null>} resume payload or null if not found
+ */
+export async function resumeSession(sessionId, lastN = 20) {
+  if (!sessionId || !UUID_RE.test(sessionId)) return null;
+
+  const session = await getSession(sessionId);
+  if (!session) return null;
+
+  const allMessages = session.messages || [];
+  const messages = allMessages.slice(-Math.max(1, lastN));
+
+  return {
+    session_id:    session.session_id,
+    created_at:    session.created_at,
+    last_active:   session.last_active,
+    topic_filter:  session.topic_filter,
+    messages:      messages.map(m => ({
+      role:      m.role,
+      text:      m.text,
+      timestamp: m.timestamp,
+      sources:   m.sources || undefined,
+      score:     m.score   || undefined,
+    })),
+    token_usage:   session.token_usage || null,
+    message_count: allMessages.length,
+  };
+}
+
+/**
+ * Exports a session as a Markdown string.
+ * @param {string} sessionId — UUID v4
+ * @returns {Promise<{ markdown: string, fileName: string }|null>} or null if not found
+ */
+export async function exportSession(sessionId) {
+  if (!sessionId || !UUID_RE.test(sessionId)) return null;
+
+  const session = await getSession(sessionId);
+  if (!session) return null;
+
+  const brandName = config.BRAND?.name || 'Research Library';
+  const messages  = session.messages || [];
+
+  const lines = [
+    `# ${brandName} — محادثة`,
+    '',
+    `**تاريخ الإنشاء:** ${session.created_at}`,
+    `**آخر نشاط:** ${session.last_active}`,
+    `**عدد الرسائل:** ${messages.length}`,
+  ];
+
+  if (session.topic_filter) {
+    lines.push(`**نطاق البحث:** ${session.topic_filter}`);
+  }
+
+  if (session.token_usage) {
+    const tu = session.token_usage;
+    const total = (tu.embedding_tokens || 0) + (tu.generation_input || 0) + (tu.generation_output || 0);
+    lines.push(`**إجمالي الـ tokens:** ${total.toLocaleString()}`);
+  }
+
+  lines.push('', '---', '');
+
+  for (const msg of messages) {
+    const roleLabel = msg.role === 'user' ? '**أنت:**' : '**المساعد:**';
+    const time = msg.timestamp
+      ? ` _(${new Date(msg.timestamp).toLocaleString('ar-EG')})_`
+      : '';
+    lines.push(`${roleLabel}${time}`);
+    lines.push('');
+    lines.push(msg.text || '');
+    lines.push('');
+
+    if (msg.role === 'assistant' && Array.isArray(msg.sources) && msg.sources.length > 0) {
+      lines.push('> **المصادر:**');
+      for (const src of msg.sources) {
+        const label = src.file + (src.section ? ` — ${src.section}` : '');
+        lines.push(`> - ${label}`);
+      }
+      lines.push('');
+    }
+
+    lines.push('---', '');
+  }
+
+  lines.push(`_تم التصدير من ${brandName}_`);
+
+  const dateStr  = (session.created_at || '').slice(0, 10) || 'unknown';
+  const safeName = brandName.replace(/[^a-zA-Z0-9\u0600-\u06FF\s]/g, '_').replace(/\s+/g, '_');
+  const fileName = `${safeName}_${dateStr}_${sessionId.slice(0, 8)}.md`;
+
+  return {
+    markdown: lines.join('\n'),
+    fileName,
+  };
+}
+
 // ── Convenience: hash IP from request object ───────────────────
 export function hashIPFromRequest(req) {
   return hashIP(getClientIP(req));

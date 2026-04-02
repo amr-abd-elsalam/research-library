@@ -1313,3 +1313,71 @@ img { max-width: 100%; display: block; }
   cursor:  not-allowed;
   transform: none;
 }
+
+/* ══════════════════════════════════════════════════════════
+   16. RESUME BANNER (Phase 19)
+══════════════════════════════════════════════════════════ */
+.resume-banner {
+  display:        flex;
+  align-items:    center;
+  justify-content: space-between;
+  gap:            12px;
+  padding:        12px 20px;
+  margin:         16px auto;
+  max-width:      var(--chat-max-w);
+  width:          calc(100% - 40px);
+  background:     var(--bg-card);
+  border:         1px solid var(--accent-border);
+  border-radius:  var(--radius-md);
+  animation:      fadeInUp .3s var(--ease);
+}
+
+.resume-banner-text {
+  font-size:   13px;
+  color:       var(--text-secondary);
+  flex:        1;
+}
+
+.resume-banner-actions {
+  display:     flex;
+  gap:         8px;
+  flex-shrink: 0;
+}
+
+.resume-banner-btn {
+  padding:       6px 16px;
+  border-radius: var(--radius-sm);
+  font-size:     12px;
+  font-weight:   500;
+  transition:    all var(--speed) var(--ease);
+  white-space:   nowrap;
+}
+
+.resume-btn-yes {
+  background:   var(--gradient-brand);
+  color:        #fff;
+}
+
+.resume-btn-yes:hover {
+  box-shadow: var(--glow-md);
+}
+
+.resume-btn-no {
+  background:   transparent;
+  color:        var(--text-muted);
+  border:       1px solid var(--border);
+}
+
+.resume-btn-no:hover {
+  color:        var(--text-primary);
+  border-color: var(--border-accent);
+  background:   var(--bg-hover);
+}
+
+@media (max-width: 640px) {
+  .resume-banner {
+    flex-direction: column;
+    text-align:     center;
+    width:          calc(100% - 24px);
+  }
+}
