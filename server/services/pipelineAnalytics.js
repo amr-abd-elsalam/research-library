@@ -272,6 +272,16 @@ class PipelineAnalytics {
       if (!Number.isNaN(parsed)) cacheHitRate = parsed / 100;
     }
 
+    // ── Rewrite method distribution (Phase 32) ───────────────
+    const rewriteMethodDistribution = {};
+    const rewriteBucket = counters.rewrite_method_total;
+    if (rewriteBucket) {
+      for (const key in rewriteBucket) {
+        const method = this.#extractLabel(key, 'method') || 'unknown';
+        rewriteMethodDistribution[method] = (rewriteMethodDistribution[method] || 0) + (rewriteBucket[key] || 0);
+      }
+    }
+
     // ── Top query type / intent ──────────────────────────────
     const topQueryType = Object.entries(queryTypeDistribution)
       .sort((a, b) => b[1] - a[1])[0]?.[0] || null;
@@ -281,6 +291,7 @@ class PipelineAnalytics {
     return {
       queryTypeDistribution,
       intentDistribution,
+      rewriteMethodDistribution,
       stageDurations,
       requestDuration,
       cacheHitRate,
@@ -411,6 +422,20 @@ class PipelineAnalytics {
         message: `${((metaCount / intentTotal) * 100).toFixed(0)}% من الأسئلة عن المنصة نفسها. فعّل stageGating لتوفير tokens و latency.`,
         metric: 'intent_classification_total.meta',
         suggestedAction: "PIPELINE.stageGating: { meta: ['stageEmbed', 'stageSearch'] }",
+      });
+    }
+
+    // 10. API rewrite ratio high — suggest adding local patterns
+    const localRewrites = digest.rewriteMethodDistribution?.local_context ?? 0;
+    const apiRewrites   = digest.rewriteMethodDistribution?.api ?? 0;
+    const totalRewrites = localRewrites + apiRewrites;
+    if (totalRewrites > 20 && (apiRewrites / totalRewrites) > 0.70) {
+      recs.push({
+        type: 'performance', severity: 'info',
+        title: 'معظم إعادات الصياغة تحتاج API',
+        message: `${((apiRewrites / totalRewrites) * 100).toFixed(0)}% من إعادات الصياغة تستخدم Gemini API بدلاً من الأنماط المحلية. أضف أنماط محلية جديدة لتقليل التكلفة والتأخير.`,
+        metric: 'rewrite_method_total',
+        suggestedAction: 'راجع rewrite_pattern_total في الـ metrics لمعرفة الأنماط الشائعة، وأضف patterns جديدة في attemptLocalRewrite()',
       });
     }
 

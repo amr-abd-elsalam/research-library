@@ -76,9 +76,9 @@ class ConversationContext {
       }
     }
 
-    // Also extract from response (first 300 chars — key terms often appear early)
+    // Also extract from response (first 600 chars — key terms may appear beyond first paragraph)
     if (turnData.response) {
-      const responseEntities = this.#extractEntities(turnData.response.slice(0, 300));
+      const responseEntities = this.#extractEntities(turnData.response.slice(0, 600));
       for (const entity of responseEntities) {
         if (!state.entities.includes(entity)) {
           state.entities.push(entity);
@@ -142,7 +142,7 @@ class ConversationContext {
       lastQueryType:  state.lastQueryType,
       contextSummary: state.contextSummary,
       lastActiveAt:   state.lastActiveAt,
-      _version:       1,
+      _version:       2,
     };
   }
 
@@ -156,8 +156,20 @@ class ConversationContext {
   restore(sessionId, data) {
     if (!this.#active || !sessionId || !data) return false;
 
-    // Version check — only version 1 is supported
-    if (data._version !== 1) {
+    // Version handling — v1 (migrate), v2 (accept), unknown (reject)
+    if (data._version === 1) {
+      // Auto-migrate v1→v2: re-extract entities using v2 extractor
+      const migrationText = (data.contextSummary || '') + ' ' + (data.entities || []).join(' ');
+      const v2Entities = this.#extractEntitiesV2(migrationText);
+      const existingEntities = Array.isArray(data.entities) ? data.entities : [];
+      const merged = [...existingEntities];
+      for (const e of v2Entities) {
+        if (!merged.includes(e)) merged.push(e);
+      }
+      data.entities = merged;
+      data._version = 2;
+      logger.debug('conversationContext', `migrated context v1→v2 for session ${sessionId.slice(0, 8)}`);
+    } else if (data._version !== 2) {
       logger.warn('conversationContext', `unknown context version ${data._version} for session ${sessionId.slice(0, 8)}`);
       return false;
     }
@@ -274,16 +286,16 @@ class ConversationContext {
   }
 
   /**
-   * Lightweight entity extraction — no API calls, no external dependencies.
-   * Extracts quoted strings and Arabic definite nouns.
+   * Enhanced entity extraction v2 — no API calls, no external dependencies.
+   * Extracts: quoted strings, multi-word Arabic phrases, English terms, Arabic proper nouns.
    * @param {string} text
    * @returns {string[]}
    */
-  #extractEntities(text) {
+  #extractEntitiesV2(text) {
     if (!text || typeof text !== 'string') return [];
     const entities = [];
 
-    // 1. Quoted strings (Arabic quotes «» + English quotes "")
+    // Strategy 1 — Quoted strings (Arabic quotes «» + English quotes "" + CJK 「」)
     const quotedMatches = text.match(/[""«»「」](.*?)[""«»「」]/g);
     if (quotedMatches) {
       for (const q of quotedMatches) {
@@ -294,18 +306,54 @@ class ConversationContext {
       }
     }
 
-    // 2. Arabic definite nouns (ال + 3+ Arabic chars)
-    const arabicNouns = text.match(/ال[\u0600-\u06FF]{3,}/g);
-    if (arabicNouns) {
-      const unique = [...new Set(arabicNouns)];
-      for (const noun of unique.slice(0, 8)) {
-        if (!entities.includes(noun)) {
-          entities.push(noun);
+    // Strategy 2 — Multi-word Arabic phrases (ال + up to 2 following Arabic words)
+    const arabicPhrases = text.match(/ال[\u0600-\u06FF]+(\s+[\u0600-\u06FF]{2,}){0,2}/g);
+    if (arabicPhrases) {
+      const unique = [...new Set(arabicPhrases.map(p => p.trim()))];
+      for (const phrase of unique.slice(0, 8)) {
+        if (phrase.length > 3 && !entities.includes(phrase)) {
+          entities.push(phrase);
         }
       }
     }
 
-    return entities.slice(0, 10);
+    // Strategy 3 — English capitalized terms (3+ chars, filtered stop words)
+    const englishStopWords = new Set(['The', 'This', 'That', 'What', 'When', 'Where', 'How', 'Why', 'With', 'From', 'About', 'Into', 'Your', 'Some', 'Most', 'Each', 'Very', 'Also', 'Just']);
+    const englishMatches = text.match(/[A-Z][a-zA-Z]{2,}/g);
+    if (englishMatches) {
+      const unique = [...new Set(englishMatches)];
+      let count = 0;
+      for (const term of unique) {
+        if (count >= 5) break;
+        if (!englishStopWords.has(term) && !entities.includes(term)) {
+          entities.push(term);
+          count++;
+        }
+      }
+    }
+
+    // Strategy 4 — Arabic proper nouns after context words (هو/هي/يسمى/اسمه/تسمى/اسمها)
+    const properNounPattern = /(?:هو|هي|يسمى|اسمه|تسمى|اسمها)\s+([\u0600-\u06FF]+(?:\s+[\u0600-\u06FF]+)?)/g;
+    let match;
+    let properCount = 0;
+    while ((match = properNounPattern.exec(text)) !== null && properCount < 3) {
+      const name = match[1].trim();
+      if (name.length > 2 && name.length < 40 && !entities.includes(name)) {
+        entities.push(name);
+        properCount++;
+      }
+    }
+
+    return entities.slice(0, 12);
+  }
+
+  /**
+   * Entity extraction — delegates to v2 implementation.
+   * @param {string} text
+   * @returns {string[]}
+   */
+  #extractEntities(text) {
+    return this.#extractEntitiesV2(text);
   }
 
   /**
@@ -347,6 +395,7 @@ class ConversationContext {
       activeSessions: this.#sessions.size,
       totalTurns,
       maxEntities:    this.#maxEntities,
+      entityExtractionVersion: 2,
       eviction: {
         enabled:       this.#evictionEnabled,
         idleMs:        this.#evictionIdleMs,

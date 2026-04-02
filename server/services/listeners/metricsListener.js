@@ -43,6 +43,11 @@ function register() {
     if (data._rewriteMethod) {
       metrics.increment('rewrite_method_total', { method: data._rewriteMethod });
     }
+
+    // Rewrite pattern distribution (Phase 32)
+    if (data._rewriteMethod === 'local_context' && data._rewriteResult?.pattern) {
+      metrics.increment('rewrite_pattern_total', { pattern: data._rewriteResult.pattern });
+    }
   });
 
   // ── Stage complete (per-stage timing) ──────────────────────

@@ -122,9 +122,9 @@ async function stageRouteQuery(ctx, _trace) {
   return ctx;
 }
 
-// ── Local rewrite helper (Phase 28) — pure function, no API call ──
+// ── Local rewrite helper (Phase 28, updated Phase 32) — pure function, no API call ──
 // Handles short follow-up patterns by injecting entities from ConversationContext.
-// Returns rewritten string or null (null → fallback to API rewrite).
+// Returns { rewritten, pattern } or null (null → fallback to API rewrite).
 function attemptLocalRewrite(message, convCtx) {
   if (!convCtx || !convCtx.entities || convCtx.entities.length === 0) return null;
 
@@ -136,60 +136,60 @@ function attemptLocalRewrite(message, convCtx) {
 
   // Pattern 1: "أكثر", "المزيد", "تفصيل", "وضح", "شرح", "بالتفصيل", "فصّل"
   if (/^(أكثر|اكثر|المزيد|تفصيل|وضح|وضّح|شرح|اشرح|فصّل|فصل|بالتفصيل|بتوسع)$/i.test(lower)) {
-    return `${normalized} فيما يخص ${entityHint}`;
+    return { rewritten: `${normalized} فيما يخص ${entityHint}`, pattern: 'more_detail' };
   }
 
   // Pattern 2: "وماذا عنه؟", "وماذا عنها؟", "ماذا عن", "وإيه عنه"
   if (/^(وماذا عنه|وماذا عنها|ماذا عن|وإيه عنه|وايه عنه|وماذا عنهم)\??[؟]?$/i.test(lower)) {
-    return `ماذا عن ${entityHint}؟`;
+    return { rewritten: `ماذا عن ${entityHint}؟`, pattern: 'what_about' };
   }
 
   // Pattern 3: "نعم", "أيوا", "اه", "طيب", "تمام", "أكمل", "اكمل", "استمر"
   if (/^(نعم|أيوا|ايوا|اه|آه|طيب|تمام|أكمل|اكمل|استمر|كمّل|كمل)$/i.test(lower)) {
-    return `أكمل فيما يخص ${entityHint}`;
+    return { rewritten: `أكمل فيما يخص ${entityHint}`, pattern: 'affirm_continue' };
   }
 
   // Pattern 4: "لماذا؟", "ليش", "ليه", "لمَ"
   if (/^(لماذا|ليش|ليه|لمَ|لم)[؟?]?$/i.test(lower)) {
-    return `لماذا ${entityHint}؟`;
+    return { rewritten: `لماذا ${entityHint}؟`, pattern: 'why' };
   }
 
   // Pattern 5: "كيف؟", "كيف ذلك", "ازاي", "كيفية"
   if (/^(كيف|كيف ذلك|ازاي|إزاي|كيفية)[؟?]?$/i.test(lower)) {
-    return `كيف ${entityHint}؟`;
+    return { rewritten: `كيف ${entityHint}؟`, pattern: 'how' };
   }
 
   // Pattern 6: "متى؟", "متى ذلك", "إمتى", "امتى"
   if (/^(متى|متى ذلك|إمتى|امتى)[؟?]?$/i.test(lower)) {
-    return `متى ${entityHint}؟`;
+    return { rewritten: `متى ${entityHint}؟`, pattern: 'when' };
   }
 
   // Pattern 7: "أين؟", "اين", "وين", "فين"
   if (/^(أين|اين|وين|فين)[؟?]?$/i.test(lower)) {
-    return `أين ${entityHint}؟`;
+    return { rewritten: `أين ${entityHint}؟`, pattern: 'where' };
   }
 
   // Pattern 8: "مَن؟", "من", "مين", "منو"
   if (/^(مَن|من|مين|منو)[؟?]?$/i.test(lower)) {
-    return `مَن ${entityHint}؟`;
+    return { rewritten: `مَن ${entityHint}؟`, pattern: 'who' };
   }
 
   // Pattern 9: "الفرق؟", "ما الفرق", "ايش الفرق"
   if (/^(الفرق|ما الفرق|ايش الفرق|إيش الفرق)[؟?]?$/i.test(lower)) {
     if (convCtx.entities.length >= 2) {
-      return `ما الفرق بين ${convCtx.entities[convCtx.entities.length - 1]} و${convCtx.entities[convCtx.entities.length - 2]}؟`;
+      return { rewritten: `ما الفرق بين ${convCtx.entities[convCtx.entities.length - 1]} و${convCtx.entities[convCtx.entities.length - 2]}؟`, pattern: 'difference' };
     }
-    return `ما الفرق فيما يخص ${entityHint}؟`;
+    return { rewritten: `ما الفرق فيما يخص ${entityHint}؟`, pattern: 'difference' };
   }
 
   // Pattern 10: "والعكس؟", "العكس", "بالعكس"
   if (/^(والعكس|العكس|بالعكس)[؟?]?$/i.test(lower)) {
-    return `ماذا عن عكس ذلك فيما يخص ${entityHint}؟`;
+    return { rewritten: `ماذا عن عكس ذلك فيما يخص ${entityHint}؟`, pattern: 'opposite' };
   }
 
   // Pattern 11: "مثال؟", "أعطيني مثال", "اعطني مثال"
   if (/^(مثال|أعطيني مثال|اعطني مثال|أعطني مثال|اعطيني مثال)[؟?]?$/i.test(lower)) {
-    return `أعطني مثال عن ${entityHint}`;
+    return { rewritten: `أعطني مثال عن ${entityHint}`, pattern: 'example' };
   }
 
   // No match — return null so API rewrite is used as fallback
@@ -216,9 +216,9 @@ async function stageRewriteQuery(ctx, _trace) {
     const convCtx = conversationContext.getContext(ctx.sessionId);
     const localRewrite = attemptLocalRewrite(ctx.message, convCtx);
     if (localRewrite) {
-      ctx.effectiveMessage = localRewrite;
+      ctx.effectiveMessage = localRewrite.rewritten;
       ctx._rewriteSkipped  = false;
-      ctx._rewriteResult   = { wasRewritten: true, rewritten: localRewrite, original: ctx.message, method: 'local_context' };
+      ctx._rewriteResult   = { wasRewritten: true, rewritten: localRewrite.rewritten, original: ctx.message, method: 'local_context', pattern: localRewrite.pattern };
       return ctx;
     }
   }
@@ -620,6 +620,9 @@ if (config.PIPELINE?.enableHooks !== false) {
 
       // ── Rewrite method (Phase 28) ─────────────────────────
       _rewriteMethod: _ctx._rewriteResult?.method ?? null,
+
+      // ── Rewrite result detail (Phase 32) ───────────────────
+      _rewriteResult: _ctx._rewriteResult ?? null,
     });
   });
 }
