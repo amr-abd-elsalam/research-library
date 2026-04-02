@@ -1,15 +1,11 @@
 import { GeminiTimeoutError, GeminiSafetyError, GeminiEmptyError } from '../services/gemini.js';
 import { QdrantNotFoundError, QdrantTimeoutError, QdrantConnectionError } from '../services/qdrant.js';
 import { pipelineErrorRecovery } from '../services/pipelineErrorRecovery.js';
-import { sessionBudget }         from '../services/sessionBudget.js';
-import { cache }           from '../services/cache.js';
 import { logger }          from '../services/logger.js';
 import { getValidTopicIds } from './topics.js';
 import { logEvent }        from '../services/analytics.js';
-import { matchCommand, executeCommand } from '../services/commands.js';
-import { commandRegistry }              from '../services/commandRegistry.js';
-import { queryIntentClassifier }        from '../services/queryIntentClassifier.js';
-import config              from '../../config.js';
+import { executeCommand }  from '../services/commands.js';
+import { executionRouter } from '../services/executionRouter.js';
 import { EventTrace }      from '../services/eventTrace.js';
 import { eventBus }        from '../services/eventBus.js';
 import { PipelineContext, chatPipeline, writeChunk } from '../services/pipeline.js';
@@ -18,11 +14,6 @@ import { metrics }         from '../services/metrics.js';
 // ── Active requests counter (for gauge) ────────────────────────
 let activeRequests = 0;
 
-// ── Helpers (kept in chat.js — not part of pipeline) ───────────
-function buildCacheKey(topic_filter, message) {
-  const normalized = message.trim().toLowerCase();
-  return `chat:${topic_filter ?? 'all'}:${normalized}`;
-}
 
 // ── streamCachedResponse ───────────────────────────────────────
 async function streamCachedResponse(res, cached, req, message, topic_filter, session_id) {
@@ -131,55 +122,27 @@ export async function handleChat(req, res) {
 async function _handleChat(req, res) {
   const { message, topic_filter: rawFilter, history, session_id } = req._validatedBody;
 
-  // ── 1. Topic validation (stays here) ────────────────────────
+  // ── 1. Topic validation (stays — config-dependent, cheap) ──
   const topic_filter = validateTopicFilter(rawFilter);
   if (topic_filter === 'INVALID') {
     res.writeHead(400, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      error: 'topic_filter غير صالح',
-      code:  'INVALID_TOPIC',
-    }));
+    res.end(JSON.stringify({ error: 'topic_filter غير صالح', code: 'INVALID_TOPIC' }));
     return;
   }
 
-  // ── 2. Command check (stays here — commands bypass pipeline) ──
-  const parsed = matchCommand(message) ? commandRegistry.parseMessage(message) : null;
-  const cmd = parsed?.command || null;
-  if (cmd) {
-    const startTime = Date.now();
-    res.writeHead(200, {
-      'Content-Type':  'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection':    'keep-alive',
-    });
-    req.setTimeout?.(120_000);
-    res.setTimeout?.(0);
+  // ── 2. Route resolution (replaces 4 sequential checks) ────
+  const route = executionRouter.resolve(message, {
+    topicFilter: topic_filter,
+    history,
+    sessionId: session_id,
+  });
 
-    try {
-      await executeCommand(cmd, {
-        req, res, message, topic_filter, history,
-        writeChunk: (payload) => writeChunk(res, payload),
-        startTime,
-      });
-    } catch (err) {
-      console.error('[chat] command error:', err.message);
-      if (!res.writableEnded) {
-        writeChunk(res, { error: true, message: 'حدث خطأ في تنفيذ الأمر', code: 'COMMAND_ERROR' });
-        res.end();
-      }
-    }
-    return;
-  }
+  // ── 3. Execute based on route action ──────────────────────
+  switch (route.action) {
 
-  // ── 2.5. Intent classification — natural language commands (Phase 21) ──
-  let queryIntent = null;
-  if (!cmd) {
-    const intentResult = queryIntentClassifier.classify(message, history);
-    queryIntent = intentResult;
-
-    if (intentResult.intent === 'command' && intentResult.confidence < 1.0 && intentResult.commandMatch?.command) {
-      // Natural language resolved to a command — execute it
-      const nlCmd = intentResult.commandMatch.command;
+    case 'command':
+    case 'nl_command': {
+      const cmd = route.data.command;
       const startTime = Date.now();
       res.writeHead(200, {
         'Content-Type':  'text/event-stream',
@@ -190,13 +153,13 @@ async function _handleChat(req, res) {
       res.setTimeout?.(0);
 
       try {
-        await executeCommand(nlCmd, {
+        await executeCommand(cmd, {
           req, res, message, topic_filter, history,
           writeChunk: (payload) => writeChunk(res, payload),
           startTime,
         });
       } catch (err) {
-        logger.error('chat', 'nl-command error', { error: err.message });
+        logger.error('chat', `${route.action} error`, { error: err.message });
         if (!res.writableEnded) {
           writeChunk(res, { error: true, message: 'حدث خطأ في تنفيذ الأمر', code: 'COMMAND_ERROR' });
           res.end();
@@ -204,20 +167,13 @@ async function _handleChat(req, res) {
       }
       return;
     }
-  }
 
-  // ── 3. Cache check (stays here — cache bypasses pipeline) ──
-  const cacheKey = buildCacheKey(topic_filter, message);
-  const cached   = cache.get(cacheKey);
-  if (cached) {
-    await streamCachedResponse(res, cached, req, message, topic_filter, session_id);
-    return;
-  }
+    case 'cache_hit':
+      await streamCachedResponse(res, route.data.cached, req, message, topic_filter, session_id);
+      return;
 
-  // ── 4. Budget check (Phase 19) ──────────────────────────────
-  if (session_id) {
-    const budgetCheck = sessionBudget.check(session_id);
-    if (budgetCheck.exceeded) {
+    case 'budget_exceeded': {
+      const { budgetCheck } = route.data;
       res.writeHead(200, {
         'Content-Type':  'text/event-stream',
         'Cache-Control': 'no-cache',
@@ -231,47 +187,41 @@ async function _handleChat(req, res) {
       res.end();
       return;
     }
-  }
 
-  // ── 5. Start SSE stream ─────────────────────────────────────
-  const startTime = Date.now();
-  res.writeHead(200, {
-    'Content-Type':  'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection':    'keep-alive',
-  });
-  req.setTimeout?.(120_000);
-  res.setTimeout?.(0);
+    case 'pipeline':
+    default: {
+      const { cacheKey, queryIntent } = route.data;
+      const startTime = Date.now();
+      res.writeHead(200, {
+        'Content-Type':  'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection':    'keep-alive',
+      });
+      req.setTimeout?.(120_000);
+      res.setTimeout?.(0);
 
-  // ── 5. Build pipeline context + trace ───────────────────────
-  const ctx   = new PipelineContext({
-    message, topicFilter: topic_filter, history, sessionId: session_id, req, res,
-  });
-  const trace = new EventTrace();
+      const ctx   = new PipelineContext({
+        message, topicFilter: topic_filter, history, sessionId: session_id, req, res,
+      });
+      const trace = new EventTrace();
 
-  // Pass intent classification to pipeline (Phase 21 — for stage gating + observability)
-  if (queryIntent) ctx._queryIntent = queryIntent;
+      // Pass intent classification to pipeline (Phase 21 — for stage gating + observability)
+      if (queryIntent) ctx._queryIntent = queryIntent;
 
-  try {
-    // ── 6. Run pipeline ─────────────────────────────────────
-    await chatPipeline.run(ctx, trace);
+      try {
+        await chatPipeline.run(ctx, trace);
 
-    // ── 7. Handle result ────────────────────────────────────
-    if (ctx.aborted && ctx.abortReason === 'low_confidence') {
-      writeChunk(res, { text: 'لا تتضمن المكتبة معلومات كافية حول هذا السؤال.' });
-      writeChunk(res, { done: true, sources: [], score: ctx.avgScore });
-    } else {
-      writeChunk(res, { done: true, sources: ctx.sources, score: ctx.avgScore });
+        if (ctx.aborted && ctx.abortReason === 'low_confidence') {
+          writeChunk(res, { text: 'لا تتضمن المكتبة معلومات كافية حول هذا السؤال.' });
+          writeChunk(res, { done: true, sources: [], score: ctx.avgScore });
+        } else {
+          writeChunk(res, { done: true, sources: ctx.sources, score: ctx.avgScore });
+        }
+        res.end();
+      } catch (err) {
+        handlePipelineError(err, res, ctx, trace, startTime);
+      }
+      return;
     }
-    res.end();
-
-    // ── 8. Post-pipeline handled by EventBus listeners ──────
-    // The enriched afterPipeline hook in pipeline.js emits
-    // 'pipeline:complete' with all data needed by listeners
-    // (analytics, cache, session). No explicit call needed.
-
-  } catch (err) {
-    // ── 9. Error handling (Gemini-specific + generic) ───────
-    handlePipelineError(err, res, ctx, trace, startTime);
   }
 }

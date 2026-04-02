@@ -20,6 +20,7 @@ import { sessionBudget }    from '../services/sessionBudget.js';
 import { queryIntentClassifier } from '../services/queryIntentClassifier.js';
 import { pipelineAnalytics }     from '../services/pipelineAnalytics.js';
 import { metricsPersister }      from '../services/metricsPersister.js';
+import { executionRouter }       from '../services/executionRouter.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -94,6 +95,9 @@ export async function handleInspect(_req, res) {
 
       // ── Metrics persistence (Phase 23) ─────────────────────
       metricsPersister: metricsPersister.counts(),
+
+      // ── Execution router (Phase 24) ────────────────────────
+      executionRouter: executionRouter.counts(),
     };
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
