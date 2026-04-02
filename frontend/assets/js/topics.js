@@ -55,6 +55,15 @@ const TopicsModule = (() => {
     return btn;
   }
 
+  /* ── Permission-based topic filter (Phase 27) ────────────── */
+  function _filterTopicsByPermission(topics) {
+    var allowed = window.__permissions?.permissions?.allowedTopics;
+    if (!allowed) return topics;  // null = all allowed
+    return topics.filter(function(t) {
+      return t.id === 'all' || allowed.indexOf(t.id) !== -1;
+    });
+  }
+
   /* ── رسم كل الـ chips ─────────────────────────────────────── */
   function _renderChips() {
     const { topicsBar } = AppModule.DOM;
@@ -62,7 +71,8 @@ const TopicsModule = (() => {
 
     topicsBar.innerHTML = '';
 
-    _topics.forEach(topic => {
+    var visibleTopics = _filterTopicsByPermission(_topics);
+    visibleTopics.forEach(topic => {
       topicsBar.appendChild(_buildChip(topic));
     });
   }
@@ -187,12 +197,18 @@ const TopicsModule = (() => {
   function getTopics()      { return [..._topics]; }
   function getActiveTopic() { return _activeTopic; }
 
+  // Re-render topics when permissions are loaded (Phase 27)
+  function onPermissionsReady() {
+    if (_topics.length > 0) _renderChips();
+  }
+
   /* ── Public API ───────────────────────────────────────────── */
   return Object.freeze({
     init,
     selectTopic,
     getTopics,
     getActiveTopic,
+    onPermissionsReady,
   });
 
 })();

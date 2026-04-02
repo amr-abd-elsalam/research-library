@@ -13,6 +13,7 @@ import { handleInspect }    from './handlers/inspectHandler.js';
 import { handleAuthVerify }  from './handlers/authHandler.js';
 import { handleCreateSession, handleGetSession, handleDeleteSession, handleListSessions, extractSessionId, extractSessionAction, handleResumeSession, handleExportSession } from './handlers/sessions.js';
 import { handleCommands } from './handlers/commandsHandler.js';
+import { handleWhoami }   from './handlers/whoamiHandler.js';
 import { bootstrap } from './bootstrap.js';
 
 // ── URL matcher (strips query string + trailing slash) ─────────
@@ -80,6 +81,14 @@ export async function router(req, res) {
   // GET /api/commands (Phase 20 — public, no auth)
   if (method === 'GET' && matchRoute(url, '/api/commands')) {
     await handleCommands(req, res);
+    return;
+  }
+
+  // GET /api/whoami (Phase 27 — returns tier + permissions for current auth state)
+  if (method === 'GET' && matchRoute(url, '/api/whoami')) {
+    requireAccess(req, res);
+    if (res.writableEnded) return;
+    await handleWhoami(req, res);
     return;
   }
 

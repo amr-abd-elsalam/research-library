@@ -40,11 +40,7 @@ function buildPayload() {
       conciseMaxSentences: config.RESPONSE?.conciseMaxSentences ?? 3,
     },
 
-    TIERS: {
-      enabled:     config.TIERS?.enabled === true,
-      defaultTier: config.TIERS?.defaultTier || 'member',
-      guestTier:   config.TIERS?.guestTier || 'guest',
-    },
+    // TIERS: moved to GET /api/whoami (Phase 27 — per-request, not static config)
   });
   return cachedPayload;
 }

@@ -5,6 +5,18 @@
 
 'use strict';
 
+// ── Permission state (Phase 27 — populated by loadPermissions() in bootstrap) ──
+window.__permissions = {
+  tiersEnabled: false,
+  tier: null,
+  permissions: {
+    allowedCommands: null,     // null = all allowed
+    allowedModes: null,
+    allowedTopics: null,
+    maxTokensPerSession: 0,
+  },
+};
+
 const AppModule = (() => {
 
   /* ── DOM References ───────────────────────────────────────── */

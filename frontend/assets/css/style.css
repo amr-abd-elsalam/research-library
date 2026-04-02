@@ -1184,6 +1184,39 @@ img { max-width: 100%; display: block; }
 /* Hide scope indicator */
 .hidden-scope { display: none !important; }
 
+/* ── Response mode selector (Phase 27) ─────────────────────── */
+#response-mode-select {
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  direction: rtl;
+  outline: none;
+  flex-shrink: 0;
+  transition: border-color var(--speed) var(--ease), color var(--speed) var(--ease);
+}
+
+#response-mode-select:focus {
+  border-color: var(--accent-border);
+  color: var(--text-primary);
+}
+
+#response-mode-select:hover {
+  border-color: var(--accent-border);
+  color: var(--text-primary);
+}
+
+#response-mode-select option {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
 /* ══════════════════════════════════════════════════════════
    15. AUTH GATE
 ══════════════════════════════════════════════════════════ */

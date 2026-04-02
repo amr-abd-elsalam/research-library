@@ -377,6 +377,10 @@ const ChatModule = (() => {
       };
       var currentSid = _getSessionId();
       if (currentSid) chatBody.session_id = currentSid;
+      var modeSelect = document.getElementById('response-mode-select');
+      if (modeSelect && modeSelect.style.display !== 'none' && modeSelect.value) {
+        chatBody.response_mode = modeSelect.value;
+      }
 
       const res = await fetch(CLIENT_CONFIG.API.chat, {
         method:  'POST',
@@ -772,6 +776,16 @@ const ChatModule = (() => {
 
   let _commandsCache = null;
 
+  // ── Permission-based command filter (Phase 27) ──────────────
+  function _filterCommandsByPermission(commands) {
+    const allowed = window.__permissions?.permissions?.allowedCommands;
+    if (!allowed) return commands;  // null = all allowed
+    return commands.filter(function(cmd) {
+      var name = cmd.name || cmd.cmd;
+      return allowed.indexOf(name) !== -1;
+    });
+  }
+
   async function _fetchCommands() {
     if (_commandsCache) return _commandsCache;
     try {
@@ -849,11 +863,12 @@ const ChatModule = (() => {
             data.plugins  || []
           );
           const q = val.toLowerCase();
-          const filtered = allCmds.filter(function(c) {
+          const permFiltered = _filterCommandsByPermission(allCmds);
+          const filtered = permFiltered.filter(function(c) {
             return c.name.toLowerCase().indexOf(q) !== -1 ||
               (c.aliases || []).some(function(a) { return a.toLowerCase().indexOf(q) !== -1; });
           });
-          _showAutocomplete(filtered.length > 0 ? filtered : allCmds);
+          _showAutocomplete(filtered.length > 0 ? filtered : permFiltered);
         }
       } else {
         _hideAutocomplete();
@@ -865,11 +880,40 @@ const ChatModule = (() => {
     });
   }
 
+  // ── Response mode selector (Phase 27) ───────────────────────
+  function _initResponseModeSelector() {
+    var select = document.getElementById('response-mode-select');
+    if (!select) return;
+
+    var perms = window.__permissions?.permissions;
+    var serverModes = CLIENT_CONFIG.RESPONSE?.allowedModes || ['stream'];
+    var allowedModes = perms?.allowedModes;
+    var modes = (!allowedModes) ? serverModes : serverModes.filter(function(m) { return allowedModes.indexOf(m) !== -1; });
+
+    if (modes.length <= 1) {
+      select.style.display = 'none';
+      return;
+    }
+
+    var labels = { stream: 'مباشر', structured: 'مُنظّم', concise: 'مختصر' };
+    var defaultMode = CLIENT_CONFIG.RESPONSE?.defaultMode || 'stream';
+    select.innerHTML = modes.map(function(m) {
+      return '<option value="' + m + '"' + (m === defaultMode ? ' selected' : '') + '>' + (labels[m] || m) + '</option>';
+    }).join('');
+    select.style.display = '';
+  }
+
+  // Called from bootstrap after permissions are loaded
+  function onPermissionsReady() {
+    _initResponseModeSelector();
+  }
+
   return Object.freeze({
     init,
     send,
     clear,
     _initAutocomplete,
+    onPermissionsReady,
   });
 
 })();
