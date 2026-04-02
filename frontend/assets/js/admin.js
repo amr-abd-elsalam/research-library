@@ -59,6 +59,11 @@
     commandsGraph:  $('admin-commands-graph'),
     commandsMetrics:$('admin-commands-metrics'),
     commandsEmpty:  $('admin-commands-empty'),
+    // Insights (Phase 22)
+    insightsSummary:         $('admin-insights-summary'),
+    insightsDistributions:   $('admin-insights-distributions'),
+    insightsRecommendations: $('admin-insights-recommendations'),
+    insightsEmpty:           $('admin-insights-empty'),
   };
 
   // ══════════════════════════════════════════════════════════
@@ -1271,6 +1276,224 @@
   }
 
   // ══════════════════════════════════════════════════════════
+  //  PIPELINE INSIGHTS (Phase 22)
+  // ══════════════════════════════════════════════════════════
+  function showInsightsSkeleton() {
+    if (DOM.insightsSummary) {
+      while (DOM.insightsSummary.firstChild) DOM.insightsSummary.removeChild(DOM.insightsSummary.firstChild);
+      for (var i = 0; i < 6; i++) {
+        var s = document.createElement('div');
+        s.className = 'admin-skeleton';
+        s.style.height = '90px';
+        s.style.borderRadius = '10px';
+        DOM.insightsSummary.appendChild(s);
+      }
+    }
+    if (DOM.insightsDistributions) {
+      while (DOM.insightsDistributions.firstChild) DOM.insightsDistributions.removeChild(DOM.insightsDistributions.firstChild);
+    }
+    if (DOM.insightsRecommendations) {
+      while (DOM.insightsRecommendations.firstChild) DOM.insightsRecommendations.removeChild(DOM.insightsRecommendations.firstChild);
+    }
+    if (DOM.insightsEmpty) DOM.insightsEmpty.style.display = 'none';
+  }
+
+  function renderInsights(data) {
+    var digest = data ? data.digest : null;
+    var recs   = (data && data.recommendations) ? data.recommendations : [];
+
+    // ── Disabled or no data ────────────────────────────────────
+    if (!digest) {
+      if (DOM.insightsSummary) { while (DOM.insightsSummary.firstChild) DOM.insightsSummary.removeChild(DOM.insightsSummary.firstChild); }
+      if (DOM.insightsDistributions) { while (DOM.insightsDistributions.firstChild) DOM.insightsDistributions.removeChild(DOM.insightsDistributions.firstChild); }
+      if (DOM.insightsRecommendations) { while (DOM.insightsRecommendations.firstChild) DOM.insightsRecommendations.removeChild(DOM.insightsRecommendations.firstChild); }
+      if (DOM.insightsEmpty) DOM.insightsEmpty.style.display = '';
+      return;
+    }
+    if (DOM.insightsEmpty) DOM.insightsEmpty.style.display = 'none';
+
+    // ── Summary Cards ──────────────────────────────────────────
+    if (DOM.insightsSummary) {
+      while (DOM.insightsSummary.firstChild) DOM.insightsSummary.removeChild(DOM.insightsSummary.firstChild);
+
+      var summaryCards = [
+        { label: '\u0625\u062c\u0645\u0627\u0644\u064a \u0627\u0644\u0637\u0644\u0628\u0627\u062a', value: String(digest.totalRequests || 0), icon: '\uD83D\uDCC8' },
+        { label: '\u0645\u0639\u062f\u0644 \u0627\u0644\u0643\u0627\u0634', value: ((digest.cacheHitRate || 0) * 100).toFixed(1) + '%', icon: '\u26A1' },
+        { label: '\u0645\u0639\u062f\u0644 \u0627\u0644\u0623\u062e\u0637\u0627\u0621', value: ((digest.errorRate || 0) * 100).toFixed(1) + '%', icon: digest.errorRate > 0.05 ? '\uD83D\uDD34' : '\uD83D\uDFE2' },
+        { label: 'P95 \u0627\u0633\u062a\u062c\u0627\u0628\u0629', value: Math.round((digest.requestDuration && digest.requestDuration.p95) || 0) + 'ms', icon: '\u23F1\uFE0F' },
+        { label: '\u0623\u0643\u062b\u0631 \u0646\u0648\u0639 \u0633\u0624\u0627\u0644', value: digest.topQueryType || '\u2014', icon: '\uD83D\uDD0D' },
+        { label: '\u0623\u0643\u062b\u0631 intent', value: digest.topIntent || '\u2014', icon: '\uD83C\uDFAF' },
+      ];
+
+      for (var ci = 0; ci < summaryCards.length; ci++) {
+        var card = document.createElement('div');
+        card.className = 'admin-insight-card';
+
+        var iconSpan = document.createElement('span');
+        iconSpan.className = 'admin-insight-icon';
+        iconSpan.textContent = summaryCards[ci].icon;
+        card.appendChild(iconSpan);
+
+        var valSpan = document.createElement('span');
+        valSpan.className = 'admin-insight-value';
+        valSpan.textContent = summaryCards[ci].value;
+        card.appendChild(valSpan);
+
+        var lblSpan = document.createElement('span');
+        lblSpan.className = 'admin-insight-label';
+        lblSpan.textContent = summaryCards[ci].label;
+        card.appendChild(lblSpan);
+
+        DOM.insightsSummary.appendChild(card);
+      }
+    }
+
+    // ── Distribution Bars ──────────────────────────────────────
+    if (DOM.insightsDistributions) {
+      while (DOM.insightsDistributions.firstChild) DOM.insightsDistributions.removeChild(DOM.insightsDistributions.firstChild);
+
+      // Query Type Distribution
+      var qtd = digest.queryTypeDistribution || {};
+      var qtKeys = Object.keys(qtd);
+      var qtTotal = 0;
+      for (var qi = 0; qi < qtKeys.length; qi++) qtTotal += qtd[qtKeys[qi]];
+
+      if (qtTotal > 0) {
+        var qtTitle = document.createElement('h3');
+        qtTitle.textContent = '\u062a\u0648\u0632\u064a\u0639 \u0623\u0646\u0648\u0627\u0639 \u0627\u0644\u0623\u0633\u0626\u0644\u0629';
+        DOM.insightsDistributions.appendChild(qtTitle);
+
+        var qtBars = document.createElement('div');
+        qtBars.className = 'admin-dist-bars';
+        // Sort by count descending
+        var qtSorted = qtKeys.slice().sort(function (a, b) { return qtd[b] - qtd[a]; });
+        for (var qj = 0; qj < qtSorted.length; qj++) {
+          var qType = qtSorted[qj];
+          var qCount = qtd[qType];
+          var qPct = ((qCount / qtTotal) * 100).toFixed(1);
+
+          var qRow = document.createElement('div');
+          qRow.className = 'admin-dist-row';
+
+          var qLabel = document.createElement('span');
+          qLabel.className = 'admin-dist-label';
+          qLabel.textContent = qType;
+          qRow.appendChild(qLabel);
+
+          var qBarWrap = document.createElement('div');
+          qBarWrap.className = 'admin-dist-bar';
+          var qBarFill = document.createElement('div');
+          qBarFill.className = 'admin-dist-fill';
+          qBarFill.style.width = qPct + '%';
+          qBarWrap.appendChild(qBarFill);
+          qRow.appendChild(qBarWrap);
+
+          var qPctEl = document.createElement('span');
+          qPctEl.className = 'admin-dist-pct';
+          qPctEl.textContent = qPct + '%';
+          qRow.appendChild(qPctEl);
+
+          qtBars.appendChild(qRow);
+        }
+        DOM.insightsDistributions.appendChild(qtBars);
+      }
+
+      // Intent Distribution
+      var id = digest.intentDistribution || {};
+      var idKeys = Object.keys(id);
+      var idTotal = 0;
+      for (var ii = 0; ii < idKeys.length; ii++) idTotal += id[idKeys[ii]];
+
+      if (idTotal > 0) {
+        var idTitle = document.createElement('h3');
+        idTitle.textContent = '\u062a\u0648\u0632\u064a\u0639 \u0627\u0644\u0640 Intent';
+        DOM.insightsDistributions.appendChild(idTitle);
+
+        var idBars = document.createElement('div');
+        idBars.className = 'admin-dist-bars';
+        var idSorted = idKeys.slice().sort(function (a, b) { return id[b] - id[a]; });
+        for (var ij = 0; ij < idSorted.length; ij++) {
+          var iIntent = idSorted[ij];
+          var iCount = id[iIntent];
+          var iPct = ((iCount / idTotal) * 100).toFixed(1);
+
+          var iRow = document.createElement('div');
+          iRow.className = 'admin-dist-row';
+
+          var iLabel = document.createElement('span');
+          iLabel.className = 'admin-dist-label';
+          iLabel.textContent = iIntent;
+          iRow.appendChild(iLabel);
+
+          var iBarWrap = document.createElement('div');
+          iBarWrap.className = 'admin-dist-bar';
+          var iBarFill = document.createElement('div');
+          iBarFill.className = 'admin-dist-fill admin-dist-fill-intent';
+          iBarFill.style.width = iPct + '%';
+          iBarWrap.appendChild(iBarFill);
+          iRow.appendChild(iBarWrap);
+
+          var iPctEl = document.createElement('span');
+          iPctEl.className = 'admin-dist-pct';
+          iPctEl.textContent = iPct + '%';
+          iRow.appendChild(iPctEl);
+
+          idBars.appendChild(iRow);
+        }
+        DOM.insightsDistributions.appendChild(idBars);
+      }
+    }
+
+    // ── Recommendations ────────────────────────────────────────
+    if (DOM.insightsRecommendations) {
+      while (DOM.insightsRecommendations.firstChild) DOM.insightsRecommendations.removeChild(DOM.insightsRecommendations.firstChild);
+
+      if (recs.length === 0) {
+        var okMsg = document.createElement('p');
+        okMsg.className = 'admin-insights-ok';
+        okMsg.textContent = '\u2705 \u0644\u0627 \u062a\u0648\u062c\u062f \u062a\u0648\u0635\u064a\u0627\u062a \u2014 \u0627\u0644\u0623\u062f\u0627\u0621 \u062c\u064a\u062f';
+        DOM.insightsRecommendations.appendChild(okMsg);
+      } else {
+        var recTitle = document.createElement('h3');
+        recTitle.textContent = '\u0627\u0644\u062a\u0648\u0635\u064a\u0627\u062a';
+        DOM.insightsRecommendations.appendChild(recTitle);
+
+        for (var ri = 0; ri < recs.length; ri++) {
+          var r = recs[ri];
+          var severityClass = r.severity === 'critical' ? 'admin-rec-critical'
+                            : r.severity === 'warning'  ? 'admin-rec-warning'
+                            : 'admin-rec-info';
+
+          var recCard = document.createElement('div');
+          recCard.className = 'admin-rec-card ' + severityClass;
+
+          var recTitleEl = document.createElement('div');
+          recTitleEl.className = 'admin-rec-title';
+          recTitleEl.textContent = r.title || '';
+          recCard.appendChild(recTitleEl);
+
+          var recMsg = document.createElement('div');
+          recMsg.className = 'admin-rec-message';
+          recMsg.textContent = r.message || '';
+          recCard.appendChild(recMsg);
+
+          var recAction = document.createElement('div');
+          recAction.className = 'admin-rec-action';
+          var recStrong = document.createElement('strong');
+          recStrong.textContent = '\u0627\u0644\u0625\u062c\u0631\u0627\u0621 \u0627\u0644\u0645\u0642\u062a\u0631\u062d: ';
+          recAction.appendChild(recStrong);
+          var recCode = document.createElement('code');
+          recCode.textContent = r.suggestedAction || '';
+          recAction.appendChild(recCode);
+          recCard.appendChild(recAction);
+
+          DOM.insightsRecommendations.appendChild(recCard);
+        }
+      }
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
   //  SECTION ERROR STATE
   // ══════════════════════════════════════════════════════════
   function showSectionError(container, msg, retryFn) {
@@ -1310,6 +1533,7 @@
     showLogSkeleton();
     showInspectSkeleton();
     showCommandsSkeleton();
+    showInsightsSkeleton();
 
     // Parallel fetch
     var results = await Promise.allSettled([
@@ -1358,6 +1582,10 @@
     } else {
       renderMetrics(null);
     }
+
+    // Pipeline Insights (Phase 22) — uses same metricsData (has digest + recommendations)
+    var insightsData = (results[3].status === 'fulfilled') ? results[3].value : null;
+    renderInsights(insightsData);
 
     // Log (Phase 16)
     if (results[4].status === 'fulfilled' && results[4].value) {

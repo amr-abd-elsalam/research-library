@@ -773,6 +773,165 @@ img { max-width: 100%; display: block; }
 }
 
 /* ══════════════════════════════════════════════════════════
+   8f. PIPELINE INSIGHTS (Phase 22)
+══════════════════════════════════════════════════════════ */
+
+.admin-insights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.admin-insight-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: border-color var(--speed) var(--ease);
+}
+
+.admin-insight-card:hover {
+  border-color: var(--border-accent);
+}
+
+.admin-insight-icon {
+  font-size: 1.5rem;
+}
+
+.admin-insight-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: var(--font-en);
+}
+
+.admin-insight-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* Distribution bars */
+.admin-insights-distributions h3 {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin: 16px 0 8px;
+}
+
+.admin-dist-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.admin-dist-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 50px;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-dist-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: end;
+  font-family: var(--font-en);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-dist-bar {
+  height: 6px;
+  background: var(--bg-elevated);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.admin-dist-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-light));
+  border-radius: 3px;
+  transition: width 0.4s var(--ease);
+}
+
+.admin-dist-fill-intent {
+  background: linear-gradient(90deg, #8b5cf6, #a78bfa);
+}
+
+.admin-dist-pct {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: var(--font-en);
+  text-align: end;
+}
+
+/* Recommendations */
+.admin-insights-ok {
+  color: var(--accent);
+  font-size: 0.9rem;
+  padding: 12px 0;
+}
+
+.admin-rec-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  border-right: 4px solid var(--accent);
+}
+
+.admin-rec-info {
+  border-right-color: var(--accent);
+}
+
+.admin-rec-warning {
+  border-right-color: var(--status-warn);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.admin-rec-critical {
+  border-right-color: var(--status-error);
+  background: rgba(248, 113, 113, 0.05);
+}
+
+.admin-rec-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.admin-rec-message {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+
+.admin-rec-action {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.admin-rec-action code {
+  background: var(--bg-elevated);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: var(--font-en);
+  font-size: 0.75rem;
+  color: var(--accent);
+  direction: ltr;
+  display: inline-block;
+}
+
+/* ══════════════════════════════════════════════════════════
    8d. SYSTEM INSPECTION (Phase 17)
 ══════════════════════════════════════════════════════════ */
 .admin-inspect-grid {
@@ -871,6 +1030,7 @@ img { max-width: 100%; display: block; }
   .admin-metrics-stage-row { grid-template-columns: 110px 1fr 50px; }
   .admin-inspect-grid { grid-template-columns: repeat(3, 1fr); }
   .admin-inspect-item { grid-template-columns: 140px 80px 1fr; }
+  .admin-insights-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 @media (max-width: 640px) {
@@ -903,6 +1063,10 @@ img { max-width: 100%; display: block; }
   .admin-inspect-grid { grid-template-columns: repeat(2, 1fr); }
   .admin-inspect-item { grid-template-columns: 1fr; gap: 2px; }
   .admin-inspect-cmd-desc { display: none; }
+
+  .admin-insights-grid { grid-template-columns: repeat(2, 1fr); }
+  .admin-dist-row { grid-template-columns: 80px 1fr 40px; }
+  .admin-rec-action code { display: block; margin-top: 4px; }
 
   .admin-content { padding: 16px 12px 32px; gap: 24px; }
 

@@ -156,7 +156,13 @@ async function stageEmbed(ctx, _trace) {
 
 // ── Stage 5: Search ────────────────────────────────────────────
 async function stageSearch(ctx, _trace) {
-  const topK = getTopK(ctx.queryRoute.type);
+  let topK = getTopK(ctx.queryRoute.type);
+
+  // Adaptive topK adjustment (Phase 22)
+  if (ctx._adaptiveConfig?.topKAdjustment) {
+    topK = Math.max(3, topK + ctx._adaptiveConfig.topKAdjustment);
+  }
+
   ctx.hits   = await search(ctx.queryVector, topK, ctx.topicFilter);
 
   // Compute average score (same logic as previous chat.js)
@@ -411,6 +417,18 @@ if (config.PIPELINE?.enableHooks !== false) {
           ctx._skipStages = new Set(stagesToSkip);
         }
       }
+    });
+  }
+
+  // Adaptive config injection (Phase 22)
+  if (config.PIPELINE?.adaptiveEnabled === true) {
+    import('./pipelineAnalytics.js').then(({ pipelineAnalytics }) => {
+      pipelineHooks.register('beforePipeline', (ctx, _trace) => {
+        const overrides = pipelineAnalytics.adaptiveOverrides();
+        if (overrides) ctx._adaptiveConfig = overrides;
+      });
+    }).catch(() => {
+      // Ignore — adaptive analytics is optional
     });
   }
 

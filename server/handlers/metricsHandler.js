@@ -4,8 +4,9 @@
 // Returns in-memory metrics snapshot. Protected by admin auth.
 // ═══════════════════════════════════════════════════════════════
 
-import { metrics } from '../services/metrics.js';
-import { cache }   from '../services/cache.js';
+import { metrics }            from '../services/metrics.js';
+import { cache }              from '../services/cache.js';
+import { pipelineAnalytics }  from '../services/pipelineAnalytics.js';
 
 export async function handleMetrics(req, res) {
   try {
@@ -13,10 +14,12 @@ export async function handleMetrics(req, res) {
     const cacheStats = cache.stats();
 
     const response = {
-      collected_at: new Date().toISOString(),
-      uptime_sec:   Math.floor(process.uptime()),
-      metrics:      snapshot,
-      cache:        cacheStats,
+      collected_at:    new Date().toISOString(),
+      uptime_sec:      Math.floor(process.uptime()),
+      metrics:         snapshot,
+      cache:           cacheStats,
+      recommendations: pipelineAnalytics.recommendations(),
+      digest:          pipelineAnalytics.digest(),
     };
 
     res.writeHead(200, { 'Content-Type': 'application/json' });

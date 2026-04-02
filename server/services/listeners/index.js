@@ -12,6 +12,7 @@ import { register as registerCommand }       from './commandListener.js';
 import { register as registerLog }           from './logListener.js';
 import { register as registerCircuit }       from './circuitListener.js';
 import { register as registerSessionStats }  from './sessionStatsListener.js';
+import { register as registerAnalyticsDigest } from './analyticsDigestListener.js';
 import { logger }                            from '../logger.js';
 
 /**
@@ -28,6 +29,7 @@ export function registerAllListeners() {
   registerLog();
   registerCircuit();
   registerSessionStats();
+  registerAnalyticsDigest();
 
-  logger.info('listeners', '8 EventBus listeners registered (analytics, cache, session, metrics, command, log, circuit, sessionStats)');
+  logger.info('listeners', '9 EventBus listeners registered (analytics, cache, session, metrics, command, log, circuit, sessionStats, analyticsDigest)');
 }

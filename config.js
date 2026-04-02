@@ -329,6 +329,17 @@ const config = {
     stageGating: {
       // meta: ['stageEmbed', 'stageSearch'],  // uncomment لتفعيل — يوفّر latency + tokens لـ meta queries
     },
+
+    // ── Adaptive Pipeline Analytics (Phase 22) ────────────────
+    // يحلل بيانات الأداء المتراكمة ويقدم توصيات + تحسينات تلقائية
+    // معطّل افتراضياً — فعّله بعد ما يكون عندك بيانات كافية (50+ request)
+    adaptiveEnabled:    false,    // true = تفعيل التحليل الذكي | false = معطّل (zero overhead)
+    adaptiveCooldownMs: 60000,    // مللي ثانية بين كل إعادة حساب (minimum 30000). 60000 = دقيقة
+    adaptiveThresholds: {
+      stageP95WarnMs:   2000,    // P95 أعلى من كده يطلع warning لأي stage
+      cacheHitRateWarn: 0.10,    // أقل من كده يطلع توصية لتحسين الكاش
+      errorRateWarn:    0.05,    // أعلى من كده يطلع critical warning
+    },
   },
 
   // ═══════════════════════════════════════════════════════════

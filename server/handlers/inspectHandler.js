@@ -18,6 +18,7 @@ import { bootstrap }        from '../bootstrap.js';
 import { allCircuitStats }  from '../services/circuitBreaker.js';
 import { sessionBudget }    from '../services/sessionBudget.js';
 import { queryIntentClassifier } from '../services/queryIntentClassifier.js';
+import { pipelineAnalytics }     from '../services/pipelineAnalytics.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -86,6 +87,9 @@ export async function handleInspect(_req, res) {
 
       // ── Intent classifier (Phase 21) ───────────────────────
       intentClassifier: queryIntentClassifier.counts(),
+
+      // ── Pipeline analytics (Phase 22) ──────────────────────
+      pipelineAnalytics: pipelineAnalytics.counts(),
     };
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
