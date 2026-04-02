@@ -21,6 +21,7 @@ import { queryIntentClassifier } from '../services/queryIntentClassifier.js';
 import { pipelineAnalytics }     from '../services/pipelineAnalytics.js';
 import { metricsPersister }      from '../services/metricsPersister.js';
 import { executionRouter }       from '../services/executionRouter.js';
+import { conversationContext }   from '../services/conversationContext.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -98,6 +99,9 @@ export async function handleInspect(_req, res) {
 
       // ── Execution router (Phase 24) ────────────────────────
       executionRouter: executionRouter.counts(),
+
+      // ── Conversation context (Phase 28) ────────────────────
+      conversationContext: conversationContext.counts(),
 
       // ── Permission Tiers (Phase 26) ────────────────────────
       tiers: {

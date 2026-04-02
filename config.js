@@ -234,6 +234,11 @@ const config = {
     maxTokenBudget:    6000,  // أقصى tokens للسياق + التاريخ (بدون system prompt)
     contextRatio:      0.7,   // نسبة الـ budget لنتائج البحث (الباقي للتاريخ)
     compactAfterTurns: 12,    // ضغط التاريخ بعد هذا العدد من الرسائل (0 = بدون ضغط)
+
+    // ── Intelligent Compaction (Phase 28) ─────────────────────
+    intelligentCompaction: true,       // true = تفعيل ذاكرة المحادثة + local rewrite لأسئلة المتابعة البسيطة | false = السلوك الحالي بالظبط
+    compactionStrategy:   'summarize', // استراتيجية ضغط السياق — reserved for future phases ('summarize' | 'entity_only')
+    maxContextEntities:   20,          // أقصى عدد entities محفوظة per session (الأقدم يتحذف أولاً)
   },
 
   // ═══════════════════════════════════════════════════════════

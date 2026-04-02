@@ -1,0 +1,49 @@
+// server/services/listeners/contextListener.js
+// ═══════════════════════════════════════════════════════════════
+// Context Listener — Phase 28
+// Records conversation turns in ConversationContext for each session.
+// Listens to pipeline:complete + pipeline:cacheHit.
+// Emits conversation:contextUpdated after each recording.
+// ═══════════════════════════════════════════════════════════════
+
+import { eventBus } from '../eventBus.js';
+import { conversationContext } from '../conversationContext.js';
+
+export function register() {
+
+  // ── Record context after pipeline completion ───────────────
+  eventBus.on('pipeline:complete', (data) => {
+    if (!data.sessionId) return;
+
+    conversationContext.recordTurn(data.sessionId, {
+      message:     data.message || '',
+      response:    (data.fullText || '').slice(0, 300),
+      queryType:   data.queryType || null,
+      topicFilter: data.topicFilter || null,
+    });
+
+    eventBus.emit('conversation:contextUpdated', {
+      sessionId: data.sessionId,
+      turns:     conversationContext.getContext(data.sessionId)?.turns ?? 0,
+      timestamp: Date.now(),
+    });
+  });
+
+  // ── Record cache hits (they represent user intent too) ─────
+  eventBus.on('pipeline:cacheHit', (data) => {
+    if (!data.sessionId) return;
+
+    conversationContext.recordTurn(data.sessionId, {
+      message:     data.message || '',
+      response:    (data.fullText || '').slice(0, 300),
+      queryType:   null,
+      topicFilter: data.topicFilter || null,
+    });
+
+    eventBus.emit('conversation:contextUpdated', {
+      sessionId: data.sessionId,
+      turns:     conversationContext.getContext(data.sessionId)?.turns ?? 0,
+      timestamp: Date.now(),
+    });
+  });
+}

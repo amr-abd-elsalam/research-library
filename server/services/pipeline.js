@@ -17,6 +17,7 @@ import { eventBus }                           from './eventBus.js';
 import { estimateTokens, estimateRequestCost } from './costTracker.js';
 import { CircuitOpenError }                   from './circuitBreaker.js';
 import config                                 from '../../config.js';
+import { conversationContext }                from './conversationContext.js';
 
 // ── Singleton ContextManager (same as previous chat.js) ────────
 const contextManager = new ContextManager();
@@ -121,6 +122,37 @@ async function stageRouteQuery(ctx, _trace) {
   return ctx;
 }
 
+// ── Local rewrite helper (Phase 28) — pure function, no API call ──
+// Handles short follow-up patterns by injecting entities from ConversationContext.
+// Returns rewritten string or null (null → fallback to API rewrite).
+function attemptLocalRewrite(message, convCtx) {
+  if (!convCtx || !convCtx.entities || convCtx.entities.length === 0) return null;
+
+  const normalized = message.trim();
+  const lower = normalized.toLowerCase();
+
+  // Last 3 entities joined — most recent context
+  const entityHint = convCtx.entities.slice(-3).join(' و ');
+
+  // Pattern 1: "أكثر", "المزيد", "تفصيل", "وضح", "شرح", "بالتفصيل", "فصّل"
+  if (/^(أكثر|اكثر|المزيد|تفصيل|وضح|وضّح|شرح|اشرح|فصّل|فصل|بالتفصيل|بتوسع)$/i.test(lower)) {
+    return `${normalized} فيما يخص ${entityHint}`;
+  }
+
+  // Pattern 2: "وماذا عنه؟", "وماذا عنها؟", "ماذا عن", "وإيه عنه"
+  if (/^(وماذا عنه|وماذا عنها|ماذا عن|وإيه عنه|وايه عنه|وماذا عنهم)\??[؟]?$/i.test(lower)) {
+    return `ماذا عن ${entityHint}؟`;
+  }
+
+  // Pattern 3: "نعم", "أيوا", "اه", "طيب", "تمام", "أكمل", "اكمل", "استمر"
+  if (/^(نعم|أيوا|ايوا|اه|آه|طيب|تمام|أكمل|اكمل|استمر|كمّل|كمل)$/i.test(lower)) {
+    return `أكمل فيما يخص ${entityHint}`;
+  }
+
+  // No match — return null so API rewrite is used as fallback
+  return null;
+}
+
 // ── Stage 3: Rewrite Query (follow-up) ─────────────────────────
 async function stageRewriteQuery(ctx, _trace) {
   const shouldRewrite =
@@ -135,6 +167,20 @@ async function stageRewriteQuery(ctx, _trace) {
     return ctx;
   }
 
+  // ── Phase 28: attempt local rewrite first (no API call) ────
+  if (config.CONTEXT?.intelligentCompaction !== false &&
+      conversationContext.hasRichContext(ctx.sessionId)) {
+    const convCtx = conversationContext.getContext(ctx.sessionId);
+    const localRewrite = attemptLocalRewrite(ctx.message, convCtx);
+    if (localRewrite) {
+      ctx.effectiveMessage = localRewrite;
+      ctx._rewriteSkipped  = false;
+      ctx._rewriteResult   = { wasRewritten: true, rewritten: localRewrite, original: ctx.message, method: 'local_context' };
+      return ctx;
+    }
+  }
+
+  // ── Fallback: API rewrite via Gemini ───────────────────────
   const result = await rewriteQuery(
     ctx.message,
     ctx.transcript.replayForAPI(config.FOLLOWUP?.maxHistoryItems ?? 4)
@@ -145,7 +191,7 @@ async function stageRewriteQuery(ctx, _trace) {
   }
 
   ctx._rewriteSkipped = false;
-  ctx._rewriteResult  = result;
+  ctx._rewriteResult  = { ...result, method: 'api' };
   return ctx;
 }
 
@@ -528,6 +574,9 @@ if (config.PIPELINE?.enableHooks !== false) {
 
       // ── Response mode (Phase 25) ───────────────────────────
       _responseMode: _ctx._responseMode ?? 'stream',
+
+      // ── Rewrite method (Phase 28) ─────────────────────────
+      _rewriteMethod: _ctx._rewriteResult?.method ?? null,
     });
   });
 }

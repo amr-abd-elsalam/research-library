@@ -38,6 +38,11 @@ function register() {
     if (data._responseMode) {
       metrics.increment('response_mode_total', { mode: data._responseMode });
     }
+
+    // Rewrite method distribution (Phase 28)
+    if (data._rewriteMethod) {
+      metrics.increment('rewrite_method_total', { method: data._rewriteMethod });
+    }
   });
 
   // ── Stage complete (per-stage timing) ──────────────────────
