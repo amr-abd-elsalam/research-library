@@ -33,6 +33,11 @@ function register() {
         matchType: data._queryIntent.commandMatch?.matchType || 'none',
       });
     }
+
+    // Response mode distribution (Phase 25)
+    if (data._responseMode) {
+      metrics.increment('response_mode_total', { mode: data._responseMode });
+    }
   });
 
   // ── Stage complete (per-stage timing) ──────────────────────

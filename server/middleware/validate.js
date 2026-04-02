@@ -1,3 +1,5 @@
+import config from '../../config.js';
+
 const MAX_BODY_SIZE  = 64 * 1024;  // 64KB — يكفي لـ history كامل بالعربية
 const MAX_MSG_CHARS  = 500;
 const MAX_HISTORY    = 20;
@@ -158,4 +160,20 @@ export async function validateBody(req, res) {
     history:      history,
     session_id:   session_id,
   };
+
+  // ── 9. Response mode validation (Phase 25) ─────────────────
+  const responseMode = parsed.response_mode ?? null;
+  if (responseMode !== null) {
+    const allowedModes = config.RESPONSE?.allowedModes ?? ['stream'];
+    if (typeof responseMode !== 'string' || !allowedModes.includes(responseMode)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        error: 'response_mode غير صالح',
+        code: 'INVALID_RESPONSE_MODE',
+        allowed: allowedModes,
+      }));
+      return;
+    }
+  }
+  req._validatedBody.response_mode = responseMode;
 }

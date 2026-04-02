@@ -30,7 +30,7 @@ const SNIPPET_MAX_CHARS   = 150;
 // ═══════════════════════════════════════════════════════════════
 
 class PipelineContext {
-  constructor({ message, topicFilter, history, sessionId, req, res }) {
+  constructor({ message, topicFilter, history, sessionId, req, res, responseMode }) {
     // ── Input (set once in constructor — don't overwrite) ──
     this.message       = message;
     this.topicFilter   = topicFilter;
@@ -39,6 +39,7 @@ class PipelineContext {
     this.req           = req;
     this.res           = res;
     this.startTime     = Date.now();
+    this._responseMode = responseMode || 'stream';
 
     // ── Mutable state (set by stages progressively) ───────
     this.transcript       = null;
@@ -192,6 +193,12 @@ async function stageConfidenceCheck(ctx, _trace) {
 async function stageBuildContext(ctx, _trace) {
   ctx.systemPrompt = getPromptForType(ctx.queryRoute.type);
 
+  // Concise mode — append brevity instruction (Phase 25)
+  if (ctx._responseMode === 'concise') {
+    const maxSentences = config.RESPONSE?.conciseMaxSentences ?? 3;
+    ctx.systemPrompt += `\n\nتعليمات إضافية: أجب بإيجاز شديد في ${maxSentences} جمل كحد أقصى. ركّز على المعلومة الأساسية فقط بدون مقدمات أو تكرار.`;
+  }
+
   const window = contextManager.buildWindow({
     systemPrompt: ctx.systemPrompt,
     ragHits:      ctx.hits,
@@ -210,15 +217,18 @@ async function stageBuildContext(ctx, _trace) {
 
 // ── Stage 8: Stream ────────────────────────────────────────────
 async function stageStream(ctx, _trace) {
+  // Structured mode: accumulate text only — no SSE streaming
+  // Stream/concise modes: stream chunks to client via SSE (existing behavior)
+  const onChunk = ctx._responseMode === 'structured'
+    ? (chunk) => { ctx.fullText += chunk; }
+    : (chunk) => { ctx.fullText += chunk; writeChunk(ctx.res, { text: chunk }); };
+
   await streamGenerate(
     ctx.systemPrompt,
     ctx.context,
     ctx.trimmedHistory,
     ctx.message,
-    (chunk) => {
-      ctx.fullText += chunk;
-      writeChunk(ctx.res, { text: chunk });
-    },
+    onChunk,
   );
   return ctx;
 }
@@ -515,6 +525,9 @@ if (config.PIPELINE?.enableHooks !== false) {
 
       // ── Intent classification (Phase 21) ───────────────────
       _queryIntent: _ctx._queryIntent ?? null,
+
+      // ── Response mode (Phase 25) ───────────────────────────
+      _responseMode: _ctx._responseMode ?? 'stream',
     });
   });
 }

@@ -405,6 +405,21 @@ const config = {
     maxEntries:     500,       // أقصى عدد entries في الـ operational log (in-memory ring buffer — الأقدم يتحذف أولاً)
   },
 
+  // ═══════════════════════════════════════════════════════════
+  // 18. أوضاع الرد (RESPONSE)
+  //    — تحكم في شكل الرد المرجع من الـ chat endpoint
+  //    — الوضع الافتراضي "stream" — SSE streaming (السلوك الحالي بالظبط)
+  //    — "structured" يرجع JSON response كامل مرة واحدة (مفيد لـ API integrations)
+  //    — "concise" يرجع رد مختصر عبر SSE (مفيد للأسئلة البسيطة)
+  //    — لا تحتاج تعديل عادةً
+  // ═══════════════════════════════════════════════════════════
+  RESPONSE: {
+    defaultMode:           'stream',                          // 'stream' | 'structured' | 'concise' — الوضع الافتراضي لو الـ client ما حددش
+    allowedModes:          ['stream', 'structured', 'concise'], // الأوضاع المسموحة — شيل أي وضع مش عايزه يكون متاح
+    conciseMaxSentences:   3,                                  // أقصى عدد جمل في الوضع المختصر (1-10)
+    structuredIncludeTrace: false,                             // true = يضيف trace data في الـ structured JSON response (للتصحيح)
+  },
+
 };
 
 export default deepFreeze(config);

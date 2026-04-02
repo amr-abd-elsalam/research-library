@@ -10,6 +10,7 @@ import { EventTrace }      from '../services/eventTrace.js';
 import { eventBus }        from '../services/eventBus.js';
 import { PipelineContext, chatPipeline, writeChunk } from '../services/pipeline.js';
 import { metrics }         from '../services/metrics.js';
+import config              from '../../config.js';
 
 // ── Active requests counter (for gauge) ────────────────────────
 let activeRequests = 0;
@@ -192,16 +193,24 @@ async function _handleChat(req, res) {
     default: {
       const { cacheKey, queryIntent } = route.data;
       const startTime = Date.now();
-      res.writeHead(200, {
-        'Content-Type':  'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection':    'keep-alive',
-      });
-      req.setTimeout?.(120_000);
-      res.setTimeout?.(0);
+      const responseMode = req._validatedBody.response_mode
+        ?? config.RESPONSE?.defaultMode
+        ?? 'stream';
+
+      // SSE headers for stream/concise — deferred for structured
+      if (responseMode !== 'structured') {
+        res.writeHead(200, {
+          'Content-Type':  'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection':    'keep-alive',
+        });
+        req.setTimeout?.(120_000);
+        res.setTimeout?.(0);
+      }
 
       const ctx   = new PipelineContext({
         message, topicFilter: topic_filter, history, sessionId: session_id, req, res,
+        responseMode,
       });
       const trace = new EventTrace();
 
@@ -211,15 +220,44 @@ async function _handleChat(req, res) {
       try {
         await chatPipeline.run(ctx, trace);
 
-        if (ctx.aborted && ctx.abortReason === 'low_confidence') {
-          writeChunk(res, { text: 'لا تتضمن المكتبة معلومات كافية حول هذا السؤال.' });
-          writeChunk(res, { done: true, sources: [], score: ctx.avgScore });
+        if (responseMode === 'structured') {
+          // ── Structured mode: single JSON response ──────────
+          const payload = {
+            text:      ctx.aborted ? 'لا تتضمن المكتبة معلومات كافية حول هذا السؤال.' : ctx.fullText,
+            sources:   ctx.aborted ? [] : ctx.sources,
+            score:     ctx.avgScore,
+            aborted:   ctx.aborted,
+            queryType: ctx.queryRoute?.type ?? null,
+          };
+          if (config.RESPONSE?.structuredIncludeTrace === true) {
+            payload.trace = trace.toJSON();
+          }
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(payload));
         } else {
-          writeChunk(res, { done: true, sources: ctx.sources, score: ctx.avgScore });
+          // ── Stream/concise mode: SSE finish (existing behavior) ──
+          if (ctx.aborted && ctx.abortReason === 'low_confidence') {
+            writeChunk(res, { text: 'لا تتضمن المكتبة معلومات كافية حول هذا السؤال.' });
+            writeChunk(res, { done: true, sources: [], score: ctx.avgScore });
+          } else {
+            writeChunk(res, { done: true, sources: ctx.sources, score: ctx.avgScore });
+          }
+          res.end();
         }
-        res.end();
       } catch (err) {
-        handlePipelineError(err, res, ctx, trace, startTime);
+        if (responseMode === 'structured' && !res.headersSent) {
+          // ── Structured mode: JSON error ────────────────────
+          const classification = pipelineErrorRecovery.classify(err, ctx);
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({
+            error:   true,
+            message: classification.userMessage,
+            code:    classification.code,
+          }));
+        } else {
+          // ── Stream/concise mode: SSE error (existing behavior) ──
+          handlePipelineError(err, res, ctx, trace, startTime);
+        }
       }
       return;
     }

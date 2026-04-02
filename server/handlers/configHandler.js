@@ -33,6 +33,12 @@ function buildPayload() {
     },
 
     SESSIONS:   { enabled: config.SESSIONS.enabled },
+
+    RESPONSE: {
+      defaultMode:         config.RESPONSE?.defaultMode ?? 'stream',
+      allowedModes:        config.RESPONSE?.allowedModes ?? ['stream'],
+      conciseMaxSentences: config.RESPONSE?.conciseMaxSentences ?? 3,
+    },
   });
   return cachedPayload;
 }
