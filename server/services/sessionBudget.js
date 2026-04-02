@@ -89,6 +89,16 @@ class SessionBudgetTracker {
   }
 
   /**
+   * Removes budget entry for a specific session.
+   * Used by evictionListener for unified cleanup on session eviction.
+   * @param {string} sessionId
+   */
+  remove(sessionId) {
+    if (!sessionId) return;
+    this.#budgets.delete(sessionId);
+  }
+
+  /**
    * Returns summary for inspect endpoint.
    * @returns {{ trackedSessions: number, maxTokensPerSession: number }}
    */

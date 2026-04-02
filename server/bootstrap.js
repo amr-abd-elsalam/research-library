@@ -16,6 +16,7 @@ import { pipelineHooks } from './services/hookRegistry.js';
 import { registerAllListeners } from './services/listeners/index.js';
 import { pluginRegistry } from './services/pluginRegistry.js';
 import { eventBus } from './services/eventBus.js';
+import { conversationContext } from './services/conversationContext.js';
 import { logger } from './services/logger.js';
 import { operationalLog } from './services/operationalLog.js';
 import { metricsPersister } from './services/metricsPersister.js';
@@ -73,6 +74,11 @@ class BootstrapManager {
 
     // ── Register EventBus listeners (Phase 13) ───────────────
     registerAllListeners();
+
+    // ── Wire eviction callback (Phase 30) ────────────────────
+    conversationContext.setEvictionCallback((sessionId) => {
+      eventBus.emit('session:evicted', { sessionId, timestamp: Date.now() });
+    });
 
     // ── Load & initialize plugins (Phase 15) ─────────────────
     if (config.PLUGINS?.enabled === true) {
@@ -160,6 +166,9 @@ class BootstrapManager {
 
     // ── Start metrics persistence (Phase 23) ─────────────────
     metricsPersister.start();
+
+    // ── Start session eviction sweep (Phase 30) ──────────────
+    conversationContext.startEviction();
 
     return this.#report;
   }

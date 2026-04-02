@@ -19,10 +19,23 @@ class ConversationContext {
   #maxEntities;
   #enabled;
 
+  // ── Eviction (Phase 30) ─────────────────────────────────────
+  #evictionEnabled;
+  #evictionIdleMs;
+  #evictionIntervalMs;
+  #evictionTimer  = null;
+  #evictionCount  = 0;
+  #onEvict        = null;
+
   constructor() {
     const ctx = config.CONTEXT ?? {};
     this.#maxEntities = ctx.maxContextEntities ?? 20;
     this.#enabled = ctx.intelligentCompaction !== false;
+
+    // Eviction config (Phase 30)
+    this.#evictionEnabled    = ctx.evictionEnabled !== false;
+    this.#evictionIdleMs     = Math.max(ctx.evictionIdleMs ?? 1800000, 60000);
+    this.#evictionIntervalMs = Math.max(ctx.evictionIntervalMs ?? 300000, 60000);
   }
 
   // ── Guard: skip if disabled ──────────────────────────────────
@@ -133,6 +146,69 @@ class ConversationContext {
     this.#sessions.delete(sessionId);
   }
 
+  // ── Eviction lifecycle (Phase 30) ──────────────────────────
+
+  /**
+   * Sets a callback invoked for every evicted session.
+   * Wired once during bootstrap to emit EventBus events.
+   * @param {Function} fn — (sessionId: string) => void
+   */
+  setEvictionCallback(fn) {
+    if (typeof fn === 'function') this.#onEvict = fn;
+  }
+
+  /**
+   * Starts the periodic eviction sweep.
+   * Idempotent — safe to call multiple times.
+   */
+  startEviction() {
+    // Guard: skip if context inactive or eviction disabled or timer already running
+    if (!this.#active || !this.#evictionEnabled || this.#evictionTimer) return;
+
+    this.#evictionTimer = setInterval(() => this.#sweep(), this.#evictionIntervalMs);
+    this.#evictionTimer.unref(); // Don't prevent process exit
+
+    logger.info('conversationContext', `eviction started (idle: ${this.#evictionIdleMs}ms, interval: ${this.#evictionIntervalMs}ms)`);
+  }
+
+  /**
+   * Stops the periodic eviction sweep.
+   * Called during graceful shutdown.
+   */
+  stopEviction() {
+    if (this.#evictionTimer) {
+      clearInterval(this.#evictionTimer);
+      this.#evictionTimer = null;
+    }
+  }
+
+  /**
+   * Sweeps idle sessions from the in-memory Map.
+   * Sessions with lastActiveAt older than evictionIdleMs are removed.
+   */
+  #sweep() {
+    const now    = Date.now();
+    const cutoff = this.#evictionIdleMs;
+    let   swept  = 0;
+
+    for (const [sessionId, state] of this.#sessions) {
+      if (now - state.lastActiveAt > cutoff) {
+        this.#sessions.delete(sessionId);
+        this.#evictionCount++;
+        swept++;
+
+        // Notify cleanup coordinator
+        if (this.#onEvict) {
+          try { this.#onEvict(sessionId); } catch { /* never throw from sweep */ }
+        }
+      }
+    }
+
+    if (swept > 0) {
+      logger.info('conversationContext', `evicted ${swept} idle session(s) (total: ${this.#evictionCount})`);
+    }
+  }
+
   /**
    * Lightweight entity extraction — no API calls, no external dependencies.
    * Extracts quoted strings and Arabic definite nouns.
@@ -195,7 +271,7 @@ class ConversationContext {
 
   /**
    * Summary for inspect endpoint.
-   * @returns {{ enabled: boolean, activeSessions: number, totalTurns: number, maxEntities: number }}
+   * @returns {{ enabled: boolean, activeSessions: number, totalTurns: number, maxEntities: number, eviction: object }}
    */
   counts() {
     let totalTurns = 0;
@@ -207,6 +283,13 @@ class ConversationContext {
       activeSessions: this.#sessions.size,
       totalTurns,
       maxEntities:    this.#maxEntities,
+      eviction: {
+        enabled:       this.#evictionEnabled,
+        idleMs:        this.#evictionIdleMs,
+        intervalMs:    this.#evictionIntervalMs,
+        totalEvicted:  this.#evictionCount,
+        timerActive:   this.#evictionTimer !== null,
+      },
     };
   }
 

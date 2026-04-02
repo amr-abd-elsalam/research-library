@@ -16,6 +16,7 @@ import { register as registerAnalyticsDigest } from './analyticsDigestListener.j
 import { register as registerRouting }         from './routingListener.js';
 import { register as registerContext }         from './contextListener.js';
 import { register as registerSuggestions }     from './suggestionsListener.js';
+import { register as registerEviction }        from './evictionListener.js';
 import { logger }                            from '../logger.js';
 
 /**
@@ -36,6 +37,7 @@ export function registerAllListeners() {
   registerRouting();
   registerContext();
   registerSuggestions();
+  registerEviction();
 
-  logger.info('listeners', '12 EventBus listeners registered (analytics, cache, session, metrics, command, log, circuit, sessionStats, analyticsDigest, routing, context, suggestions)');
+  logger.info('listeners', '13 EventBus listeners registered (analytics, cache, session, metrics, command, log, circuit, sessionStats, analyticsDigest, routing, context, suggestions, eviction)');
 }

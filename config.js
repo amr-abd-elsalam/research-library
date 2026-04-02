@@ -239,6 +239,11 @@ const config = {
     intelligentCompaction: true,       // true = تفعيل ذاكرة المحادثة + local rewrite لأسئلة المتابعة البسيطة | false = السلوك الحالي بالظبط
     compactionStrategy:   'summarize', // استراتيجية ضغط السياق — reserved for future phases ('summarize' | 'entity_only')
     maxContextEntities:   20,          // أقصى عدد entities محفوظة per session (الأقدم يتحذف أولاً)
+
+    // ── Session Eviction (Phase 30) ───────────────────────────
+    evictionEnabled:      true,        // true = حذف الـ sessions الخاملة تلقائياً | false = تعيش للأبد (السلوك الحالي بالظبط). يعمل فقط لما intelligentCompaction: true
+    evictionIdleMs:       1800000,     // مللي ثانية — session تبقى idle بعدها قبل الحذف (minimum 60000). 1800000 = 30 دقيقة
+    evictionIntervalMs:   300000,      // مللي ثانية بين كل sweep (minimum 60000). 300000 = 5 دقائق
   },
 
   // ═══════════════════════════════════════════════════════════

@@ -2,8 +2,9 @@ import "dotenv/config";
 import http         from 'node:http';
 import { router }   from './server/router.js';
 import { serveStatic } from './server/static.js';
-import { bootstrap }        from './server/bootstrap.js';
-import { metricsPersister } from './server/services/metricsPersister.js';
+import { bootstrap }           from './server/bootstrap.js';
+import { metricsPersister }    from './server/services/metricsPersister.js';
+import { conversationContext } from './server/services/conversationContext.js';
 
 const PORT = process.env.PORT || 3000;
 
@@ -84,6 +85,9 @@ async function gracefulShutdown(signal) {
   } catch (err) {
     console.error('[server] metrics flush error:', err.message);
   }
+
+  // Stop eviction sweep (Phase 30)
+  conversationContext.stopEviction();
 
   server.close(() => {
     console.log('[server] closed');
