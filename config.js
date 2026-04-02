@@ -340,6 +340,14 @@ const config = {
       cacheHitRateWarn: 0.10,    // أقل من كده يطلع توصية لتحسين الكاش
       errorRateWarn:    0.05,    // أعلى من كده يطلع critical warning
     },
+
+    // ── Metrics Persistence (Phase 23) ────────────────────────
+    // يحفظ snapshot دوري لملف JSON عشان الـ metrics ما تروحش عند restart
+    // بيعيد تحميل الـ snapshot تلقائياً في الـ bootstrap
+    // معطّل افتراضياً — فعّله في production عشان الـ PipelineAnalytics يبدأ بـ historical data بعد restart
+    snapshotEnabled:    false,        // true = حفظ snapshot دوري | false = in-memory فقط (zero overhead)
+    snapshotIntervalMs: 300000,       // مللي ثانية بين كل حفظ (minimum 60000). 300000 = 5 دقائق
+    snapshotPath:       './data/metrics-snapshot.json',  // مسار ملف الـ snapshot (الـ directory يتعمل تلقائياً)
   },
 
   // ═══════════════════════════════════════════════════════════

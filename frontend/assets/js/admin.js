@@ -685,6 +685,18 @@
     stages.classList.remove('hidden');
     if (empty) empty.classList.add('hidden');
 
+    // ── Data Since Badge (Phase 23) ────────────────────────
+    var collectedSince = m.collected_since || (metricsData.metrics && metricsData.metrics.collected_since);
+    if (collectedSince && cards.parentElement) {
+      var existingBadge = cards.parentElement.querySelector('.admin-metrics-badge');
+      if (existingBadge) existingBadge.remove();
+      var sinceDate = new Date(collectedSince);
+      var badge = document.createElement('div');
+      badge.className = 'admin-metrics-badge';
+      badge.textContent = '\uD83D\uDCCA \u0628\u064A\u0627\u0646\u0627\u062A \u0645\u0646: ' + sinceDate.toLocaleString('ar-EG');
+      cards.parentElement.insertBefore(badge, cards);
+    }
+
     // ── Summary Cards ──────────────────────────────────────
     // 1. Request Duration P95
     var reqHist = (m.histograms || {})['request_duration_ms'] || {};

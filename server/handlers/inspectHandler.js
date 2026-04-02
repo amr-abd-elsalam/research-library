@@ -19,6 +19,7 @@ import { allCircuitStats }  from '../services/circuitBreaker.js';
 import { sessionBudget }    from '../services/sessionBudget.js';
 import { queryIntentClassifier } from '../services/queryIntentClassifier.js';
 import { pipelineAnalytics }     from '../services/pipelineAnalytics.js';
+import { metricsPersister }      from '../services/metricsPersister.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -90,6 +91,9 @@ export async function handleInspect(_req, res) {
 
       // ── Pipeline analytics (Phase 22) ──────────────────────
       pipelineAnalytics: pipelineAnalytics.counts(),
+
+      // ── Metrics persistence (Phase 23) ─────────────────────
+      metricsPersister: metricsPersister.counts(),
     };
 
     res.writeHead(200, { 'Content-Type': 'application/json' });

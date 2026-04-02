@@ -75,6 +75,31 @@ class OperationalLog {
   }
 
   /**
+   * Returns all entries as a JSON-safe array for persistence.
+   * Same as all() — oldest-first order.
+   * @returns {Array<object>}
+   */
+  dump() {
+    return this.all();
+  }
+
+  /**
+   * Restores entries from a previously saved dump.
+   * Respects maxEntries limit — keeps newest if overflow.
+   * @param {Array<object>} entries — output of a previous dump() call
+   */
+  restore(entries) {
+    if (!Array.isArray(entries)) return;
+    for (const entry of entries) {
+      if (!entry || typeof entry !== 'object') continue;
+      this.#entries.push(entry);
+      if (this.#entries.length > this.#maxEntries) {
+        this.#entries.shift();
+      }
+    }
+  }
+
+  /**
    * Clears all entries. Intended for testing only.
    */
   reset() {

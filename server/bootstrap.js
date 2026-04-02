@@ -18,6 +18,7 @@ import { pluginRegistry } from './services/pluginRegistry.js';
 import { eventBus } from './services/eventBus.js';
 import { logger } from './services/logger.js';
 import { operationalLog } from './services/operationalLog.js';
+import { metricsPersister } from './services/metricsPersister.js';
 
 // ── Timeout helper (for bootstrap-specific timeouts) ──────────
 function raceTimeout(promise, ms) {
@@ -66,6 +67,9 @@ class BootstrapManager {
 
     // ── Stage 2: config_check (sync) ─────────────────────────
     stages.push(await this.#runStage('config_check', () => this.#checkConfig()));
+
+    // ── Snapshot Recovery (Phase 23) ─────────────────────────
+    await metricsPersister.restore();
 
     // ── Register EventBus listeners (Phase 13) ───────────────
     registerAllListeners();
@@ -153,6 +157,9 @@ class BootstrapManager {
 
     // ── Print startup report ─────────────────────────────────
     this.#printReport();
+
+    // ── Start metrics persistence (Phase 23) ─────────────────
+    metricsPersister.start();
 
     return this.#report;
   }

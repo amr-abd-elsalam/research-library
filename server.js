@@ -2,7 +2,8 @@ import "dotenv/config";
 import http         from 'node:http';
 import { router }   from './server/router.js';
 import { serveStatic } from './server/static.js';
-import { bootstrap }   from './server/bootstrap.js';
+import { bootstrap }        from './server/bootstrap.js';
+import { metricsPersister } from './server/services/metricsPersister.js';
 
 const PORT = process.env.PORT || 3000;
 
@@ -73,8 +74,17 @@ process.on('uncaughtException', (err) => {
 });
 
 // ── Graceful shutdown ─────────────────────────────────────────
-function gracefulShutdown(signal) {
+async function gracefulShutdown(signal) {
   console.log(`[server] ${signal} received — shutting down`);
+
+  // Flush metrics snapshot before exit (Phase 23)
+  try {
+    await metricsPersister.flush();
+    metricsPersister.stop();
+  } catch (err) {
+    console.error('[server] metrics flush error:', err.message);
+  }
+
   server.close(() => {
     console.log('[server] closed');
     process.exit(0);

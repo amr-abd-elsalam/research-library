@@ -154,6 +154,37 @@ class MetricsCollector {
     };
   }
 
+  // ── Restore (from persisted snapshot) ────────────────────────
+  /**
+   * Restores counter metrics from a previously saved snapshot.
+   * Used during bootstrap to recover data across restarts.
+   * Only restores counters — histograms rebuild from new observations,
+   * gauges are point-in-time and start at 0.
+   * @param {object} snapshot — output of a previous snapshot() call
+   */
+  restore(snapshot) {
+    if (!this.#enabled) return;
+    if (!snapshot || typeof snapshot !== 'object') return;
+
+    // Restore counters (additive — merges with any existing counters)
+    if (snapshot.counters && typeof snapshot.counters === 'object') {
+      for (const [name, bucket] of Object.entries(snapshot.counters)) {
+        if (!bucket || typeof bucket !== 'object') continue;
+        if (!this.#counters.has(name)) this.#counters.set(name, new Map());
+        const target = this.#counters.get(name);
+        for (const [key, value] of Object.entries(bucket)) {
+          if (typeof value !== 'number') continue;
+          target.set(key, (target.get(key) || 0) + value);
+        }
+      }
+    }
+
+    // Restore collected_since (original collection start time)
+    if (typeof snapshot.collected_since === 'string') {
+      this.#collectedSince = snapshot.collected_since;
+    }
+  }
+
   // ── Counts (introspection) ───────────────────────────────────
   /**
    * Returns summary counts for system introspection.

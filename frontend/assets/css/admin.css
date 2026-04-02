@@ -1020,6 +1020,23 @@ img { max-width: 100%; display: block; }
 }
 
 /* ══════════════════════════════════════════════════════════
+   8g. METRICS BADGE (Phase 23)
+══════════════════════════════════════════════════════════ */
+
+.admin-metrics-badge {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  padding: 6px 12px;
+  margin-bottom: 10px;
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  display: inline-block;
+  font-family: var(--font-en);
+  direction: ltr;
+}
+
+/* ══════════════════════════════════════════════════════════
    13. RESPONSIVE
 ══════════════════════════════════════════════════════════ */
 @media (max-width: 960px) {
