@@ -1218,6 +1218,57 @@ img { max-width: 100%; display: block; }
 }
 
 /* ══════════════════════════════════════════════════════════
+   18. DYNAMIC SUGGESTIONS (Phase 29)
+══════════════════════════════════════════════════════════ */
+.dynamic-suggestions {
+  display:     flex;
+  flex-wrap:   wrap;
+  gap:         0.5rem;
+  padding:     12px 0 4px;
+  max-width:   var(--chat-max-w);
+  margin:      0 auto;
+  width:       100%;
+  animation:   fadeInUp .3s var(--ease);
+}
+
+.suggestion-chip.dynamic {
+  display:       inline-flex;
+  align-items:   center;
+  padding:       6px 14px;
+  border-radius: var(--radius-sm);
+  background:    var(--bg-elevated);
+  border:        1px solid var(--border);
+  color:         var(--text-muted);
+  font-size:     12px;
+  font-family:   inherit;
+  cursor:        pointer;
+  transition:    all var(--speed) var(--ease);
+  white-space:   nowrap;
+  max-width:     280px;
+  overflow:      hidden;
+  text-overflow: ellipsis;
+  line-height:   1.5;
+}
+
+.suggestion-chip.dynamic:hover {
+  color:        var(--accent-light);
+  border-color: var(--accent-border);
+  background:   var(--accent-dim);
+  transform:    translateY(-1px);
+}
+
+@media (max-width: 640px) {
+  .dynamic-suggestions {
+    padding: 8px 0 4px;
+  }
+  .suggestion-chip.dynamic {
+    font-size:  11px;
+    padding:    5px 10px;
+    max-width:  220px;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
    15. AUTH GATE
 ══════════════════════════════════════════════════════════ */
 .auth-overlay {

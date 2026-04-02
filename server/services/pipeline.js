@@ -149,6 +149,49 @@ function attemptLocalRewrite(message, convCtx) {
     return `أكمل فيما يخص ${entityHint}`;
   }
 
+  // Pattern 4: "لماذا؟", "ليش", "ليه", "لمَ"
+  if (/^(لماذا|ليش|ليه|لمَ|لم)[؟?]?$/i.test(lower)) {
+    return `لماذا ${entityHint}؟`;
+  }
+
+  // Pattern 5: "كيف؟", "كيف ذلك", "ازاي", "كيفية"
+  if (/^(كيف|كيف ذلك|ازاي|إزاي|كيفية)[؟?]?$/i.test(lower)) {
+    return `كيف ${entityHint}؟`;
+  }
+
+  // Pattern 6: "متى؟", "متى ذلك", "إمتى", "امتى"
+  if (/^(متى|متى ذلك|إمتى|امتى)[؟?]?$/i.test(lower)) {
+    return `متى ${entityHint}؟`;
+  }
+
+  // Pattern 7: "أين؟", "اين", "وين", "فين"
+  if (/^(أين|اين|وين|فين)[؟?]?$/i.test(lower)) {
+    return `أين ${entityHint}؟`;
+  }
+
+  // Pattern 8: "مَن؟", "من", "مين", "منو"
+  if (/^(مَن|من|مين|منو)[؟?]?$/i.test(lower)) {
+    return `مَن ${entityHint}؟`;
+  }
+
+  // Pattern 9: "الفرق؟", "ما الفرق", "ايش الفرق"
+  if (/^(الفرق|ما الفرق|ايش الفرق|إيش الفرق)[؟?]?$/i.test(lower)) {
+    if (convCtx.entities.length >= 2) {
+      return `ما الفرق بين ${convCtx.entities[convCtx.entities.length - 1]} و${convCtx.entities[convCtx.entities.length - 2]}؟`;
+    }
+    return `ما الفرق فيما يخص ${entityHint}؟`;
+  }
+
+  // Pattern 10: "والعكس؟", "العكس", "بالعكس"
+  if (/^(والعكس|العكس|بالعكس)[؟?]?$/i.test(lower)) {
+    return `ماذا عن عكس ذلك فيما يخص ${entityHint}؟`;
+  }
+
+  // Pattern 11: "مثال؟", "أعطيني مثال", "اعطني مثال"
+  if (/^(مثال|أعطيني مثال|اعطني مثال|أعطني مثال|اعطيني مثال)[؟?]?$/i.test(lower)) {
+    return `أعطني مثال عن ${entityHint}`;
+  }
+
   // No match — return null so API rewrite is used as fallback
   return null;
 }

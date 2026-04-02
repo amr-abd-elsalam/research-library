@@ -22,6 +22,7 @@ import { pipelineAnalytics }     from '../services/pipelineAnalytics.js';
 import { metricsPersister }      from '../services/metricsPersister.js';
 import { executionRouter }       from '../services/executionRouter.js';
 import { conversationContext }   from '../services/conversationContext.js';
+import { suggestionsEngine }     from '../services/suggestionsEngine.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -102,6 +103,9 @@ export async function handleInspect(_req, res) {
 
       // ── Conversation context (Phase 28) ────────────────────
       conversationContext: conversationContext.counts(),
+
+      // ── Suggestions engine (Phase 29) ──────────────────────
+      suggestionsEngine: suggestionsEngine.counts(),
 
       // ── Permission Tiers (Phase 26) ────────────────────────
       tiers: {

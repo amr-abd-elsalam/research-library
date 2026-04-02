@@ -461,6 +461,11 @@ const ChatModule = (() => {
             if (fullText && refs) _setupCopyButton(refs, fullText);
             if (fullText) _pushHistory('model', fullText);
 
+            // Dynamic suggestions (Phase 29)
+            if (parsed.suggestions && parsed.suggestions.length > 0) {
+              _renderDynamicSuggestions(parsed.suggestions);
+            }
+
             break;
           }
         }
@@ -901,6 +906,51 @@ const ChatModule = (() => {
       return '<option value="' + m + '"' + (m === defaultMode ? ' selected' : '') + '>' + (labels[m] || m) + '</option>';
     }).join('');
     select.style.display = '';
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     DYNAMIC SUGGESTIONS (Phase 29)
+  ══════════════════════════════════════════════════════════ */
+
+  function _renderDynamicSuggestions(suggestions) {
+    // Remove any previous dynamic suggestions
+    var prev = document.querySelector('.dynamic-suggestions');
+    if (prev) prev.remove();
+
+    // Guard: check feature enabled via CLIENT_CONFIG
+    if (!CLIENT_CONFIG.SUGGESTIONS || CLIENT_CONFIG.SUGGESTIONS.enabled !== true) return;
+
+    // Guard: need suggestions
+    if (!suggestions || !suggestions.length) return;
+
+    var container = document.createElement('div');
+    container.className = 'dynamic-suggestions';
+
+    for (var i = 0; i < suggestions.length; i++) {
+      (function(text) {
+        var chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'suggestion-chip dynamic';
+        chip.textContent = text;
+
+        chip.addEventListener('click', function() {
+          var textarea = AppModule.DOM.chatTextarea;
+          if (textarea) {
+            textarea.value = text;
+            textarea.dispatchEvent(new Event('input'));
+          }
+          send();
+        });
+
+        container.appendChild(chip);
+      })(suggestions[i]);
+    }
+
+    var messagesList = AppModule.DOM.messagesList;
+    if (messagesList) {
+      messagesList.appendChild(container);
+      AppModule.scrollToBottom();
+    }
   }
 
   // Called from bootstrap after permissions are loaded

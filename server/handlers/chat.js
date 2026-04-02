@@ -12,6 +12,8 @@ import { PipelineContext, chatPipeline, writeChunk } from '../services/pipeline.
 import { metrics }         from '../services/metrics.js';
 import config              from '../../config.js';
 import { buildPermissionContext } from '../services/permissionContext.js';
+import { suggestionsEngine }     from '../services/suggestionsEngine.js';
+import { conversationContext }   from '../services/conversationContext.js';
 
 // ── Active requests counter (for gauge) ────────────────────────
 let activeRequests = 0;
@@ -234,6 +236,15 @@ async function _handleChat(req, res) {
       try {
         await chatPipeline.run(ctx, trace);
 
+        // ── Generate suggestions (Phase 29 — zero cost, template-based) ──
+        let suggestions = [];
+        try {
+          const convCtx = conversationContext.getContext(session_id);
+          if (convCtx) {
+            suggestions = suggestionsEngine.generate(convCtx);
+          }
+        } catch (_) { /* graceful degradation — suggestions are optional */ }
+
         if (responseMode === 'structured') {
           // ── Structured mode: single JSON response ──────────
           const payload = {
@@ -242,6 +253,7 @@ async function _handleChat(req, res) {
             score:     ctx.avgScore,
             aborted:   ctx.aborted,
             queryType: ctx.queryRoute?.type ?? null,
+            suggestions,
           };
           if (config.RESPONSE?.structuredIncludeTrace === true) {
             payload.trace = trace.toJSON();
@@ -252,9 +264,9 @@ async function _handleChat(req, res) {
           // ── Stream/concise mode: SSE finish (existing behavior) ──
           if (ctx.aborted && ctx.abortReason === 'low_confidence') {
             writeChunk(res, { text: 'لا تتضمن المكتبة معلومات كافية حول هذا السؤال.' });
-            writeChunk(res, { done: true, sources: [], score: ctx.avgScore });
+            writeChunk(res, { done: true, sources: [], score: ctx.avgScore, suggestions: [] });
           } else {
-            writeChunk(res, { done: true, sources: ctx.sources, score: ctx.avgScore });
+            writeChunk(res, { done: true, sources: ctx.sources, score: ctx.avgScore, suggestions });
           }
           res.end();
         }

@@ -40,6 +40,11 @@ function buildPayload() {
       conciseMaxSentences: config.RESPONSE?.conciseMaxSentences ?? 3,
     },
 
+    SUGGESTIONS: {
+      enabled:        config.SUGGESTIONS?.enabled === true,
+      maxSuggestions:  config.SUGGESTIONS?.maxSuggestions ?? 3,
+    },
+
     // TIERS: moved to GET /api/whoami (Phase 27 — per-request, not static config)
   });
   return cachedPayload;
