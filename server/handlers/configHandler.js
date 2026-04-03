@@ -63,6 +63,10 @@ function buildPayload() {
       enabled: config.SYSTEM_PROMPT_ENRICHMENT?.enabled === true,
     },
 
+    CONTENT_GAPS: {
+      enabled: config.CONTENT_GAPS?.enabled === true,
+    },
+
     // TIERS: moved to GET /api/whoami (Phase 27 — per-request, not static config)
   });
   return cachedPayload;

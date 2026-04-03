@@ -158,7 +158,7 @@ class PipelineAnalytics {
       const snapshot   = metrics.snapshot();
       const cacheStats = cache.stats();
       const digest     = this.#buildDigest(snapshot, cacheStats);
-      const recs       = this.#buildRecommendations(digest);
+      const recs       = this.#buildRecommendations(digest, snapshot);
       const overrides  = this.#buildOverrides(digest);
 
       this.#cache = { digest, recommendations: recs, overrides };
@@ -306,9 +306,10 @@ class PipelineAnalytics {
   }
 
   // ── Build recommendations from digest ────────────────────────
-  #buildRecommendations(digest) {
+  #buildRecommendations(digest, snapshot = {}) {
     const recs = [];
     const t = this.#thresholds;
+    const counters = snapshot.counters || {};
 
     // 0. No data yet
     if (digest.totalRequests === 0) {
@@ -457,6 +458,22 @@ class PipelineAnalytics {
           message: `${((feedbackNegative / totalFeedback) * 100).toFixed(0)}% من التقييمات سلبية (${feedbackNegative} من ${totalFeedback}). راجع الإجابات ذات التقييم السلبي وحسّن المحتوى.`,
           metric: 'feedback_total',
           suggestedAction: 'راجع GET /api/admin/feedback لمعرفة التقييمات السلبية + أضف أو حسّن محتوى المكتبة',
+        });
+      }
+    }
+
+    // 12. Content gap rate high (Phase 38)
+    const gapBucket = counters.content_gap_total;
+    if (gapBucket && digest.totalRequests > 20) {
+      const totalGaps = this.#sumCounter(gapBucket);
+      const gapRate = totalGaps / digest.totalRequests;
+      if (gapRate > 0.20) {
+        recs.push({
+          type: 'quality', severity: 'warning',
+          title: 'نسبة فجوات المحتوى مرتفعة',
+          message: `${(gapRate * 100).toFixed(0)}% من الأسئلة (${totalGaps} من ${digest.totalRequests}) لم تحصل على إجابة جيدة. راجع فجوات المحتوى لتحسين المكتبة.`,
+          metric: 'content_gap_total / requests_total',
+          suggestedAction: 'راجع GET /api/admin/gaps لمعرفة المواضيع الناقصة + أضف محتوى جديد يغطي هذه المواضيع',
         });
       }
     }

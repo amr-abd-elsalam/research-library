@@ -542,6 +542,23 @@ const config = {
     customPreamble:     '',        // نص إضافي يُضاف في بداية الـ system prompt الديناميكي (فارغ = بدون). مثال: "أنت مساعد متخصص في تطوير الويب" — يخلي الـ LLM يعرف تخصص المكتبة
   },
 
+  // ═══════════════════════════════════════════════════════════
+  // 25. اكتشاف فجوات المحتوى (CONTENT_GAPS)
+  //    — يكتشف الأسئلة اللي المكتبة مش بتجاوبها كويس
+  //      (low confidence + low score + negative feedback)
+  //      ويجمعها في clusters ذكية بناءً على keyword overlap
+  //    — معطّل افتراضياً — فعّله من هنا
+  //    — in-memory فقط — البيانات تضيع عند restart
+  //    — zero overhead عند التعطيل
+  // ═══════════════════════════════════════════════════════════
+  CONTENT_GAPS: {
+    enabled:            false,     // true = تفعيل اكتشاف فجوات المحتوى | false = معطّل بالكامل (zero overhead — السلوك الحالي بالظبط)
+    maxGapEntries:      200,       // أقصى عدد entries في الـ ring buffer (in-memory). الأقدم يتحذف أولاً
+    minFrequencyToShow: 2,         // أقل تكرار لعرض gap في الأدمن (1 = كل سؤال بدون إجابة يظهر)
+    clusterThreshold:   0.6,       // حد التشابه لتجميع الأسئلة في cluster واحد (0-1). 0.6 = متساهل — أسئلة بتشترك في 60%+ من الكلمات المفتاحية يتجمعوا مع بعض
+    lowScoreThreshold:  0.45,      // أسئلة بـ avgScore أقل من كده تُعتبر gap (حتى لو مش aborted). 0.45 يغطي الأسئلة اللي أخذت نتائج ضعيفة بدون ما يكونوا aborted
+  },
+
 };
 
 export default deepFreeze(config);

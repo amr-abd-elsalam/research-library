@@ -17,6 +17,7 @@ import { handleWhoami }   from './handlers/whoamiHandler.js';
 import { handleSubmitFeedback, handleAdminFeedback } from './handlers/feedbackHandler.js';
 import { handleAudit } from './handlers/auditHandler.js';
 import { handleLibraryOverview } from './handlers/libraryHandler.js';
+import { handleContentGaps } from './handlers/contentGapsHandler.js';
 import { bootstrap } from './bootstrap.js';
 
 // ── URL matcher (strips query string + trailing slash) ─────────
@@ -162,6 +163,14 @@ export async function router(req, res) {
     requireAdmin(req, res);
     if (res.writableEnded) return;
     await handleLibraryOverview(req, res);
+    return;
+  }
+
+  // GET /api/admin/gaps (Phase 38 — content gap detection)
+  if (method === 'GET' && matchRoute(url, '/api/admin/gaps')) {
+    requireAdmin(req, res);
+    if (res.writableEnded) return;
+    await handleContentGaps(req, res);
     return;
   }
 

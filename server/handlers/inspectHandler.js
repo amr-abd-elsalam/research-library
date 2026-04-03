@@ -29,6 +29,7 @@ import { correlationIndex }      from '../services/correlationIndex.js';
 import { getTrailCounts }        from '../services/listeners/auditTrailListener.js';
 import { auditPersister }        from '../services/auditPersister.js';
 import { libraryIndex }          from '../services/libraryIndex.js';
+import { contentGapDetector }    from '../services/contentGapDetector.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -136,6 +137,9 @@ export async function handleInspect(_req, res) {
         enabled: config.SYSTEM_PROMPT_ENRICHMENT?.enabled === true,
         libraryIndexAvailable: libraryIndex.getIndex() !== null,
       },
+
+      // ── Content gap detector (Phase 38) ────────────────────
+      contentGapDetector: contentGapDetector.counts(),
 
       // ── Permission Tiers (Phase 26) ────────────────────────
       tiers: {

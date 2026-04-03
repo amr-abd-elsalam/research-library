@@ -2058,6 +2058,74 @@
   }
 
   // ══════════════════════════════════════════════════════════
+  //  CONTENT GAPS (Phase 38)
+  // ══════════════════════════════════════════════════════════
+  async function loadContentGaps() {
+    var container = document.getElementById('admin-gaps-content');
+    if (!container) return;
+
+    container.innerHTML = '<p class="admin-empty-msg">\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u062D\u0645\u064A\u0644...</p>';
+
+    try {
+      var data = await adminFetch('/api/admin/gaps', { limit: 20 });
+      if (!data) {
+        container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623 \u0641\u064A \u062A\u062D\u0645\u064A\u0644 \u0641\u062C\u0648\u0627\u062A \u0627\u0644\u0645\u062D\u062A\u0648\u0649</p>';
+        return;
+      }
+
+      if (!data.enabled) {
+        container.innerHTML = '<p class="admin-empty-msg">\u0627\u0643\u062A\u0634\u0627\u0641 \u0641\u062C\u0648\u0627\u062A \u0627\u0644\u0645\u062D\u062A\u0648\u0649 \u0645\u0639\u0637\u0651\u0644 \u2014 \u0641\u0639\u0651\u0644\u0647 \u0645\u0646 <code>CONTENT_GAPS.enabled: true</code></p>';
+        return;
+      }
+
+      if (!data.gaps || data.gaps.length === 0) {
+        container.innerHTML = '<p class="admin-empty-msg">\u0644\u0627 \u062A\u0648\u062C\u062F \u0641\u062C\u0648\u0627\u062A \u0645\u062D\u062A\u0648\u0649 \u0645\u0643\u062A\u0634\u0641\u0629 \u062D\u0627\u0644\u064A\u0627\u064B</p>';
+        return;
+      }
+
+      renderContentGaps(container, data);
+
+    } catch (err) {
+      container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623: ' + err.message + '</p>';
+    }
+  }
+
+  function renderContentGaps(container, data) {
+    var html = '';
+
+    // Stats row
+    html += '<div class="gap-stats">';
+    html += '<div class="gap-stat"><span class="gap-stat-value">' + (data.totalEntries || 0) + '</span><span class="gap-stat-label">\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0623\u0633\u0626\u0644\u0629</span></div>';
+    html += '<div class="gap-stat"><span class="gap-stat-value">' + (data.clusterCount || 0) + '</span><span class="gap-stat-label">\u0645\u062C\u0645\u0648\u0639\u0627\u062A</span></div>';
+    html += '<div class="gap-stat"><span class="gap-stat-value">' + data.gaps.length + '</span><span class="gap-stat-label">\u0641\u062C\u0648\u0627\u062A \u0645\u0639\u0631\u0648\u0636\u0629</span></div>';
+    html += '</div>';
+
+    // Bars
+    var maxCount = data.gaps.length > 0 ? data.gaps[0].count : 1;
+    if (maxCount === 0) maxCount = 1;
+
+    html += '<div class="gap-bars">';
+    for (var i = 0; i < data.gaps.length; i++) {
+      var gap = data.gaps[i];
+      var pct = Math.max((gap.count / maxCount) * 100, 2);
+      var keywordsText = gap.keywords.slice(0, 5).join(', ');
+      var sampleText = gap.samples && gap.samples.length > 0 ? gap.samples[0] : '';
+
+      html += '<div class="gap-row">';
+      html += '<div class="gap-bar-label">' + keywordsText + '</div>';
+      html += '<div class="gap-bar-container"><div class="gap-bar-fill" style="width:' + pct + '%"></div></div>';
+      html += '<div class="gap-bar-count">' + gap.count + ' \u0645\u0631\u0629</div>';
+      if (sampleText) {
+        html += '<div class="gap-sample">\u0645\u062B\u0627\u0644: ' + sampleText + '</div>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+
+    container.innerHTML = html;
+  }
+
+  // ══════════════════════════════════════════════════════════
   //  LOAD ALL
   // ══════════════════════════════════════════════════════════
   async function loadAll() {
@@ -2163,6 +2231,9 @@
 
     // Library Overview (Phase 36) — separate fetch (not in parallel — optional section)
     loadLibraryOverview();
+
+    // Content Gaps (Phase 38) — separate fetch (optional section)
+    loadContentGaps();
 
     // Last update
     updateTimestamp();

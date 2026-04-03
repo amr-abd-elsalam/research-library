@@ -53,6 +53,13 @@ function register() {
     if (data._promptEnriched) {
       metrics.increment('enriched_prompt_total');
     }
+
+    // Content gap tracking (Phase 38)
+    if (data.aborted && data.abortReason === 'low_confidence') {
+      metrics.increment('content_gap_total', { reason: 'low_confidence' });
+    } else if (!data.aborted && typeof data.avgScore === 'number' && data.avgScore < 0.45) {
+      metrics.increment('content_gap_total', { reason: 'low_score' });
+    }
   });
 
   // ── Stage complete (per-stage timing) ──────────────────────

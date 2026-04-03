@@ -116,6 +116,7 @@ async function loadConfig() {
       FEEDBACK:    Object.freeze(data.FEEDBACK      || { enabled: false, allowComments: true }),
       AUDIT:         Object.freeze(data.AUDIT          || { enabled: true }),
       LIBRARY_INDEX: Object.freeze(data.LIBRARY_INDEX  || { enabled: false }),
+      CONTENT_GAPS:  Object.freeze(data.CONTENT_GAPS   || { enabled: false }),
     });
 
     console.log('[config] ✅ تم تحميل الإعدادات من السيرفر');
