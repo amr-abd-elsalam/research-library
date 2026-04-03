@@ -119,7 +119,8 @@ async function loadConfig() {
       CONTENT_GAPS:  Object.freeze(data.CONTENT_GAPS   || { enabled: false }),
       EXPORT:        Object.freeze(data.EXPORT          || { enabled: false }),
       QUALITY:       Object.freeze(data.QUALITY         || { enabled: false }),
-      HEALTH_SCORE:  Object.freeze(data.HEALTH_SCORE    || { enabled: false }),
+      HEALTH_SCORE:    Object.freeze(data.HEALTH_SCORE    || { enabled: false }),
+      ADMIN_ACTIONS:   Object.freeze(data.ADMIN_ACTIONS   || { enabled: true }),
     });
 
     console.log('[config] ✅ تم تحميل الإعدادات من السيرفر');

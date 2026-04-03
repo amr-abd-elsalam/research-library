@@ -94,11 +94,22 @@
         <!-- Action Items (Phase 42) -->
         <div class="ai8v-action-items" id="actionItems"></div>
 
-        <!-- Quick Actions (Phase 42) -->
+        <!-- Quick Actions (Phase 42 + Phase 43) -->
         <div class="ai8v-quick-actions">
           <button class="ai8v-action-btn" id="btnRefreshLibrary" type="button">تحديث فهرس المكتبة</button>
           <button class="ai8v-action-btn" id="btnClearCache" type="button">مسح الكاش</button>
+          <button class="ai8v-action-btn" id="btnResetMetrics" type="button">إعادة تعيين المقاييس</button>
+          <button class="ai8v-action-btn" id="btnReanalyzeGaps" type="button">إعادة تحليل الفجوات</button>
+          <button class="ai8v-action-btn" id="btnToggleFeature" type="button">تبديل ميزة</button>
         </div>
+
+        <!-- Admin Action History (Phase 43) -->
+        <section class="admin-section" id="admin-section-action-history">
+          <h2 class="admin-section-title">سجل الإجراءات الإدارية</h2>
+          <div id="admin-action-history" class="ai8v-action-history">
+            <p class="admin-empty-msg">جاري التحميل...</p>
+          </div>
+        </section>
 
         <!-- Overview Cards -->
         <section id="section-overview" class="admin-section">

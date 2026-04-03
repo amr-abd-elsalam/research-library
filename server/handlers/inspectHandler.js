@@ -26,7 +26,7 @@ import { suggestionsEngine }     from '../services/suggestionsEngine.js';
 import { contextPersister }      from '../services/contextPersister.js';
 import { feedbackCollector }     from '../services/feedbackCollector.js';
 import { correlationIndex }      from '../services/correlationIndex.js';
-import { getTrailCounts }        from '../services/listeners/auditTrailListener.js';
+import { getTrailCounts, getTrail } from '../services/listeners/auditTrailListener.js';
 import { auditPersister }        from '../services/auditPersister.js';
 import { libraryIndex }          from '../services/libraryIndex.js';
 import { contentGapDetector }    from '../services/contentGapDetector.js';
@@ -152,6 +152,14 @@ export async function handleInspect(_req, res) {
 
       // ── Library health scorer (Phase 42) ───────────────────
       libraryHealthScorer: libraryHealthScorer.counts(),
+
+      // ── Admin actions (Phase 43) ───────────────────────────
+      adminActions: {
+        enabled:             config.ADMIN_ACTIONS?.enabled !== false,
+        auditEnabled:        config.ADMIN_ACTIONS?.auditEnabled !== false,
+        cooldownMs:          config.ADMIN_ACTIONS?.cooldownMs ?? 5000,
+        systemAuditEntries:  (getTrail('__system__') || []).length,
+      },
 
       // ── Permission Tiers (Phase 26) ────────────────────────
       tiers: {

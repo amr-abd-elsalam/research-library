@@ -22,6 +22,8 @@ class LibraryHealthScorer {
   #enabled;
   #weights;
   #thresholds;
+  #cachedResult = null;
+  #lastComputeAt = 0;
 
   constructor() {
     const cfg       = config.HEALTH_SCORE ?? {};
@@ -52,6 +54,13 @@ class LibraryHealthScorer {
    */
   compute() {
     if (!this.#enabled) return null;
+
+    // Cache check (Phase 43)
+    const now = Date.now();
+    const ttl = config.ADMIN_ACTIONS?.healthScoreCacheTtlMs ?? 30000;
+    if (this.#cachedResult && (now - this.#lastComputeAt) < ttl) {
+      return this.#cachedResult;
+    }
 
     const snapshot = metrics.snapshot();
     const counters = snapshot.counters || {};
@@ -163,13 +172,29 @@ class LibraryHealthScorer {
       cacheHitRate: cacheHitRateComponent,
     });
 
-    return {
+    const result = {
       score,
       level,
       breakdown,
       totalRequests,
       actionItems,
     };
+
+    // Cache result (Phase 43)
+    this.#cachedResult = result;
+    this.#lastComputeAt = Date.now();
+
+    return result;
+  }
+
+  /**
+   * Invalidates the cached health score.
+   * Called by admin actions that affect score components
+   * (reset-metrics, clear-cache, etc.).
+   */
+  invalidateCache() {
+    this.#cachedResult = null;
+    this.#lastComputeAt = 0;
   }
 
   /**

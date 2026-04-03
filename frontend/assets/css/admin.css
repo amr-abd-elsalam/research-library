@@ -2163,3 +2163,68 @@ img { max-width: 100%; display: block; }
   .breakdown-item { font-size: 11px; padding: 4px 8px; }
   .ai8v-quick-actions { flex-direction: column; }
 }
+
+/* ══════════════════════════════════════════════════════════
+   25. ADMIN ACTION HISTORY (Phase 43)
+══════════════════════════════════════════════════════════ */
+.ai8v-action-history {
+  max-height: 340px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+}
+
+.action-history-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  border-right: 3px solid var(--border);
+  transition: background var(--speed) var(--ease);
+}
+
+.action-history-item:last-child {
+  border-bottom: none;
+}
+
+.action-history-item:hover {
+  background: var(--bg-hover);
+}
+
+.action-history-item.success {
+  border-right-color: var(--status-ok);
+}
+
+.action-history-item.failed {
+  border-right-color: var(--status-error);
+}
+
+.action-history-time {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-family: var(--font-en);
+  white-space: nowrap;
+  min-width: 70px;
+  flex-shrink: 0;
+}
+
+.action-history-label {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.action-history-detail {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
+.action-history-empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 24px;
+  font-size: 0.85rem;
+}

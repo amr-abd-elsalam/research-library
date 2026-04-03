@@ -622,6 +622,22 @@ const config = {
     },
   },
 
+  // ═══════════════════════════════════════════════════════════
+  // 29. إجراءات الأدمن (ADMIN_ACTIONS)
+  //    — يتحكم في تسجيل وتتبع الإجراءات الإدارية
+  //    — يسجل كل action في audit trail للمراجعة والمحاسبة
+  //    — مفعّل افتراضياً — خفيف ومفيد من اللحظة الأولى
+  // ═══════════════════════════════════════════════════════════
+  ADMIN_ACTIONS: {
+    enabled:                true,       // true = تتبع الإجراءات الإدارية | false = معطّل
+    auditEnabled:           true,       // true = تسجيل الإجراءات في audit trail | false = بدون تسجيل
+    cooldownMs:             5000,       // مللي ثانية بين نفس نوع الإجراء (حماية من التكرار). 5000 = 5 ثوان
+    healthScoreCacheTtlMs:  30000,      // مللي ثانية لتخزين نتيجة مؤشر الصحة مؤقتاً. 30000 = 30 ثانية
+    toggleWhitelist:        [],         // أسماء الـ features المسموح تشغيلها/إيقافها في runtime — فارغ = toggle معطّل
+                                        // أمثلة آمنة: ['SUGGESTIONS', 'CONTENT_GAPS', 'FEEDBACK', 'QUALITY', 'HEALTH_SCORE']
+                                        // ⚠️ لا تضيف: PIPELINE, SESSIONS, AUDIT — هذه features بنيوية مش safe للتبديل أثناء التشغيل
+  },
+
 };
 
 export default deepFreeze(config);

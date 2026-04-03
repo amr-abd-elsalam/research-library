@@ -77,6 +77,8 @@
     auditBtn:       $('admin-audit-btn'),
     auditTimeline:  $('admin-audit-timeline'),
     auditEmpty:     $('admin-audit-empty'),
+    // Action History (Phase 43)
+    actionHistory:  $('admin-action-history'),
   };
 
   // ══════════════════════════════════════════════════════════
@@ -2326,8 +2328,86 @@
     }
   }
 
+  // ══════════════════════════════════════════════════════════
+  //  ADMIN ACTION HISTORY (Phase 43)
+  // ══════════════════════════════════════════════════════════
+  async function loadActionHistory() {
+    var container = DOM.actionHistory;
+    if (!container) return;
+
+    try {
+      var data = await adminFetch('/api/admin/audit/__system__', { limit: 100 });
+
+      if (!data || !data.entries || data.entries.length === 0) {
+        container.innerHTML = '<p class="action-history-empty">\u0644\u0627 \u062A\u0648\u062C\u062F \u0625\u062C\u0631\u0627\u0621\u0627\u062A \u0645\u0633\u062C\u0644\u0629 \u0628\u0639\u062F</p>';
+        return;
+      }
+
+      var entries = data.entries
+        .filter(function (e) { return e.type === 'admin_action'; })
+        .reverse()
+        .slice(0, 15);
+
+      if (entries.length === 0) {
+        container.innerHTML = '<p class="action-history-empty">\u0644\u0627 \u062A\u0648\u062C\u062F \u0625\u062C\u0631\u0627\u0621\u0627\u062A \u0645\u0633\u062C\u0644\u0629 \u0628\u0639\u062F</p>';
+        return;
+      }
+
+      var actionLabels = {
+        'refresh-library':  '\u062A\u062D\u062F\u064A\u062B \u0627\u0644\u0645\u0643\u062A\u0628\u0629',
+        'clear-cache':      '\u0645\u0633\u062D \u0627\u0644\u0643\u0627\u0634',
+        'reset-metrics':    '\u0625\u0639\u0627\u062F\u0629 \u062A\u0639\u064A\u064A\u0646 \u0627\u0644\u0645\u0642\u0627\u064A\u064A\u0633',
+        'reanalyze-gaps':   '\u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u0641\u062C\u0648\u0627\u062A',
+        'toggle-feature':   '\u062A\u0628\u062F\u064A\u0644 \u0645\u064A\u0632\u0629',
+      };
+
+      while (container.firstChild) container.removeChild(container.firstChild);
+
+      for (var i = 0; i < entries.length; i++) {
+        var e = entries[i];
+        var time = '';
+        try {
+          time = new Date(e.timestamp).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+        } catch (_) {
+          time = '';
+        }
+
+        var statusClass = e.success !== false ? 'success' : 'failed';
+        var label = actionLabels[e.action] || e.action;
+
+        var row = document.createElement('div');
+        row.className = 'action-history-item ' + statusClass;
+
+        var timeEl = document.createElement('span');
+        timeEl.className = 'action-history-time';
+        timeEl.textContent = time;
+        row.appendChild(timeEl);
+
+        var labelEl = document.createElement('span');
+        labelEl.className = 'action-history-label';
+        labelEl.textContent = label;
+        row.appendChild(labelEl);
+
+        if (e.detail) {
+          var detailEl = document.createElement('span');
+          detailEl.className = 'action-history-detail';
+          detailEl.textContent = '\u2014 ' + e.detail;
+          row.appendChild(detailEl);
+        }
+
+        container.appendChild(row);
+      }
+
+    } catch (err) {
+      if (container) {
+        container.innerHTML = '<p class="action-history-empty">\u062E\u0637\u0623 \u0641\u064A \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0633\u062C\u0644</p>';
+      }
+    }
+  }
+
   async function loadOverviewTab() {
     loadHealthScore();
+    loadActionHistory();
 
     // Overview stats
     showOverviewSkeleton();
@@ -2533,10 +2613,15 @@
             },
           });
           var data = await res.json();
-          btnRefresh.textContent = data.success ? '\u062A\u0645 \u0627\u0644\u062A\u062D\u062F\u064A\u062B \u2713' : '\u0641\u0634\u0644';
-          // Reload health score after refresh
+          if (res.status === 429) {
+            btnRefresh.textContent = '\u0627\u0646\u062A\u0638\u0631 ' + Math.ceil((data.retryAfterMs || 5000) / 1000) + ' \u062B';
+          } else {
+            btnRefresh.textContent = data.success ? '\u062A\u0645 \u0627\u0644\u062A\u062D\u062F\u064A\u062B \u2713' : '\u0641\u0634\u0644';
+          }
+          // Reload health score + action history after action
           _loadedTabs['overview'] = false;
           loadHealthScore();
+          loadActionHistory();
         } catch (err) {
           btnRefresh.textContent = '\u062E\u0637\u0623';
         }
@@ -2563,7 +2648,12 @@
             },
           });
           var data = await res.json();
-          btnClear.textContent = data.success ? '\u062A\u0645 \u0645\u0633\u062D ' + data.cleared + ' \u0639\u0646\u0635\u0631 \u2713' : '\u0641\u0634\u0644';
+          if (res.status === 429) {
+            btnClear.textContent = '\u0627\u0646\u062A\u0638\u0631 ' + Math.ceil((data.retryAfterMs || 5000) / 1000) + ' \u062B';
+          } else {
+            btnClear.textContent = data.success ? '\u062A\u0645 \u0645\u0633\u062D ' + data.cleared + ' \u0639\u0646\u0635\u0631 \u2713' : '\u0641\u0634\u0644';
+          }
+          loadActionHistory();
         } catch (err) {
           btnClear.textContent = '\u062E\u0637\u0623';
         }
@@ -2571,6 +2661,118 @@
           btnClear.disabled = false;
           btnClear.classList.remove('loading');
           btnClear.textContent = '\u0645\u0633\u062D \u0627\u0644\u0643\u0627\u0634';
+        }, 3000);
+      });
+    }
+
+    // ── Reset Metrics (Phase 43) ──────────────────────────────
+    var btnReset = $('btnResetMetrics');
+    if (btnReset) {
+      btnReset.addEventListener('click', async function () {
+        btnReset.disabled = true;
+        btnReset.classList.add('loading');
+        btnReset.textContent = '\u062C\u0627\u0631\u064A \u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u062A\u0639\u064A\u064A\u0646...';
+        try {
+          var url = new URL('/api/admin/actions/reset-metrics', window.location.origin);
+          var res = await fetch(url.toString(), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + (state.token || ''),
+            },
+          });
+          var data = await res.json();
+          if (res.status === 429) {
+            btnReset.textContent = '\u0627\u0646\u062A\u0638\u0631 ' + Math.ceil((data.retryAfterMs || 5000) / 1000) + ' \u062B';
+          } else {
+            btnReset.textContent = data.success ? '\u062A\u0645 \u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u062A\u0639\u064A\u064A\u0646 \u2713' : '\u0641\u0634\u0644';
+          }
+          loadActionHistory();
+          loadHealthScore();
+        } catch (err) {
+          btnReset.textContent = '\u062E\u0637\u0623';
+        }
+        setTimeout(function () {
+          btnReset.disabled = false;
+          btnReset.classList.remove('loading');
+          btnReset.textContent = '\u0625\u0639\u0627\u062F\u0629 \u062A\u0639\u064A\u064A\u0646 \u0627\u0644\u0645\u0642\u0627\u064A\u064A\u0633';
+        }, 3000);
+      });
+    }
+
+    // ── Reanalyze Gaps (Phase 43) ─────────────────────────────
+    var btnGaps = $('btnReanalyzeGaps');
+    if (btnGaps) {
+      btnGaps.addEventListener('click', async function () {
+        btnGaps.disabled = true;
+        btnGaps.classList.add('loading');
+        btnGaps.textContent = '\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u062D\u0644\u064A\u0644...';
+        try {
+          var url = new URL('/api/admin/actions/reanalyze-gaps', window.location.origin);
+          var res = await fetch(url.toString(), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + (state.token || ''),
+            },
+          });
+          var data = await res.json();
+          if (res.status === 429) {
+            btnGaps.textContent = '\u0627\u0646\u062A\u0638\u0631 ' + Math.ceil((data.retryAfterMs || 5000) / 1000) + ' \u062B';
+          } else if (res.status === 404) {
+            btnGaps.textContent = '\u063A\u064A\u0631 \u0645\u0641\u0639\u0651\u0644';
+          } else {
+            btnGaps.textContent = data.success ? '\u062A\u0645 \u0627\u0644\u062A\u062D\u0644\u064A\u0644 \u2713' : '\u0641\u0634\u0644';
+          }
+          loadActionHistory();
+        } catch (err) {
+          btnGaps.textContent = '\u062E\u0637\u0623';
+        }
+        setTimeout(function () {
+          btnGaps.disabled = false;
+          btnGaps.classList.remove('loading');
+          btnGaps.textContent = '\u0625\u0639\u0627\u062F\u0629 \u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u0641\u062C\u0648\u0627\u062A';
+        }, 3000);
+      });
+    }
+
+    // ── Toggle Feature (Phase 43) ─────────────────────────────
+    var btnToggle = $('btnToggleFeature');
+    if (btnToggle) {
+      btnToggle.addEventListener('click', async function () {
+        var feature = prompt('\u0627\u0633\u0645 \u0627\u0644\u0645\u064A\u0632\u0629 (\u0645\u062B\u0627\u0644: SUGGESTIONS):');
+        if (!feature) return;
+        var enableIt = confirm('\u062A\u0641\u0639\u064A\u0644 ' + feature + '?');
+
+        btnToggle.disabled = true;
+        btnToggle.classList.add('loading');
+        btnToggle.textContent = '\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u0628\u062F\u064A\u0644...';
+        try {
+          var url = new URL('/api/admin/actions/toggle-feature', window.location.origin);
+          var res = await fetch(url.toString(), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + (state.token || ''),
+            },
+            body: JSON.stringify({ feature: feature, enabled: enableIt }),
+          });
+          var data = await res.json();
+          if (res.status === 429) {
+            btnToggle.textContent = '\u0627\u0646\u062A\u0638\u0631 ' + Math.ceil((data.retryAfterMs || 5000) / 1000) + ' \u062B';
+          } else if (res.status === 403 || res.status === 404) {
+            btnToggle.textContent = data.error || '\u063A\u064A\u0631 \u0645\u0633\u0645\u0648\u062D';
+          } else {
+            btnToggle.textContent = data.success ? feature + ': ' + (enableIt ? '\u0645\u0641\u0639\u0651\u0644' : '\u0645\u0639\u0637\u0651\u0644') + ' \u2713' : '\u0641\u0634\u0644';
+          }
+          loadActionHistory();
+        } catch (err) {
+          btnToggle.textContent = '\u062E\u0637\u0623';
+        }
+        setTimeout(function () {
+          btnToggle.disabled = false;
+          btnToggle.classList.remove('loading');
+          btnToggle.textContent = '\u062A\u0628\u062F\u064A\u0644 \u0645\u064A\u0632\u0629';
         }, 3000);
       });
     }

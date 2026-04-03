@@ -97,6 +97,14 @@ function register() {
   eventBus.on('library:changed', (_data) => {
     metrics.increment('cache_invalidation_total');
   });
+
+  // ── Admin action tracking (Phase 43) ──────────────────────
+  eventBus.on('admin:action', (data) => {
+    metrics.increment('admin_action_total', {
+      action:  data.action,
+      success: String(data.result?.success ?? true),
+    });
+  });
 }
 
 export { register };

@@ -81,6 +81,10 @@ function buildPayload() {
       enabled: config.HEALTH_SCORE?.enabled === true,
     },
 
+    ADMIN_ACTIONS: {
+      enabled: config.ADMIN_ACTIONS?.enabled !== false,
+    },
+
     // TIERS: moved to GET /api/whoami (Phase 27 — per-request, not static config)
   });
   return cachedPayload;

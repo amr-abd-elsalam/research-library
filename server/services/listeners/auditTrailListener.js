@@ -49,6 +49,29 @@ function addEntry(sessionId, entry) {
   auditPersister.scheduleWrite(sessionId, fullEntry);
 }
 
+// ── System-level audit entries (Phase 43) ──────────────────────
+function addSystemEntry(entry) {
+  if (!enabled) return;
+  const key = '__system__';
+  if (!sessionTrails.has(key)) {
+    // System key does NOT count towards MAX_SESSIONS eviction
+    sessionTrails.set(key, []);
+  }
+  const trail = sessionTrails.get(key);
+  const fullEntry = { ...entry, timestamp: entry.timestamp || Date.now() };
+  trail.push(fullEntry);
+
+  // Enforce max entries
+  while (trail.length > MAX_ENTRIES_PER_SESSION) {
+    trail.shift();
+  }
+
+  // Persist if enabled
+  if (auditPersister.enabled) {
+    auditPersister.scheduleWrite(key, fullEntry);
+  }
+}
+
 // ── Public API ─────────────────────────────────────────────────
 
 /**
@@ -148,6 +171,20 @@ export function register() {
       action:    data.action,
       latencyMs: data.latencyMs || 0,
       timestamp: data.timestamp || Date.now(),
+    });
+  });
+
+  // ── admin:action → system audit entry (Phase 43) ─────────────
+  eventBus.on('admin:action', (data) => {
+    if (config.ADMIN_ACTIONS?.auditEnabled === false) return;
+    addSystemEntry({
+      type:       'admin_action',
+      action:     data.action,
+      params:     data.params || {},
+      success:    data.result?.success ?? true,
+      detail:     data.result?.message || data.result?.error || '',
+      durationMs: data.durationMs,
+      timestamp:  data.timestamp || Date.now(),
     });
   });
 
