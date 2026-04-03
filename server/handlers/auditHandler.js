@@ -7,6 +7,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { getTrail } from '../services/listeners/auditTrailListener.js';
+import { auditPersister } from '../services/auditPersister.js';
 
 /**
  * GET /api/admin/audit/:sessionId
@@ -33,7 +34,12 @@ export async function handleAudit(req, res) {
     }
   } catch { /* use default */ }
 
-  const trail = getTrail(sessionId, limit);
+  let trail = getTrail(sessionId, limit);
+
+  // Fallback to persisted JSONL when in-memory is empty (e.g. after restart) — Phase 35
+  if (trail.length === 0 && auditPersister.enabled) {
+    trail = await auditPersister.read(sessionId, limit);
+  }
 
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({

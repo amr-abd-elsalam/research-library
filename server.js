@@ -4,6 +4,7 @@ import { router }   from './server/router.js';
 import { serveStatic } from './server/static.js';
 import { bootstrap }           from './server/bootstrap.js';
 import { metricsPersister }    from './server/services/metricsPersister.js';
+import { auditPersister }      from './server/services/auditPersister.js';
 import { conversationContext } from './server/services/conversationContext.js';
 
 const PORT = process.env.PORT || 3000;
@@ -84,6 +85,14 @@ async function gracefulShutdown(signal) {
     metricsPersister.stop();
   } catch (err) {
     console.error('[server] metrics flush error:', err.message);
+  }
+
+  // Flush audit trail before exit (Phase 35)
+  try {
+    await auditPersister.flush();
+    auditPersister.stop();
+  } catch (err) {
+    console.error('[server] audit flush error:', err.message);
   }
 
   // Stop eviction sweep (Phase 30)

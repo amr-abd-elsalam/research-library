@@ -52,6 +52,7 @@ function buildPayload() {
 
     AUDIT: {
       enabled: config.AUDIT?.enabled !== false,
+      persistAudit: config.AUDIT?.persistAudit === true,
     },
 
     // TIERS: moved to GET /api/whoami (Phase 27 — per-request, not static config)

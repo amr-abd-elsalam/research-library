@@ -15,6 +15,7 @@
 import config   from '../../../config.js';
 import { logger }   from '../logger.js';
 import { eventBus } from '../eventBus.js';
+import { auditPersister } from '../auditPersister.js';
 
 // ── Module-level state ─────────────────────────────────────────
 const sessionTrails          = new Map();
@@ -36,12 +37,16 @@ function addEntry(sessionId, entry) {
   }
 
   const trail = sessionTrails.get(sessionId);
-  trail.push({ ...entry, timestamp: Date.now() });
+  const fullEntry = { ...entry, timestamp: Date.now() };
+  trail.push(fullEntry);
 
   // Enforce max entries per session — evict oldest
   while (trail.length > MAX_ENTRIES_PER_SESSION) {
     trail.shift();
   }
+
+  // Persist to disk (Phase 35 — fire-and-forget, scheduleWrite buffers internally)
+  auditPersister.scheduleWrite(sessionId, fullEntry);
 }
 
 // ── Public API ─────────────────────────────────────────────────
@@ -121,5 +126,30 @@ export function register() {
     });
   });
 
-  logger.info('auditTrail', `listener registered (maxSessions: ${MAX_SESSIONS}, maxEntriesPerSession: ${MAX_ENTRIES_PER_SESSION})`);
+  // ── command:complete → command entry (Phase 35) ──────────────
+  eventBus.on('command:complete', (data) => {
+    const sessionId = data.sessionId || null;
+    if (!sessionId) return;
+    addEntry(sessionId, {
+      type:        'command',
+      commandName: data.commandName || data.command || null,
+      timestamp:   data.timestamp || Date.now(),
+    });
+  });
+
+  // ── execution:routed → routing entry (Phase 35) ──────────────
+  eventBus.on('execution:routed', (data) => {
+    // Skip 'pipeline' action — pipeline:complete already records queries
+    if (data.action === 'pipeline') return;
+    const sessionId = data.sessionId || null;
+    if (!sessionId) return;
+    addEntry(sessionId, {
+      type:      'routing',
+      action:    data.action,
+      latencyMs: data.latencyMs || 0,
+      timestamp: data.timestamp || Date.now(),
+    });
+  });
+
+  logger.info('auditTrail', `listener registered (maxSessions: ${MAX_SESSIONS}, maxEntriesPerSession: ${MAX_ENTRIES_PER_SESSION}, persistence: ${auditPersister.enabled})`);
 }

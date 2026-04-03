@@ -507,6 +507,8 @@ const config = {
     maxCorrelationEntries:     500,    // أقصى entries في الـ correlation index (in-memory ring buffer — الأقدم يتحذف)
     maxAuditEntriesPerSession: 100,    // أقصى audit events per session
     maxAuditSessions:          200,    // أقصى sessions في الـ audit trail (الأقدم يتحذف)
+    persistAudit:              false,  // true = حفظ الـ audit trail على الديسك واستعادته بعد restart | false = ذاكرة فقط (السلوك الحالي بالظبط). يعمل فقط لما enabled: true
+    auditDir:                  './data/audit',  // مجلد حفظ ملفات الـ audit — كل session = ملف JSONL واحد ({sessionId}.jsonl). يتعمل تلقائياً لو مش موجود
   },
 
 };

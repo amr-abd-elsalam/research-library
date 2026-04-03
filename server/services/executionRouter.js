@@ -44,10 +44,10 @@ class ExecutionRouter {
       // Permission check — if denied, fall through to next checks (NOT error)
       if (permissionContext && !permissionContext.allowsCommand(parsed.command.name)) {
         logger.debug('executionRouter', `command '${parsed.command.name}' denied for tier '${permissionContext.tier}'`);
-        this.#emitRouted('permission_denied', t0);
+        this.#emitRouted('permission_denied', t0, sessionId);
         // Fall through — don't return. Message will go to cache/budget/pipeline checks
       } else {
-        this.#emitRouted('command', t0);
+        this.#emitRouted('command', t0, sessionId);
         return {
           action: 'command',
           data:   { command: parsed.command, parsed },
@@ -66,10 +66,10 @@ class ExecutionRouter {
       // Permission check — if denied, fall through
       if (permissionContext && !permissionContext.allowsCommand(queryIntent.commandMatch.command.name)) {
         logger.debug('executionRouter', `NL command '${queryIntent.commandMatch.command.name}' denied for tier '${permissionContext.tier}'`);
-        this.#emitRouted('permission_denied', t0);
+        this.#emitRouted('permission_denied', t0, sessionId);
         // Fall through to cache/budget/pipeline
       } else {
-        this.#emitRouted('nl_command', t0);
+        this.#emitRouted('nl_command', t0, sessionId);
         return {
           action: 'nl_command',
           data:   { command: queryIntent.commandMatch.command, intent: queryIntent },
@@ -82,7 +82,7 @@ class ExecutionRouter {
     const cached   = cache.get(cacheKey);
 
     if (cached) {
-      this.#emitRouted('cache_hit', t0);
+      this.#emitRouted('cache_hit', t0, sessionId);
       return {
         action: 'cache_hit',
         data:   { cached, cacheKey },
@@ -93,7 +93,7 @@ class ExecutionRouter {
     if (sessionId) {
       const budgetCheck = sessionBudget.check(sessionId);
       if (budgetCheck.exceeded) {
-        this.#emitRouted('budget_exceeded', t0);
+        this.#emitRouted('budget_exceeded', t0, sessionId);
         return {
           action: 'budget_exceeded',
           data:   { budgetCheck },
@@ -103,7 +103,7 @@ class ExecutionRouter {
 
     // ── 5. Topic restriction check (Phase 26) ───────────────
     if (permissionContext && topicFilter && !permissionContext.allowsTopic(topicFilter)) {
-      this.#emitRouted('topic_denied', t0);
+      this.#emitRouted('topic_denied', t0, sessionId);
       return {
         action: 'topic_denied',
         data:   { topicFilter, tier: permissionContext.tier },
@@ -111,7 +111,7 @@ class ExecutionRouter {
     }
 
     // ── 6. Default: pipeline execution ──────────────────────
-    this.#emitRouted('pipeline', t0);
+    this.#emitRouted('pipeline', t0, sessionId);
     return {
       action: 'pipeline',
       data:   { cacheKey, queryIntent },
@@ -122,10 +122,12 @@ class ExecutionRouter {
    * Emits routing decision event for observability.
    * @param {string} action — resolved action name
    * @param {number} t0 — start timestamp
+   * @param {string|null} [sessionId=null] — session ID for audit trail tracking
    */
-  #emitRouted(action, t0) {
+  #emitRouted(action, t0, sessionId = null) {
     eventBus.emit('execution:routed', {
       action,
+      sessionId,
       latencyMs: Date.now() - t0,
       timestamp: Date.now(),
     });

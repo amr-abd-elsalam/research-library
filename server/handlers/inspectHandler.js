@@ -27,6 +27,7 @@ import { contextPersister }      from '../services/contextPersister.js';
 import { feedbackCollector }     from '../services/feedbackCollector.js';
 import { correlationIndex }      from '../services/correlationIndex.js';
 import { getTrailCounts }        from '../services/listeners/auditTrailListener.js';
+import { auditPersister }        from '../services/auditPersister.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -122,6 +123,9 @@ export async function handleInspect(_req, res) {
 
       // ── Audit trail (Phase 34) ─────────────────────────────
       auditTrail: getTrailCounts(),
+
+      // ── Audit persistence (Phase 35) ───────────────────────
+      auditPersister: auditPersister.counts(),
 
       // ── Permission Tiers (Phase 26) ────────────────────────
       tiers: {

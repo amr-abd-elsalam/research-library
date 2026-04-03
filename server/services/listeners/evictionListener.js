@@ -14,6 +14,7 @@ import { logger } from '../logger.js';
 import { sessionBudget } from '../sessionBudget.js';
 import { clearSuggestions } from './suggestionsListener.js';
 import { contextPersister } from '../contextPersister.js';
+import { auditPersister } from '../auditPersister.js';
 
 export function register() {
   eventBus.on('session:evicted', (data) => {
@@ -40,5 +41,10 @@ export function register() {
 
     // 5. Log
     logger.debug('evictionListener', `cleaned up evicted session ${sessionId.slice(0, 8)}`);
+
+    // 6. Remove persisted audit trail (Phase 35)
+    if (auditPersister.enabled) {
+      auditPersister.remove(sessionId).catch(() => {});
+    }
   });
 }
