@@ -61,6 +61,7 @@ function buildPayload() {
 
     SYSTEM_PROMPT_ENRICHMENT: {
       enabled: config.SYSTEM_PROMPT_ENRICHMENT?.enabled === true,
+      includeKnownGaps: config.SYSTEM_PROMPT_ENRICHMENT?.includeKnownGaps === true,
     },
 
     CONTENT_GAPS: {

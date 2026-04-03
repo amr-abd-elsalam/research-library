@@ -540,6 +540,10 @@ const config = {
     includeFileCount:   true,      // true = يذكر عدد الملفات المصدرية وحجم المحتوى | false = يتجاوز
     includeLastRefresh: false,     // true = يذكر تاريخ آخر تحديث لفهرس المكتبة | false = يتجاوز (مش مفيد عادةً للمستخدم — بس مفيد للـ debugging)
     customPreamble:     '',        // نص إضافي يُضاف في بداية الـ system prompt الديناميكي (فارغ = بدون). مثال: "أنت مساعد متخصص في تطوير الويب" — يخلي الـ LLM يعرف تخصص المكتبة
+
+    // ── Phase 41 — Gap-Aware Enrichment ─────────────────────
+    includeKnownGaps:  false,       // true = إضافة تحذيرات المواضيع غير المغطاة في المكتبة إلى تعليمات النموذج | false = بدون (السلوك الحالي). يعمل فقط لما CONTENT_GAPS.enabled: true + SYSTEM_PROMPT_ENRICHMENT.enabled: true
+    maxGapsInPrompt:   5,           // أقصى عدد مواضيع غير مغطاة يتم ذكرها في تعليمات النموذج (1-10). أكثر = tokens أكثر بس دقة أعلى
   },
 
   // ═══════════════════════════════════════════════════════════

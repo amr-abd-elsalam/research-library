@@ -4,6 +4,7 @@ class Cache {
   #store  = new Map();
   #hits   = 0;
   #misses = 0;
+  #currentLibraryVersion = null;
 
   get(key) {
     if (!this.#store.has(key)) {
@@ -15,6 +16,13 @@ class Cache {
 
     // ── Expired ────────────────────────────────────────────────
     if (Date.now() > entry.expiresAt) {
+      this.#store.delete(key);
+      this.#misses++;
+      return null;
+    }
+
+    // ── Phase 41: stale cache entry — library version mismatch ─
+    if (this.#currentLibraryVersion !== null && entry.libraryVersion !== undefined && entry.libraryVersion !== this.#currentLibraryVersion) {
       this.#store.delete(key);
       this.#misses++;
       return null;
@@ -43,6 +51,7 @@ class Cache {
     this.#store.set(key, {
       value,
       expiresAt: Date.now() + ttlSeconds * 1000,
+      libraryVersion: this.#currentLibraryVersion,
     });
   }
 
@@ -70,6 +79,32 @@ class Cache {
       misses:   this.#misses,
       hit_rate: hitRate,
     };
+  }
+
+  /**
+   * Sets the current library version. Called by cacheListener on library:changed.
+   * @param {string} version
+   */
+  setLibraryVersion(version) {
+    this.#currentLibraryVersion = version;
+  }
+
+  /**
+   * Clears all cache entries. Called by cacheListener on library:changed.
+   * @returns {number} number of entries cleared
+   */
+  invalidateAll() {
+    const size = this.#store.size;
+    this.#store.clear();
+    return size;
+  }
+
+  /**
+   * Returns the current library version tag.
+   * @returns {string|null}
+   */
+  getVersion() {
+    return this.#currentLibraryVersion;
   }
 }
 

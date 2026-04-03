@@ -16,6 +16,7 @@
 import { scrollPoints, getCollectionInfo } from './qdrant.js';
 import config from '../../config.js';
 import { logger } from './logger.js';
+import { eventBus } from './eventBus.js';
 
 const SCAN_LIMIT = 500;
 
@@ -26,6 +27,7 @@ class LibraryIndex {
   #timer;
   #index;
   #refreshCount;
+  #previousVersion;
 
   constructor() {
     this.#enabled           = config.LIBRARY_INDEX?.enabled === true;
@@ -34,11 +36,23 @@ class LibraryIndex {
     this.#timer             = null;
     this.#index             = null;
     this.#refreshCount      = 0;
+    this.#previousVersion   = null;
   }
 
   /** Whether library indexing is enabled. */
   get enabled() {
     return this.#enabled;
+  }
+
+  /**
+   * Computes a simple version string from the current index.
+   * Used for change detection — not a cryptographic hash.
+   * @param {object|null} index
+   * @returns {string|null}
+   */
+  #computeVersion(index) {
+    if (!index) return null;
+    return `${index.fileCount}:${index.topicCount}:${index.totalPoints}`;
   }
 
   /**
@@ -109,6 +123,18 @@ class LibraryIndex {
       lastRefresh:    Date.now(),
     };
 
+    // Phase 41: detect library content changes
+    const newVersion = this.#computeVersion(this.#index);
+    if (this.#previousVersion !== null && newVersion !== this.#previousVersion) {
+      eventBus.emit('library:changed', {
+        previousVersion: this.#previousVersion,
+        newVersion,
+        timestamp: Date.now(),
+      });
+      logger.info('libraryIndex', `library content changed: ${this.#previousVersion} → ${newVersion}`);
+    }
+    this.#previousVersion = newVersion;
+
     this.#refreshCount++;
     logger.info('libraryIndex', `refreshed: ${fileSet.size} files, ${topicMap.size} topics, ${totalPoints} points (scanned ${scanned})`);
   }
@@ -164,13 +190,14 @@ class LibraryIndex {
    */
   counts() {
     return {
-      enabled:      this.#enabled,
-      hasIndex:     this.#index !== null,
-      fileCount:    this.#index?.fileCount ?? 0,
-      topicCount:   this.#index?.topicCount ?? 0,
-      totalPoints:  this.#index?.totalPoints ?? 0,
-      refreshCount: this.#refreshCount,
-      timerActive:  this.#timer !== null,
+      enabled:        this.#enabled,
+      hasIndex:       this.#index !== null,
+      fileCount:      this.#index?.fileCount ?? 0,
+      topicCount:     this.#index?.topicCount ?? 0,
+      totalPoints:    this.#index?.totalPoints ?? 0,
+      refreshCount:   this.#refreshCount,
+      timerActive:    this.#timer !== null,
+      libraryVersion: this.#previousVersion,
     };
   }
 }

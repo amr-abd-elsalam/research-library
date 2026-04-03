@@ -92,6 +92,11 @@ function register() {
       metrics.increment('permission_denied_total', { reason: 'topic' });
     }
   });
+
+  // ── Cache invalidation tracking (Phase 41) ────────────────
+  eventBus.on('library:changed', (_data) => {
+    metrics.increment('cache_invalidation_total');
+  });
 }
 
 export { register };

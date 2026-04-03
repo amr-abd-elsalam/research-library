@@ -19,6 +19,7 @@ import { CircuitOpenError }                   from './circuitBreaker.js';
 import config                                 from '../../config.js';
 import { conversationContext }                from './conversationContext.js';
 import { libraryIndex }                       from './libraryIndex.js';
+import { contentGapDetector }                 from './contentGapDetector.js';
 
 // ── Singleton ContextManager (same as previous chat.js) ────────
 const contextManager = new ContextManager();
@@ -238,6 +239,26 @@ function buildDynamicSystemPrompt(basePrompt) {
   if (enrichConfig.includeLastRefresh === true && index.lastRefresh) {
     const refreshDate = new Date(index.lastRefresh).toLocaleString('ar-EG');
     parts.push(`آخر تحديث لفهرس المكتبة: ${refreshDate}.`);
+  }
+
+  // Phase 41: Known content gaps — warn the model about topics not well covered
+  if (enrichConfig.includeKnownGaps === true && contentGapDetector.enabled) {
+    const maxGaps = Math.min(Math.max(enrichConfig.maxGapsInPrompt ?? 5, 1), 10);
+    const minFreq = config.CONTENT_GAPS?.minFrequencyToShow ?? 2;
+    const gaps = contentGapDetector.getGaps(maxGaps);
+
+    if (gaps.length > 0) {
+      const gapDescriptions = gaps
+        .filter(g => g.count >= minFreq)
+        .map(g => g.keywords.slice(0, 3).join(' + '))
+        .slice(0, maxGaps);
+
+      if (gapDescriptions.length > 0) {
+        parts.push(
+          `تنبيه: المكتبة لا تغطي بشكل كافٍ المواضيع التالية: ${gapDescriptions.join('، ')}. إذا سُئلت عن أحد هذه المواضيع، أجب بوضوح أن المكتبة لا تحتوي على معلومات كافية حول هذا الموضوع بدلاً من محاولة الإجابة من سياق ضعيف.`
+        );
+      }
+    }
   }
 
   if (parts.length === 0) return basePrompt;

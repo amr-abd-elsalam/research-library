@@ -8,6 +8,7 @@
 
 import { eventBus } from '../eventBus.js';
 import { cache }    from '../cache.js';
+import { logger }   from '../logger.js';
 
 const CACHE_TTL = 3600;
 
@@ -18,6 +19,13 @@ function register() {
     if (data.aborted || !data._cacheEntry) return;
 
     cache.set(data._cacheKey, data._cacheEntry, CACHE_TTL);
+  });
+
+  // Phase 41: invalidate cache when library content changes
+  eventBus.on('library:changed', (data) => {
+    const cleared = cache.invalidateAll();
+    cache.setLibraryVersion(data.newVersion);
+    logger.info('cacheListener', `cache invalidated on library change (${cleared} entries cleared, version: ${data.newVersion})`);
   });
 }
 
