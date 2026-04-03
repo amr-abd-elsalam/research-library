@@ -16,6 +16,7 @@ import { contentGapDetector } from '../services/contentGapDetector.js';
 import { gapPersister } from '../services/gapPersister.js';
 import { libraryHealthScorer } from '../services/libraryHealthScorer.js';
 import config from '../../config.js';
+import { featureFlags } from '../services/featureFlags.js';
 
 // ── Per-action-type cooldown tracking (Phase 43) ───────────────
 const lastActionTime = new Map();
@@ -46,9 +47,13 @@ function emitAction(action, params, result, durationMs) {
   });
 }
 
-// ── Runtime overrides for toggle-feature (Phase 43) ────────────
-/** @type {Map<string, boolean>} */
-export const runtimeOverrides = new Map();
+// ── Runtime overrides for toggle-feature (Phase 43 → Phase 44) ─
+/** @deprecated — use featureFlags singleton. Kept for backward compatibility. */
+export const runtimeOverrides = {
+  set(key, value) { featureFlags.setOverride(key, value); },
+  get(key) { return featureFlags.isEnabled(key); },
+  has(key) { return featureFlags.getOverrides().hasOwnProperty(key.toUpperCase()); },
+};
 
 // ── Request body reader helper ─────────────────────────────────
 function readBody(req) {
@@ -240,7 +245,7 @@ export async function handleAdminAction(req, res) {
         return;
       }
 
-      runtimeOverrides.set(feature, enabled);
+      featureFlags.setOverride(feature, enabled);
       recordCooldown(action);
       libraryHealthScorer.invalidateCache();
       const durationMs = Date.now() - t0;

@@ -105,6 +105,14 @@ function register() {
       success: String(data.result?.success ?? true),
     });
   });
+
+  // ── Feature toggle tracking (Phase 44) ────────────────────
+  eventBus.on('feature:toggled', (data) => {
+    metrics.increment('feature_toggle_total', {
+      section: data.section,
+      enabled: String(data.enabled),
+    });
+  });
 }
 
 export { register };

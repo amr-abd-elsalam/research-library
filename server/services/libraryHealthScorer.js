@@ -17,6 +17,7 @@ import config from '../../config.js';
 import { metrics } from './metrics.js';
 import { feedbackCollector } from './feedbackCollector.js';
 import { sessionQualityScorer } from './sessionQualityScorer.js';
+import { featureFlags } from './featureFlags.js';
 
 class LibraryHealthScorer {
   #enabled;
@@ -43,9 +44,9 @@ class LibraryHealthScorer {
     };
   }
 
-  /** Whether health scoring is active. */
+  /** Whether health scoring is active (dynamic — reads from featureFlags). */
   get enabled() {
-    return this.#enabled;
+    return featureFlags.isEnabled('HEALTH_SCORE');
   }
 
   /**
@@ -53,7 +54,7 @@ class LibraryHealthScorer {
    * @returns {{ score: number, level: string, breakdown: object, totalRequests: number, actionItems: Array } | null}
    */
   compute() {
-    if (!this.#enabled) return null;
+    if (!this.enabled) return null;
 
     // Cache check (Phase 43)
     const now = Date.now();
@@ -203,7 +204,7 @@ class LibraryHealthScorer {
    */
   counts() {
     return {
-      enabled: this.#enabled,
+      enabled: this.enabled,
     };
   }
 

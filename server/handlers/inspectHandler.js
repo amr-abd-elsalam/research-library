@@ -33,6 +33,7 @@ import { contentGapDetector }    from '../services/contentGapDetector.js';
 import { gapPersister }          from '../services/gapPersister.js';
 import { sessionQualityScorer }  from '../services/sessionQualityScorer.js';
 import { libraryHealthScorer }   from '../services/libraryHealthScorer.js';
+import { featureFlags }          from '../services/featureFlags.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -159,6 +160,12 @@ export async function handleInspect(_req, res) {
         auditEnabled:        config.ADMIN_ACTIONS?.auditEnabled !== false,
         cooldownMs:          config.ADMIN_ACTIONS?.cooldownMs ?? 5000,
         systemAuditEntries:  (getTrail('__system__') || []).length,
+      },
+
+      // ── Feature flags (Phase 44) ──────────────────────────
+      featureFlags: {
+        ...featureFlags.counts(),
+        status: featureFlags.getStatus(),
       },
 
       // ── Permission Tiers (Phase 26) ────────────────────────

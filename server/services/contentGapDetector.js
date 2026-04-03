@@ -10,6 +10,7 @@
 import config from '../../config.js';
 import { logger } from './logger.js';
 import { gapPersister } from './gapPersister.js';
+import { featureFlags } from './featureFlags.js';
 
 // ── Arabic + English stop words (hardcoded — no external dependency) ──
 const STOP_WORDS = new Set([
@@ -66,9 +67,9 @@ class ContentGapDetector {
     }
   }
 
-  /** Whether gap detection is active. */
+  /** Whether gap detection is active (dynamic — reads from featureFlags). */
   get enabled() {
-    return this.#enabled;
+    return featureFlags.isEnabled('CONTENT_GAPS');
   }
 
   /** The low score threshold (exposed for listener). */
@@ -81,7 +82,7 @@ class ContentGapDetector {
    * @param {{ message: string, reason: string, sessionId?: string, avgScore?: number }} data
    */
   record(data) {
-    if (!this.#enabled) return;
+    if (!this.enabled) return;
     if (!data || !data.message) return;
 
     const entry = {
@@ -112,7 +113,7 @@ class ContentGapDetector {
    * @returns {Array<{ keywords: string[], count: number, samples: string[], lastSeen: number }>}
    */
   getGaps(limit = 20) {
-    if (!this.#enabled) return [];
+    if (!this.enabled) return [];
 
     const gaps = [];
     for (const [, cluster] of this.#clusters) {
@@ -139,7 +140,7 @@ class ContentGapDetector {
    * @param {Array<object>} entries — array of persisted entry objects
    */
   restoreFromEntries(entries) {
-    if (!this.#enabled || !Array.isArray(entries)) return;
+    if (!this.enabled || !Array.isArray(entries)) return;
 
     let restoredCount = 0;
     for (const raw of entries) {
@@ -173,7 +174,7 @@ class ContentGapDetector {
    * @returns {{ enabled: boolean, totalEntries: number, clusterCount: number, visibleGaps: number }}
    */
   counts() {
-    if (!this.#enabled) {
+    if (!this.enabled) {
       return { enabled: false, totalEntries: 0, clusterCount: 0, visibleGaps: 0 };
     }
     let visibleGaps = 0;
@@ -181,7 +182,7 @@ class ContentGapDetector {
       if (cluster.count >= this.#minFrequencyToShow) visibleGaps++;
     }
     return {
-      enabled:      true,
+      enabled:      this.enabled,
       totalEntries: this.#entries.length,
       clusterCount: this.#clusters.size,
       visibleGaps,

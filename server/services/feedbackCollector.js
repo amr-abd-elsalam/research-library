@@ -15,6 +15,7 @@ import { existsSync } from 'node:fs';
 import config from '../../config.js';
 import { logger } from './logger.js';
 import { eventBus } from './eventBus.js';
+import { featureFlags } from './featureFlags.js';
 
 class FeedbackCollector {
   #enabled;
@@ -38,9 +39,9 @@ class FeedbackCollector {
     this.#negativeCount    = 0;
   }
 
-  /** Whether feedback collection is active. */
+  /** Whether feedback collection is active (dynamic — reads from featureFlags). */
   get enabled() {
-    return this.#enabled;
+    return featureFlags.isEnabled('FEEDBACK');
   }
 
   /**
@@ -128,7 +129,7 @@ class FeedbackCollector {
    */
   counts() {
     return {
-      enabled:       this.#enabled,
+      enabled:       this.enabled,
       totalPositive: this.#positiveCount,
       totalNegative: this.#negativeCount,
       recentCount:   this.#buffer.length,

@@ -2228,3 +2228,80 @@ img { max-width: 100%; display: block; }
   padding: 24px;
   font-size: 0.85rem;
 }
+
+/* ══════════════════════════════════════════════════════════
+   26. FEATURE STATUS (Phase 44)
+══════════════════════════════════════════════════════════ */
+.ai8v-feature-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.feature-status-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  transition: border-color var(--speed) var(--ease);
+}
+
+.feature-status-card:hover {
+  border-color: var(--border-accent);
+}
+
+.feature-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.feature-status-dot.active {
+  background: var(--status-ok);
+  box-shadow: 0 0 6px var(--status-ok);
+}
+
+.feature-status-dot.inactive {
+  background: var(--status-error);
+  box-shadow: 0 0 6px var(--status-error);
+}
+
+.feature-status-dot.overridden {
+  box-shadow: 0 0 0 3px var(--status-warn), 0 0 6px var(--status-warn);
+}
+
+.feature-status-name {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.feature-status-badge {
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-family: var(--font-en);
+}
+
+.feature-status-badge.config {
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.feature-status-badge.override {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--status-warn);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+@media (max-width: 640px) {
+  .ai8v-feature-status {
+    flex-direction: column;
+  }
+}

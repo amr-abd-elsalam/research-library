@@ -9,6 +9,7 @@
 
 import config from '../../config.js';
 import { logger } from './logger.js';
+import { featureFlags } from './featureFlags.js';
 
 // ── Default suggestion templates ───────────────────────────────
 // Each template has:
@@ -38,14 +39,12 @@ const DEFAULT_TEMPLATES = [
 ];
 
 class SuggestionsEngine {
-  #enabled;
   #maxSuggestions;
   #minTurns;
   #templates;
 
   constructor() {
     const cfg = config.SUGGESTIONS ?? {};
-    this.#enabled = cfg.enabled === true;
     this.#maxSuggestions = Math.min(Math.max(cfg.maxSuggestions ?? 3, 1), 5);
     this.#minTurns = cfg.minTurns ?? 1;
     this.#templates = DEFAULT_TEMPLATES;
@@ -58,7 +57,7 @@ class SuggestionsEngine {
    * @returns {string[]} — array of suggestion strings (0 to maxSuggestions)
    */
   generate(convCtx) {
-    if (!this.#enabled) return [];
+    if (!featureFlags.isEnabled('SUGGESTIONS')) return [];
     if (!convCtx || convCtx.turns < this.#minTurns) return [];
     if (!convCtx.entities || convCtx.entities.length === 0) return [];
 
@@ -98,7 +97,7 @@ class SuggestionsEngine {
    */
   counts() {
     return {
-      enabled:        this.#enabled,
+      enabled:        featureFlags.isEnabled('SUGGESTIONS'),
       maxSuggestions:  this.#maxSuggestions,
       minTurns:       this.#minTurns,
       templateCount:  this.#templates.length,

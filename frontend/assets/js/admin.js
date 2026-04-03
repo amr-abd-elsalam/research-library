@@ -2405,9 +2405,70 @@
     }
   }
 
+  // ══════════════════════════════════════════════════════════
+  //  FEATURE STATUS (Phase 44)
+  // ══════════════════════════════════════════════════════════
+  async function loadFeatureStatus() {
+    var container = $('featureStatusList');
+    var section = $('featureStatusSection');
+    if (!container || !section) return;
+
+    try {
+      var data = await adminFetch('/api/admin/inspect');
+      if (!data) return;
+
+      var status = data.featureFlags && data.featureFlags.status;
+      if (!status || !Array.isArray(status) || status.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+
+      section.style.display = '';
+
+      var featureLabels = {
+        SUGGESTIONS:  '\u0627\u0644\u0627\u0642\u062A\u0631\u0627\u062D\u0627\u062A \u0627\u0644\u0630\u0643\u064A\u0629',
+        CONTENT_GAPS: '\u0627\u0643\u062A\u0634\u0627\u0641 \u0627\u0644\u0641\u062C\u0648\u0627\u062A',
+        FEEDBACK:     '\u062A\u0642\u064A\u064A\u0645\u0627\u062A \u0627\u0644\u0645\u0633\u062A\u062E\u062F\u0645\u064A\u0646',
+        QUALITY:      '\u062A\u0642\u064A\u064A\u0645 \u0627\u0644\u062C\u0648\u062F\u0629',
+        HEALTH_SCORE: '\u0645\u0624\u0634\u0631 \u0627\u0644\u0635\u062D\u0629',
+      };
+
+      while (container.firstChild) container.removeChild(container.firstChild);
+
+      for (var i = 0; i < status.length; i++) {
+        var f = status[i];
+        var label = featureLabels[f.section] || f.section;
+        var dotClass = f.effective ? 'active' : 'inactive';
+        var overriddenClass = f.override !== null ? ' overridden' : '';
+
+        var card = document.createElement('div');
+        card.className = 'feature-status-card';
+
+        var dot = document.createElement('span');
+        dot.className = 'feature-status-dot ' + dotClass + overriddenClass;
+        card.appendChild(dot);
+
+        var nameEl = document.createElement('span');
+        nameEl.className = 'feature-status-name';
+        nameEl.textContent = label;
+        card.appendChild(nameEl);
+
+        var badge = document.createElement('span');
+        badge.className = 'feature-status-badge ' + (f.override !== null ? 'override' : 'config');
+        badge.textContent = f.override !== null ? 'override' : 'config';
+        card.appendChild(badge);
+
+        container.appendChild(card);
+      }
+    } catch (err) {
+      // Silently fail — feature status is optional
+    }
+  }
+
   async function loadOverviewTab() {
     loadHealthScore();
     loadActionHistory();
+    loadFeatureStatus();
 
     // Overview stats
     showOverviewSkeleton();
@@ -2736,12 +2797,31 @@
       });
     }
 
-    // ── Toggle Feature (Phase 43) ─────────────────────────────
+    // ── Toggle Feature (Phase 43 → Phase 44: improved with status display) ──
     var btnToggle = $('btnToggleFeature');
     if (btnToggle) {
       btnToggle.addEventListener('click', async function () {
-        var feature = prompt('\u0627\u0633\u0645 \u0627\u0644\u0645\u064A\u0632\u0629 (\u0645\u062B\u0627\u0644: SUGGESTIONS):');
+        // Phase 44: Fetch current status first
+        var statusText = '';
+        try {
+          var inspectData = await adminFetch('/api/admin/inspect');
+          if (inspectData && inspectData.featureFlags && inspectData.featureFlags.status) {
+            var statusArr = inspectData.featureFlags.status;
+            var lines = [];
+            for (var si = 0; si < statusArr.length; si++) {
+              var sf = statusArr[si];
+              lines.push(sf.section + ': ' + (sf.effective ? '\u2705 \u0645\u0641\u0639\u0651\u0644' : '\u274C \u0645\u0639\u0637\u0651\u0644') + (sf.override !== null ? ' (override)' : ''));
+            }
+            statusText = lines.join('\n');
+          }
+        } catch (_) { /* ignore — still allow manual input */ }
+
+        var promptMsg = statusText
+          ? '\u062D\u0627\u0644\u0629 \u0627\u0644\u0645\u064A\u0632\u0627\u062A \u0627\u0644\u062D\u0627\u0644\u064A\u0629:\n' + statusText + '\n\n\u0627\u0643\u062A\u0628 \u0627\u0633\u0645 \u0627\u0644\u0645\u064A\u0632\u0629 (\u0645\u062B\u0627\u0644: SUGGESTIONS):'
+          : '\u0627\u0633\u0645 \u0627\u0644\u0645\u064A\u0632\u0629 (\u0645\u062B\u0627\u0644: SUGGESTIONS):';
+        var feature = prompt(promptMsg);
         if (!feature) return;
+        feature = feature.trim().toUpperCase();
         var enableIt = confirm('\u062A\u0641\u0639\u064A\u0644 ' + feature + '?');
 
         btnToggle.disabled = true;
@@ -2766,6 +2846,7 @@
             btnToggle.textContent = data.success ? feature + ': ' + (enableIt ? '\u0645\u0641\u0639\u0651\u0644' : '\u0645\u0639\u0637\u0651\u0644') + ' \u2713' : '\u0641\u0634\u0644';
           }
           loadActionHistory();
+          loadFeatureStatus();
         } catch (err) {
           btnToggle.textContent = '\u062E\u0637\u0623';
         }

@@ -14,6 +14,7 @@
 
 import config from '../../config.js';
 import { logger } from './logger.js';
+import { featureFlags } from './featureFlags.js';
 
 class SessionQualityScorer {
   #enabled;
@@ -39,9 +40,9 @@ class SessionQualityScorer {
     }
   }
 
-  /** Whether quality scoring is active. */
+  /** Whether quality scoring is active (dynamic — reads from featureFlags). */
   get enabled() {
-    return this.#enabled;
+    return featureFlags.isEnabled('QUALITY');
   }
 
   /**
@@ -51,7 +52,7 @@ class SessionQualityScorer {
    * @param {{ avgScore: number, aborted: boolean, rewriteMethod: string|null }} data
    */
   recordQuery(sessionId, { avgScore, aborted, rewriteMethod }) {
-    if (!this.#enabled || !sessionId) return;
+    if (!this.enabled || !sessionId) return;
 
     const state = this.#getOrCreate(sessionId);
     state.totalQueries++;
@@ -78,7 +79,7 @@ class SessionQualityScorer {
    * @param {{ rating: string }} data
    */
   recordFeedback(sessionId, { rating }) {
-    if (!this.#enabled || !sessionId) return;
+    if (!this.enabled || !sessionId) return;
 
     const state = this.#getOrCreate(sessionId);
 
@@ -97,7 +98,7 @@ class SessionQualityScorer {
    * @returns {number|null} Quality score (0-1) or null if insufficient data
    */
   getScore(sessionId) {
-    if (!this.#enabled || !sessionId) return null;
+    if (!this.enabled || !sessionId) return null;
 
     const state = this.#sessions.get(sessionId);
     if (!state || state.totalQueries < this.#minTurns) return null;
@@ -138,7 +139,7 @@ class SessionQualityScorer {
    * @returns {Array<{ sessionId: string, score: number, totalQueries: number, abortedCount: number, positiveFeedback: number, negativeFeedback: number, lastUpdated: number }>}
    */
   getAllScores(limit = 50) {
-    if (!this.#enabled) return [];
+    if (!this.enabled) return [];
 
     const results = [];
     for (const [sessionId, state] of this.#sessions) {
@@ -180,7 +181,7 @@ class SessionQualityScorer {
    */
   counts() {
     return {
-      enabled:          this.#enabled,
+      enabled:          this.enabled,
       trackedSessions:  this.#sessions.size,
     };
   }
