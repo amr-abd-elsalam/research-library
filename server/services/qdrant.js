@@ -108,3 +108,32 @@ async function _getCollectionInfo() {
 export async function getCollectionInfo() {
   return qdrantCB.execute(() => _getCollectionInfo());
 }
+
+// ── scrollPoints (Phase 36) ────────────────────────────────────
+// Paginated scroll through Qdrant collection points.
+// Returns { points: Array, next_page_offset: string|null }.
+export async function scrollPoints({ offset = null, limit = 100, withPayload = true } = {}) {
+  try {
+    const params = {
+      limit,
+      with_payload: withPayload,
+      with_vectors: false,
+    };
+    if (offset !== null && offset !== undefined) {
+      params.offset = offset;
+    }
+    const result = await withTimeout(
+      client.scroll(QDRANT_COLLECTION, params),
+      10000,
+      QdrantTimeoutError,
+    );
+    return {
+      points:           result.points || [],
+      next_page_offset: result.next_page_offset ?? null,
+    };
+  } catch (err) {
+    if (err instanceof QdrantTimeoutError) throw err;
+    if (err?.status === 404) throw new QdrantNotFoundError();
+    throw new QdrantConnectionError(err.message);
+  }
+}

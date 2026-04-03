@@ -1971,6 +1971,93 @@
   }
 
   // ══════════════════════════════════════════════════════════
+  //  LIBRARY OVERVIEW (Phase 36)
+  // ══════════════════════════════════════════════════════════
+  function renderTopicBars(topics) {
+    if (!topics || typeof topics !== 'object') return '';
+
+    var keys = Object.keys(topics);
+    if (keys.length === 0) return '';
+
+    // Sort by count descending
+    keys.sort(function (a, b) { return topics[b] - topics[a]; });
+
+    var maxCount = topics[keys[0]] || 1;
+    var html = '<h3 style="font-size:13px;color:var(--text-muted);margin:16px 0 8px;">\u062A\u0648\u0632\u064A\u0639 \u0627\u0644\u0645\u0648\u0627\u0636\u064A\u0639</h3>';
+    html += '<div class="library-topic-bars">';
+
+    for (var i = 0; i < keys.length; i++) {
+      var pct = Math.max((topics[keys[i]] / maxCount) * 100, 2);
+      html += '<div class="library-topic-row">';
+      html += '<span class="library-topic-label">' + keys[i] + '</span>';
+      html += '<div class="library-topic-bar"><div class="library-topic-bar-fill" style="width:' + pct + '%"></div></div>';
+      html += '<span class="library-topic-count">' + topics[keys[i]] + '</span>';
+      html += '</div>';
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  async function loadLibraryOverview() {
+    var container = document.getElementById('admin-library-content');
+    if (!container) return;
+
+    container.innerHTML = '<p class="admin-empty-msg">\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u062D\u0645\u064A\u0644...</p>';
+
+    try {
+      var data = await adminFetch('/api/admin/library');
+      if (!data) {
+        container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623 \u0641\u064A \u062A\u062D\u0645\u064A\u0644 \u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u0645\u0643\u062A\u0628\u0629</p>';
+        return;
+      }
+
+      if (!data.enabled) {
+        container.innerHTML = '<p class="admin-empty-msg">\u0641\u0647\u0631\u0633\u0629 \u0627\u0644\u0645\u0643\u062A\u0628\u0629 \u0645\u0639\u0637\u0651\u0644\u0629 \u2014 \u0641\u0639\u0651\u0644\u0647\u0627 \u0645\u0646 <code>LIBRARY_INDEX.enabled: true</code></p>';
+        return;
+      }
+
+      var html = '';
+
+      // Stats cards
+      html += '<div class="library-stats">';
+      html += '<div class="library-stat-card"><div class="library-stat-value">' + (data.fileCount || 0) + '</div><div class="library-stat-label">\u0645\u0644\u0641\u0627\u062A</div></div>';
+      html += '<div class="library-stat-card"><div class="library-stat-value">' + (data.topicCount || 0) + '</div><div class="library-stat-label">\u0645\u0648\u0627\u0636\u064A\u0639</div></div>';
+      html += '<div class="library-stat-card"><div class="library-stat-value">' + (data.totalPoints || 0) + '</div><div class="library-stat-label">\u0646\u0642\u0627\u0637 \u0628\u064A\u0627\u0646\u0627\u062A</div></div>';
+      html += '<div class="library-stat-card"><div class="library-stat-value">' + (data.scannedPoints || 0) + '</div><div class="library-stat-label">\u0646\u0642\u0627\u0637 \u0645\u0641\u062D\u0648\u0635\u0629</div></div>';
+      html += '</div>';
+
+      // Topic distribution bars
+      if (data.topics && Object.keys(data.topics).length > 0) {
+        html += renderTopicBars(data.topics);
+      }
+
+      // File list
+      if (data.files && data.files.length > 0) {
+        html += '<h3 style="font-size:13px;color:var(--text-muted);margin:16px 0 8px;">\u0642\u0627\u0626\u0645\u0629 \u0627\u0644\u0645\u0644\u0641\u0627\u062A</h3>';
+        html += '<div class="library-files"><ul>';
+        for (var i = 0; i < data.files.length; i++) {
+          html += '<li>' + data.files[i] + '</li>';
+        }
+        html += '</ul></div>';
+      }
+
+      // Last refresh
+      if (data.lastRefresh) {
+        try {
+          var refreshDate = new Date(data.lastRefresh);
+          html += '<p style="font-size:11px;color:var(--text-muted);margin-top:12px;">\u0622\u062E\u0631 \u062A\u062D\u062F\u064A\u062B: ' + refreshDate.toLocaleString('ar-EG') + '</p>';
+        } catch (_) {}
+      }
+
+      container.innerHTML = html;
+
+    } catch (err) {
+      container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623 \u0641\u064A \u062A\u062D\u0645\u064A\u0644 \u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u0645\u0643\u062A\u0628\u0629: ' + err.message + '</p>';
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
   //  LOAD ALL
   // ══════════════════════════════════════════════════════════
   async function loadAll() {
@@ -2073,6 +2160,9 @@
     } else {
       renderCorrelationExplorer(null, _correlationFilter);
     }
+
+    // Library Overview (Phase 36) — separate fetch (not in parallel — optional section)
+    loadLibraryOverview();
 
     // Last update
     updateTimestamp();

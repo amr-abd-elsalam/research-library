@@ -6,6 +6,7 @@ import { bootstrap }           from './server/bootstrap.js';
 import { metricsPersister }    from './server/services/metricsPersister.js';
 import { auditPersister }      from './server/services/auditPersister.js';
 import { conversationContext } from './server/services/conversationContext.js';
+import { libraryIndex }       from './server/services/libraryIndex.js';
 
 const PORT = process.env.PORT || 3000;
 
@@ -97,6 +98,9 @@ async function gracefulShutdown(signal) {
 
   // Stop eviction sweep (Phase 30)
   conversationContext.stopEviction();
+
+  // Stop library index refresh (Phase 36)
+  libraryIndex.stopPeriodicRefresh();
 
   server.close(() => {
     console.log('[server] closed');

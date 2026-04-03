@@ -114,7 +114,8 @@ async function loadConfig() {
       RESPONSE:   Object.freeze(data.RESPONSE     || { defaultMode: 'stream', allowedModes: ['stream'], conciseMaxSentences: 3 }),
       SUGGESTIONS: Object.freeze(data.SUGGESTIONS  || { enabled: false, maxSuggestions: 3 }),
       FEEDBACK:    Object.freeze(data.FEEDBACK      || { enabled: false, allowComments: true }),
-      AUDIT:       Object.freeze(data.AUDIT          || { enabled: true }),
+      AUDIT:         Object.freeze(data.AUDIT          || { enabled: true }),
+      LIBRARY_INDEX: Object.freeze(data.LIBRARY_INDEX  || { enabled: false }),
     });
 
     console.log('[config] ✅ تم تحميل الإعدادات من السيرفر');

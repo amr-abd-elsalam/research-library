@@ -23,6 +23,10 @@ let activeRequests = 0;
 async function streamCachedResponse(res, cached, req, message, topic_filter, session_id) {
   const startTime = Date.now();
 
+  // Generate synthetic correlationId for cache hits (Phase 36)
+  const syntheticTrace = new EventTrace();
+  const correlationId  = syntheticTrace.correlationId;
+
   res.writeHead(200, {
     'Content-Type':  'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -42,7 +46,7 @@ async function streamCachedResponse(res, cached, req, message, topic_filter, ses
     done:    true,
     sources: cached.sources,
     score:   cached.score,
-    correlationId: null,
+    correlationId,
   });
   res.end();
 
@@ -54,6 +58,7 @@ async function streamCachedResponse(res, cached, req, message, topic_filter, ses
     avgScore:    cached.score,
     sessionId:   session_id,
     topicFilter: topic_filter,
+    correlationId,
     _analytics: {
       event_type:       'chat',
       req,

@@ -55,6 +55,10 @@ function buildPayload() {
       persistAudit: config.AUDIT?.persistAudit === true,
     },
 
+    LIBRARY_INDEX: {
+      enabled: config.LIBRARY_INDEX?.enabled === true,
+    },
+
     // TIERS: moved to GET /api/whoami (Phase 27 — per-request, not static config)
   });
   return cachedPayload;

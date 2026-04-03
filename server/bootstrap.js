@@ -23,6 +23,7 @@ import { metricsPersister } from './services/metricsPersister.js';
 import { contextPersister } from './services/contextPersister.js';
 import { feedbackCollector } from './services/feedbackCollector.js';
 import { auditPersister } from './services/auditPersister.js';
+import { libraryIndex } from './services/libraryIndex.js';
 
 // ── Timeout helper (for bootstrap-specific timeouts) ──────────
 function raceTimeout(promise, ms) {
@@ -166,6 +167,15 @@ class BootstrapManager {
     ]);
     stages.push(qdrantStage, geminiStage);
 
+    // ── Library Index initial refresh (Phase 36) ─────────────
+    if (libraryIndex.enabled) {
+      try {
+        await libraryIndex.refresh();
+      } catch (err) {
+        logger.warn('bootstrap', 'library index initial refresh failed', { error: err.message });
+      }
+    }
+
     // ── Build report ─────────────────────────────────────────
     const completedAt = new Date();
     const hasFail     = stages.some(s => s.status === 'fail');
@@ -187,6 +197,9 @@ class BootstrapManager {
 
     // ── Start session eviction sweep (Phase 30) ──────────────
     conversationContext.startEviction();
+
+    // ── Start library index periodic refresh (Phase 36) ──────
+    libraryIndex.startPeriodicRefresh();
 
     return this.#report;
   }
