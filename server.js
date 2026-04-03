@@ -8,6 +8,7 @@ import { auditPersister }      from './server/services/auditPersister.js';
 import { conversationContext } from './server/services/conversationContext.js';
 import { libraryIndex }       from './server/services/libraryIndex.js';
 import { gapPersister }       from './server/services/gapPersister.js';
+import { featureFlags }       from './server/services/featureFlags.js';
 
 const PORT = process.env.PORT || 3000;
 
@@ -103,6 +104,14 @@ async function gracefulShutdown(signal) {
     gapPersister.stop();
   } catch (err) {
     console.error('[server] gap persister flush error:', err.message);
+  }
+
+  // Persist feature flag overrides before exit (Phase 45)
+  try {
+    await featureFlags.persist();
+    featureFlags.stop();
+  } catch (err) {
+    console.error('[server] feature flags persist error:', err.message);
   }
 
   // Stop eviction sweep (Phase 30)

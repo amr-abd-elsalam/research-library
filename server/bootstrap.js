@@ -26,6 +26,7 @@ import { auditPersister } from './services/auditPersister.js';
 import { libraryIndex } from './services/libraryIndex.js';
 import { gapPersister } from './services/gapPersister.js';
 import { contentGapDetector } from './services/contentGapDetector.js';
+import { featureFlags } from './services/featureFlags.js';
 
 // ── Timeout helper (for bootstrap-specific timeouts) ──────────
 function raceTimeout(promise, ms) {
@@ -100,6 +101,12 @@ class BootstrapManager {
       if (gapEntries.length > 0) {
         contentGapDetector.restoreFromEntries(gapEntries);
       }
+    }
+
+    // ── Feature Flags Persistence (Phase 45) ─────────────────
+    if (featureFlags.persistEnabled) {
+      await featureFlags.ensureDir();
+      await featureFlags.restore();
     }
 
     // ── Register EventBus listeners (Phase 13) ───────────────

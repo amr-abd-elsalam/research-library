@@ -1,14 +1,21 @@
 import config from '../../config.js';
 import { getAccessMode } from '../middleware/auth.js';
 import { commandRegistry } from '../services/commandRegistry.js';
+import { featureFlags } from '../services/featureFlags.js';
+import { eventBus } from '../services/eventBus.js';
 
 const HEADERS = {
   'Content-Type':  'application/json',
   'Cache-Control': 'public, max-age=300',
 };
 
-// ── Build payload (lazy — computed on first request) ──────────
+// ── Build payload (lazy — computed on first request, invalidated on feature toggle) ──
 let cachedPayload = null;
+
+// Phase 45: Invalidate config cache when feature toggled
+eventBus.on('feature:toggled', () => {
+  cachedPayload = null;
+});
 
 // Note: CONTEXT, FOLLOWUP, ADMIN, SYSTEM_PROMPT — backend-only, not exposed to client
 function buildPayload() {
@@ -41,13 +48,15 @@ function buildPayload() {
     },
 
     SUGGESTIONS: {
-      enabled:        config.SUGGESTIONS?.enabled === true,
-      maxSuggestions:  config.SUGGESTIONS?.maxSuggestions ?? 3,
+      enabled:           config.SUGGESTIONS?.enabled === true,
+      effectiveEnabled:  featureFlags.isEnabled('SUGGESTIONS'),
+      maxSuggestions:    config.SUGGESTIONS?.maxSuggestions ?? 3,
     },
 
     FEEDBACK: {
-      enabled:        config.FEEDBACK?.enabled === true,
-      allowComments:  config.FEEDBACK?.allowComments !== false,
+      enabled:           config.FEEDBACK?.enabled === true,
+      effectiveEnabled:  featureFlags.isEnabled('FEEDBACK'),
+      allowComments:     config.FEEDBACK?.allowComments !== false,
     },
 
     AUDIT: {
@@ -65,8 +74,9 @@ function buildPayload() {
     },
 
     CONTENT_GAPS: {
-      enabled: config.CONTENT_GAPS?.enabled === true,
-      persistGaps: config.CONTENT_GAPS?.persistGaps === true,
+      enabled:           config.CONTENT_GAPS?.enabled === true,
+      effectiveEnabled:  featureFlags.isEnabled('CONTENT_GAPS'),
+      persistGaps:       config.CONTENT_GAPS?.persistGaps === true,
     },
 
     EXPORT: {
@@ -74,15 +84,21 @@ function buildPayload() {
     },
 
     QUALITY: {
-      enabled: config.QUALITY?.enabled === true,
+      enabled:           config.QUALITY?.enabled === true,
+      effectiveEnabled:  featureFlags.isEnabled('QUALITY'),
     },
 
     HEALTH_SCORE: {
-      enabled: config.HEALTH_SCORE?.enabled === true,
+      enabled:           config.HEALTH_SCORE?.enabled === true,
+      effectiveEnabled:  featureFlags.isEnabled('HEALTH_SCORE'),
     },
 
     ADMIN_ACTIONS: {
       enabled: config.ADMIN_ACTIONS?.enabled !== false,
+    },
+
+    FEATURE_FLAGS: {
+      persistOverrides: config.FEATURE_FLAGS?.persistOverrides ?? false,
     },
 
     // TIERS: moved to GET /api/whoami (Phase 27 — per-request, not static config)

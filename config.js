@@ -638,6 +638,17 @@ const config = {
                                         // ⚠️ لا تضيف: PIPELINE, SESSIONS, AUDIT — هذه features بنيوية مش safe للتبديل أثناء التشغيل
   },
 
+  // ═══════════════════════════════════════════════════════════
+  // 30. إعدادات الـ Feature Flags (FEATURE_FLAGS)
+  //    — تحكم في persistence الـ runtime overrides
+  //    — معطّل افتراضياً — فعّله في production عشان الـ overrides تنجو من restart
+  //    — لا تحتاج تعديل عادةً
+  // ═══════════════════════════════════════════════════════════
+  FEATURE_FLAGS: {
+    persistOverrides:  false,              // true = حفظ الـ overrides على الديسك واستعادتها عند restart | false = ذاكرة فقط (السلوك الحالي بالظبط)
+    overrideDir:       './data/overrides', // مجلد حفظ ملف الـ overrides (overrides.json) — يتعمل تلقائياً لو مش موجود
+  },
+
 };
 
 export default deepFreeze(config);

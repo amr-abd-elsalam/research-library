@@ -9,12 +9,27 @@
 // Zero overhead when no overrides are set.
 // ═══════════════════════════════════════════════════════════════
 
+import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
 import config from '../../config.js';
 import { eventBus } from './eventBus.js';
+import { logger } from './logger.js';
 
 class FeatureFlags {
   /** @type {Map<string, boolean>} */
   #overrides = new Map();
+
+  #persistEnabled;
+  #filePath;
+  #writeTimer = null;
+
+  constructor() {
+    this.#persistEnabled = config.FEATURE_FLAGS?.persistOverrides === true;
+    this.#filePath = join(config.FEATURE_FLAGS?.overrideDir || './data/overrides', 'overrides.json');
+  }
+
+  /** Whether file persistence is active. */
+  get persistEnabled() { return this.#persistEnabled; }
 
   // Section name → config path mapping (uppercase)
   #sectionPaths = {
@@ -57,6 +72,8 @@ class FeatureFlags {
       previousValue,
       timestamp: Date.now(),
     });
+
+    this.#scheduleWrite();
   }
 
   /**
@@ -65,6 +82,7 @@ class FeatureFlags {
    */
   clearOverride(section) {
     this.#overrides.delete(section.toUpperCase());
+    this.#scheduleWrite();
   }
 
   /**
@@ -100,13 +118,94 @@ class FeatureFlags {
 
   /**
    * Summary for inspect endpoint.
-   * @returns {{ totalOverrides: number, sections: number }}
+   * @returns {{ totalOverrides: number, sections: number, persisted: boolean }}
    */
   counts() {
     return {
       totalOverrides: this.#overrides.size,
       sections:       Object.keys(this.#sectionPaths).length,
+      persisted:      this.#persistEnabled,
     };
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // Persistence — Phase 45
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Ensures the override directory exists.
+   * Called once during bootstrap — before restore().
+   */
+  async ensureDir() {
+    if (!this.#persistEnabled) return;
+    await mkdir(dirname(this.#filePath), { recursive: true });
+  }
+
+  /**
+   * Writes current overrides to disk (explicit flush).
+   * Called during graceful shutdown and by debounced #scheduleWrite().
+   */
+  async persist() {
+    if (!this.#persistEnabled) return;
+    if (this.#overrides.size === 0) return;
+    try {
+      const data = {};
+      for (const [key, value] of this.#overrides) {
+        data[key] = value;
+      }
+      await writeFile(this.#filePath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (err) {
+      logger.warn('featureFlags', 'persist failed', { error: err.message });
+    }
+  }
+
+  /**
+   * Restores overrides from disk.
+   * Called during bootstrap — before listener registration.
+   * Does NOT emit events or trigger scheduleWrite (silent restore).
+   */
+  async restore() {
+    if (!this.#persistEnabled) return;
+    try {
+      const raw = await readFile(this.#filePath, 'utf-8');
+      const data = JSON.parse(raw);
+      if (data && typeof data === 'object') {
+        for (const [key, value] of Object.entries(data)) {
+          if (typeof value === 'boolean') {
+            this.#overrides.set(key.toUpperCase(), value);
+          }
+        }
+        logger.info('featureFlags', `restored ${this.#overrides.size} override(s) from disk`);
+      }
+    } catch (err) {
+      if (err.code === 'ENOENT') return; // first run — no file yet
+      logger.warn('featureFlags', 'restore failed — starting with empty overrides', { error: err.message });
+    }
+  }
+
+  /**
+   * Debounced write (500ms). Called after every setOverride/clearOverride.
+   */
+  #scheduleWrite() {
+    if (!this.#persistEnabled) return;
+    if (this.#writeTimer) clearTimeout(this.#writeTimer);
+    this.#writeTimer = setTimeout(() => {
+      this.#writeTimer = null;
+      this.persist().catch(err => {
+        logger.warn('featureFlags', 'scheduled persist failed', { error: err.message });
+      });
+    }, 500);
+    this.#writeTimer.unref();
+  }
+
+  /**
+   * Stops the debounce timer. Called during graceful shutdown.
+   */
+  stop() {
+    if (this.#writeTimer) {
+      clearTimeout(this.#writeTimer);
+      this.#writeTimer = null;
+    }
   }
 }
 

@@ -2425,6 +2425,9 @@
 
       section.style.display = '';
 
+      // Phase 45: Check if persistence is enabled
+      var isPersisted = data.featureFlags && data.featureFlags.persisted === true;
+
       var featureLabels = {
         SUGGESTIONS:  '\u0627\u0644\u0627\u0642\u062A\u0631\u0627\u062D\u0627\u062A \u0627\u0644\u0630\u0643\u064A\u0629',
         CONTENT_GAPS: '\u0627\u0643\u062A\u0634\u0627\u0641 \u0627\u0644\u0641\u062C\u0648\u0627\u062A',
@@ -2457,6 +2460,14 @@
         badge.className = 'feature-status-badge ' + (f.override !== null ? 'override' : 'config');
         badge.textContent = f.override !== null ? 'override' : 'config';
         card.appendChild(badge);
+
+        // Phase 45: Show persisted badge for overrides when persistence is enabled
+        if (isPersisted && f.override !== null) {
+          var persistBadge = document.createElement('span');
+          persistBadge.className = 'feature-status-badge persisted';
+          persistBadge.textContent = '\uD83D\uDCBE';
+          card.appendChild(persistBadge);
+        }
 
         container.appendChild(card);
       }
