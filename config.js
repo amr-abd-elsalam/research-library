@@ -525,6 +525,23 @@ const config = {
     includeFileList:   true,       // true = يحفظ قائمة أسماء الملفات في الفهرس (مفيد للعرض في لوحة التحكم) | false = إحصائيات فقط (عدد الملفات والمواضيع)
   },
 
+  // ═══════════════════════════════════════════════════════════
+  // 24. إثراء تعليمات النموذج (SYSTEM_PROMPT_ENRICHMENT)
+  //    — يخلّي الـ system prompt ديناميكي — يتضمن معلومات المكتبة
+  //      الفعلية (عدد الملفات، أسماء الأقسام، حجم المحتوى)
+  //      من LibraryIndex عشان الـ LLM يعرف إيه اللي في المكتبة
+  //    — معطّل افتراضياً — فعّله من هنا
+  //    — يتطلب: LIBRARY_INDEX.enabled: true (لبناء فهرس المكتبة)
+  //    — بدون overhead لما معطّل — الـ system prompt يفضل static
+  // ═══════════════════════════════════════════════════════════
+  SYSTEM_PROMPT_ENRICHMENT: {
+    enabled:            false,     // true = إثراء system prompt ديناميكياً بمعلومات المكتبة الفعلية | false = السلوك الحالي بالظبط (static system prompt). يعمل فقط لما LIBRARY_INDEX.enabled: true
+    includeTopicList:   true,      // true = يذكر أسماء الأقسام/التصنيفات المتاحة في المكتبة | false = يتجاوز
+    includeFileCount:   true,      // true = يذكر عدد الملفات المصدرية وحجم المحتوى | false = يتجاوز
+    includeLastRefresh: false,     // true = يذكر تاريخ آخر تحديث لفهرس المكتبة | false = يتجاوز (مش مفيد عادةً للمستخدم — بس مفيد للـ debugging)
+    customPreamble:     '',        // نص إضافي يُضاف في بداية الـ system prompt الديناميكي (فارغ = بدون). مثال: "أنت مساعد متخصص في تطوير الويب" — يخلي الـ LLM يعرف تخصص المكتبة
+  },
+
 };
 
 export default deepFreeze(config);

@@ -131,6 +131,12 @@ export async function handleInspect(_req, res) {
       // ── Library index (Phase 36) ───────────────────────────
       libraryIndex: libraryIndex.counts(),
 
+      // ── System prompt enrichment (Phase 37) ────────────────
+      systemPromptEnrichment: {
+        enabled: config.SYSTEM_PROMPT_ENRICHMENT?.enabled === true,
+        libraryIndexAvailable: libraryIndex.getIndex() !== null,
+      },
+
       // ── Permission Tiers (Phase 26) ────────────────────────
       tiers: {
         enabled:      config.TIERS?.enabled === true,

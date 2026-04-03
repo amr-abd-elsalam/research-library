@@ -149,6 +149,16 @@ class LibraryIndex {
   }
 
   /**
+   * Returns an array of topic IDs from the current index.
+   * Convenience method — avoids null checks in callers.
+   * @returns {string[]}
+   */
+  getTopicNames() {
+    if (!this.#index || !this.#index.topics) return [];
+    return Object.keys(this.#index.topics);
+  }
+
+  /**
    * Summary for inspect endpoint.
    * @returns {object}
    */

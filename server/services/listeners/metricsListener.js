@@ -48,6 +48,11 @@ function register() {
     if (data._rewriteMethod === 'local_context' && data._rewriteResult?.pattern) {
       metrics.increment('rewrite_pattern_total', { pattern: data._rewriteResult.pattern });
     }
+
+    // Enriched prompt tracking (Phase 37)
+    if (data._promptEnriched) {
+      metrics.increment('enriched_prompt_total');
+    }
   });
 
   // ── Stage complete (per-stage timing) ──────────────────────

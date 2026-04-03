@@ -59,6 +59,10 @@ function buildPayload() {
       enabled: config.LIBRARY_INDEX?.enabled === true,
     },
 
+    SYSTEM_PROMPT_ENRICHMENT: {
+      enabled: config.SYSTEM_PROMPT_ENRICHMENT?.enabled === true,
+    },
+
     // TIERS: moved to GET /api/whoami (Phase 27 — per-request, not static config)
   });
   return cachedPayload;

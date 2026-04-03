@@ -18,6 +18,7 @@ import { estimateTokens, estimateRequestCost } from './costTracker.js';
 import { CircuitOpenError }                   from './circuitBreaker.js';
 import config                                 from '../../config.js';
 import { conversationContext }                from './conversationContext.js';
+import { libraryIndex }                       from './libraryIndex.js';
 
 // ── Singleton ContextManager (same as previous chat.js) ────────
 const contextManager = new ContextManager();
@@ -196,6 +197,56 @@ function attemptLocalRewrite(message, convCtx) {
   return null;
 }
 
+// ── Dynamic System Prompt Enrichment (Phase 37) — pure function, no API call ──
+// Wraps the base prompt (from promptTemplates) with library metadata
+// from LibraryIndex. Falls back to base prompt when:
+//   - SYSTEM_PROMPT_ENRICHMENT.enabled !== true
+//   - LIBRARY_INDEX not active or not yet refreshed
+//   - No enrichment fields enabled
+function buildDynamicSystemPrompt(basePrompt) {
+  const enrichConfig = config.SYSTEM_PROMPT_ENRICHMENT;
+  if (!enrichConfig || enrichConfig.enabled !== true) return basePrompt;
+
+  const index = libraryIndex.getIndex();
+  if (!index) return basePrompt; // Index not ready — use static
+
+  const parts = [];
+
+  // Custom preamble (if configured)
+  if (enrichConfig.customPreamble && typeof enrichConfig.customPreamble === 'string' && enrichConfig.customPreamble.trim()) {
+    parts.push(enrichConfig.customPreamble.trim());
+  }
+
+  // File count + total points
+  if (enrichConfig.includeFileCount !== false) {
+    parts.push(
+      `المكتبة تحتوي على ${index.fileCount} ملف مصدري و${index.totalPoints} مقطع محتوى.`
+    );
+  }
+
+  // Topic list
+  if (enrichConfig.includeTopicList !== false && index.topicCount > 0) {
+    const topicNames = libraryIndex.getTopicNames();
+    if (topicNames.length > 0) {
+      parts.push(
+        `الأقسام المتاحة في المكتبة: ${topicNames.join('، ')}.`
+      );
+    }
+  }
+
+  // Last refresh timestamp
+  if (enrichConfig.includeLastRefresh === true && index.lastRefresh) {
+    const refreshDate = new Date(index.lastRefresh).toLocaleString('ar-EG');
+    parts.push(`آخر تحديث لفهرس المكتبة: ${refreshDate}.`);
+  }
+
+  if (parts.length === 0) return basePrompt;
+
+  // Enriched prompt: dynamic preamble → then base prompt (query-type-specific)
+  const enrichment = parts.join('\n');
+  return `${enrichment}\n\n${basePrompt}`;
+}
+
 // ── Stage 3: Rewrite Query (follow-up) ─────────────────────────
 async function stageRewriteQuery(ctx, _trace) {
   const shouldRewrite =
@@ -280,7 +331,9 @@ async function stageConfidenceCheck(ctx, _trace) {
 
 // ── Stage 7: Build Context ─────────────────────────────────────
 async function stageBuildContext(ctx, _trace) {
-  ctx.systemPrompt = getPromptForType(ctx.queryRoute.type);
+  const basePrompt = getPromptForType(ctx.queryRoute.type);
+  ctx.systemPrompt = buildDynamicSystemPrompt(basePrompt);
+  ctx._promptEnriched = (ctx.systemPrompt !== basePrompt);
 
   // Concise mode — append brevity instruction (Phase 25)
   if (ctx._responseMode === 'concise') {
@@ -623,6 +676,9 @@ if (config.PIPELINE?.enableHooks !== false) {
 
       // ── Rewrite result detail (Phase 32) ───────────────────
       _rewriteResult: _ctx._rewriteResult ?? null,
+
+      // ── Prompt enrichment flag (Phase 37) ────────────────────
+      _promptEnriched: _ctx._promptEnriched ?? false,
     });
   });
 }
