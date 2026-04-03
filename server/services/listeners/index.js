@@ -18,6 +18,8 @@ import { register as registerContext }         from './contextListener.js';
 import { register as registerSuggestions }     from './suggestionsListener.js';
 import { register as registerEviction }        from './evictionListener.js';
 import { register as registerFeedback }        from './feedbackListener.js';
+import { register as registerCorrelation }     from './correlationListener.js';
+import { register as registerAuditTrail }      from './auditTrailListener.js';
 import { logger }                            from '../logger.js';
 
 /**
@@ -40,6 +42,8 @@ export function registerAllListeners() {
   registerSuggestions();
   registerEviction();
   registerFeedback();
+  registerCorrelation();
+  registerAuditTrail();
 
-  logger.info('listeners', '14 EventBus listeners registered (analytics, cache, session, metrics, command, log, circuit, sessionStats, analyticsDigest, routing, context, suggestions, eviction, feedback)');
+  logger.info('listeners', '16 EventBus listeners registered (analytics, cache, session, metrics, command, log, circuit, sessionStats, analyticsDigest, routing, context, suggestions, eviction, feedback, correlation, auditTrail)');
 }

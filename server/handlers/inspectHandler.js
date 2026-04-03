@@ -25,6 +25,8 @@ import { conversationContext }   from '../services/conversationContext.js';
 import { suggestionsEngine }     from '../services/suggestionsEngine.js';
 import { contextPersister }      from '../services/contextPersister.js';
 import { feedbackCollector }     from '../services/feedbackCollector.js';
+import { correlationIndex }      from '../services/correlationIndex.js';
+import { getTrailCounts }        from '../services/listeners/auditTrailListener.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -114,6 +116,12 @@ export async function handleInspect(_req, res) {
 
       // ── Feedback collector (Phase 33) ──────────────────────
       feedbackCollector: feedbackCollector.counts(),
+
+      // ── Correlation index (Phase 34) ───────────────────────
+      correlationIndex: correlationIndex.counts(),
+
+      // ── Audit trail (Phase 34) ─────────────────────────────
+      auditTrail: getTrailCounts(),
 
       // ── Permission Tiers (Phase 26) ────────────────────────
       tiers: {

@@ -179,6 +179,37 @@
         <p id="admin-feedback-empty" class="admin-empty-msg hidden">لا توجد تقييمات بعد</p>
       </section>
 
+      <!-- ═══ مستكشف الربط (Phase 34) ═══ -->
+      <section class="admin-section" id="admin-section-correlation">
+        <h2 class="admin-section-title">مستكشف الربط</h2>
+        <div id="admin-correlation-filter" class="admin-rating-filter">
+          <button type="button" class="admin-rating-btn active" data-filter="all">الكل</button>
+          <button type="button" class="admin-rating-btn" data-filter="positive">إيجابي</button>
+          <button type="button" class="admin-rating-btn" data-filter="negative">سلبي</button>
+        </div>
+        <div id="admin-correlation-cards" class="admin-correlation-cards"></div>
+        <p id="admin-correlation-empty" class="admin-empty-msg hidden">لا توجد تقييمات مربوطة بعد</p>
+      </section>
+
+      <!-- ═══ مسار التدقيق (Phase 34) ═══ -->
+      <section class="admin-section" id="admin-section-audit">
+        <h2 class="admin-section-title">مسار التدقيق</h2>
+        <div class="admin-audit-input-group">
+          <input
+            type="text"
+            id="admin-audit-session-input"
+            class="admin-audit-input"
+            placeholder="أدخل معرّف الجلسة (Session ID)"
+            autocomplete="off"
+            spellcheck="false"
+            dir="ltr"
+          />
+          <button type="button" id="admin-audit-btn" class="admin-btn-action">عرض</button>
+        </div>
+        <div id="admin-audit-timeline" class="admin-audit-timeline"></div>
+        <p id="admin-audit-empty" class="admin-empty-msg hidden">أدخل معرّف الجلسة لعرض مسار التدقيق</p>
+      </section>
+
       <!-- ═══ فحص النظام (Phase 17) ═══ -->
       <section class="admin-section" id="admin-section-inspect">
         <h2 class="admin-section-title">فحص النظام</h2>

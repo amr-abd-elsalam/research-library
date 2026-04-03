@@ -15,6 +15,7 @@ import { handleCreateSession, handleGetSession, handleDeleteSession, handleListS
 import { handleCommands } from './handlers/commandsHandler.js';
 import { handleWhoami }   from './handlers/whoamiHandler.js';
 import { handleSubmitFeedback, handleAdminFeedback } from './handlers/feedbackHandler.js';
+import { handleAudit } from './handlers/auditHandler.js';
 import { bootstrap } from './bootstrap.js';
 
 // ── URL matcher (strips query string + trailing slash) ─────────
@@ -144,6 +145,14 @@ export async function router(req, res) {
     requireAdmin(req, res);
     if (res.writableEnded) return;
     await handleAdminFeedback(req, res);
+    return;
+  }
+
+  // GET /api/admin/audit/:sessionId (Phase 34 — per-session audit trail)
+  if (method === 'GET' && /^\/api\/admin\/audit\/[^/?]+/.test(url.split('?')[0])) {
+    requireAdmin(req, res);
+    if (res.writableEnded) return;
+    await handleAudit(req, res);
     return;
   }
 

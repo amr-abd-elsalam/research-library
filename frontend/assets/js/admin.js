@@ -68,6 +68,15 @@
     feedbackCounts:  $('admin-feedback-counts'),
     feedbackRecent:  $('admin-feedback-recent'),
     feedbackEmpty:   $('admin-feedback-empty'),
+    // Correlation Explorer (Phase 34)
+    correlationFilter: $('admin-correlation-filter'),
+    correlationCards:  $('admin-correlation-cards'),
+    correlationEmpty:  $('admin-correlation-empty'),
+    // Audit Trail (Phase 34)
+    auditInput:     $('admin-audit-session-input'),
+    auditBtn:       $('admin-audit-btn'),
+    auditTimeline:  $('admin-audit-timeline'),
+    auditEmpty:     $('admin-audit-empty'),
   };
 
   // ══════════════════════════════════════════════════════════
@@ -1628,6 +1637,313 @@
   }
 
   // ══════════════════════════════════════════════════════════
+  //  CORRELATION EXPLORER (Phase 34)
+  // ══════════════════════════════════════════════════════════
+  var _correlationData = null;
+  var _correlationFilter = 'all';
+
+  function renderCorrelationExplorer(data, filter) {
+    var cardsEl = DOM.correlationCards;
+    var emptyEl = DOM.correlationEmpty;
+    if (!cardsEl) return;
+
+    while (cardsEl.firstChild) cardsEl.removeChild(cardsEl.firstChild);
+
+    if (!data || !data.recent || data.recent.length === 0) {
+      if (emptyEl) emptyEl.classList.remove('hidden');
+      return;
+    }
+
+    // Filter by rating
+    var items = data.recent;
+    if (filter && filter !== 'all') {
+      items = items.filter(function (e) { return e.rating === filter; });
+    }
+
+    if (items.length === 0) {
+      if (emptyEl) emptyEl.classList.remove('hidden');
+      return;
+    }
+
+    if (emptyEl) emptyEl.classList.add('hidden');
+
+    // Render most recent first
+    for (var i = items.length - 1; i >= 0; i--) {
+      var entry = items[i];
+      var card = document.createElement('div');
+      card.className = 'admin-correlation-card ' + (entry.rating === 'positive' ? 'positive' : 'negative');
+
+      // Rating icon
+      var ratingIcon = document.createElement('div');
+      ratingIcon.className = 'correlation-rating-icon';
+      ratingIcon.textContent = entry.rating === 'positive' ? '\uD83D\uDC4D' : '\uD83D\uDC4E';
+      card.appendChild(ratingIcon);
+
+      // Question
+      var question = document.createElement('div');
+      question.className = 'correlation-question';
+      question.textContent = entry.question || '\u2014 \u0644\u0627 \u064A\u0648\u062C\u062F \u0633\u0624\u0627\u0644 \u0645\u0631\u062A\u0628\u0637';
+      card.appendChild(question);
+
+      // Response snippet
+      if (entry.responseSnippet) {
+        var snippet = document.createElement('div');
+        snippet.className = 'correlation-snippet';
+        snippet.textContent = entry.responseSnippet.slice(0, 150) + (entry.responseSnippet.length > 150 ? '...' : '');
+        card.appendChild(snippet);
+      }
+
+      // Comment
+      if (entry.comment) {
+        var comment = document.createElement('div');
+        comment.className = 'correlation-comment';
+        comment.textContent = '\uD83D\uDCAC ' + entry.comment;
+        card.appendChild(comment);
+      }
+
+      // Meta row
+      var meta = document.createElement('div');
+      meta.className = 'correlation-meta';
+
+      if (entry.queryType) {
+        var badge = document.createElement('span');
+        badge.className = 'correlation-badge';
+        badge.textContent = entry.queryType;
+        meta.appendChild(badge);
+      }
+
+      if (entry.avgScore !== null && entry.avgScore !== undefined) {
+        var scoreEl = document.createElement('span');
+        scoreEl.className = 'correlation-score';
+        scoreEl.textContent = '\u2B50 ' + Math.round(entry.avgScore * 100) + '%';
+        meta.appendChild(scoreEl);
+      }
+
+      if (entry.correlationId) {
+        var corrEl = document.createElement('span');
+        corrEl.className = 'correlation-corr-id';
+        corrEl.textContent = entry.correlationId.slice(0, 8);
+        meta.appendChild(corrEl);
+      }
+
+      var timeEl = document.createElement('span');
+      timeEl.className = 'correlation-time';
+      try {
+        timeEl.textContent = new Date(entry.timestamp).toLocaleString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      } catch (_) {
+        timeEl.textContent = entry.timestamp ? entry.timestamp.slice(0, 16) : '';
+      }
+      meta.appendChild(timeEl);
+
+      card.appendChild(meta);
+      cardsEl.appendChild(card);
+    }
+  }
+
+  function showCorrelationSkeleton() {
+    var cardsEl = DOM.correlationCards;
+    if (!cardsEl) return;
+    while (cardsEl.firstChild) cardsEl.removeChild(cardsEl.firstChild);
+    for (var i = 0; i < 3; i++) {
+      var s = document.createElement('div');
+      s.className = 'admin-skeleton';
+      s.style.height = '100px';
+      s.style.borderRadius = '10px';
+      s.style.marginBottom = '10px';
+      cardsEl.appendChild(s);
+    }
+    if (DOM.correlationEmpty) DOM.correlationEmpty.classList.add('hidden');
+  }
+
+  async function loadCorrelationExplorer(filter) {
+    if (filter !== undefined) _correlationFilter = filter;
+    showCorrelationSkeleton();
+    try {
+      var data = await adminFetch('/api/admin/feedback', { limit: 50 });
+      _correlationData = data;
+      renderCorrelationExplorer(data, _correlationFilter);
+    } catch (err) {
+      if (DOM.correlationCards) {
+        while (DOM.correlationCards.firstChild) DOM.correlationCards.removeChild(DOM.correlationCards.firstChild);
+      }
+      showSectionError(DOM.correlationCards, err.message, function () { loadCorrelationExplorer(_correlationFilter); });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  AUDIT TRAIL (Phase 34)
+  // ══════════════════════════════════════════════════════════
+  function renderAuditTrail(data) {
+    var timeline = DOM.auditTimeline;
+    var emptyEl  = DOM.auditEmpty;
+    if (!timeline) return;
+
+    while (timeline.firstChild) timeline.removeChild(timeline.firstChild);
+
+    if (!data || !data.entries || data.entries.length === 0) {
+      if (emptyEl) {
+        emptyEl.textContent = '\u0644\u0627 \u062A\u0648\u062C\u062F \u0623\u062D\u062F\u0627\u062B \u0644\u0647\u0630\u0647 \u0627\u0644\u062C\u0644\u0633\u0629';
+        emptyEl.classList.remove('hidden');
+      }
+      return;
+    }
+
+    if (emptyEl) emptyEl.classList.add('hidden');
+
+    var TYPE_ICONS = {
+      query:     '\uD83D\uDD0D',
+      cache_hit: '\uD83D\uDCCB',
+      feedback:  '',
+      evicted:   '\uD83D\uDEAA',
+    };
+
+    for (var i = 0; i < data.entries.length; i++) {
+      var entry = data.entries[i];
+      var row = document.createElement('div');
+      row.className = 'audit-entry audit-type-' + entry.type;
+
+      // Icon
+      var iconEl = document.createElement('div');
+      iconEl.className = 'audit-type-icon';
+      if (entry.type === 'feedback') {
+        iconEl.textContent = entry.rating === 'positive' ? '\uD83D\uDC4D' : '\uD83D\uDC4E';
+      } else {
+        iconEl.textContent = TYPE_ICONS[entry.type] || '\u2022';
+      }
+      row.appendChild(iconEl);
+
+      // Details container
+      var details = document.createElement('div');
+      details.className = 'audit-entry-details';
+
+      // Type label + timestamp
+      var headerLine = document.createElement('div');
+      headerLine.className = 'audit-entry-header';
+
+      var typeLabel = document.createElement('span');
+      typeLabel.className = 'audit-entry-type';
+      var typeNames = { query: '\u0627\u0633\u062A\u0639\u0644\u0627\u0645', cache_hit: '\u0643\u0627\u0634', feedback: '\u062A\u0642\u064A\u064A\u0645', evicted: '\u0625\u0646\u0647\u0627\u0621 \u062C\u0644\u0633\u0629' };
+      typeLabel.textContent = typeNames[entry.type] || entry.type;
+      headerLine.appendChild(typeLabel);
+
+      var timeEl = document.createElement('span');
+      timeEl.className = 'audit-entry-time';
+      try {
+        timeEl.textContent = new Date(entry.timestamp).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      } catch (_) {
+        timeEl.textContent = '';
+      }
+      headerLine.appendChild(timeEl);
+
+      details.appendChild(headerLine);
+
+      // Type-specific content
+      if (entry.type === 'query') {
+        var msgEl = document.createElement('div');
+        msgEl.className = 'audit-entry-message';
+        msgEl.textContent = entry.message || '';
+        details.appendChild(msgEl);
+
+        var metaRow = document.createElement('div');
+        metaRow.className = 'audit-entry-meta';
+        if (entry.queryType) {
+          var qtEl = document.createElement('span');
+          qtEl.className = 'audit-meta-badge';
+          qtEl.textContent = entry.queryType;
+          metaRow.appendChild(qtEl);
+        }
+        if (entry.avgScore !== undefined) {
+          var scEl = document.createElement('span');
+          scEl.textContent = '\u2B50 ' + Math.round((entry.avgScore || 0) * 100) + '%';
+          metaRow.appendChild(scEl);
+        }
+        if (entry.correlationId) {
+          var cidEl = document.createElement('span');
+          cidEl.className = 'audit-meta-corr';
+          cidEl.textContent = entry.correlationId.slice(0, 8);
+          metaRow.appendChild(cidEl);
+        }
+        if (entry.totalMs) {
+          var msEl = document.createElement('span');
+          msEl.textContent = entry.totalMs + 'ms';
+          metaRow.appendChild(msEl);
+        }
+        details.appendChild(metaRow);
+      }
+
+      if (entry.type === 'cache_hit') {
+        var chMsg = document.createElement('div');
+        chMsg.className = 'audit-entry-message';
+        chMsg.textContent = entry.message || '';
+        details.appendChild(chMsg);
+      }
+
+      if (entry.type === 'feedback') {
+        var fbRow = document.createElement('div');
+        fbRow.className = 'audit-entry-meta';
+        var fbRating = document.createElement('span');
+        fbRating.textContent = entry.rating === 'positive' ? '\u0625\u0639\u062C\u0627\u0628' : '\u0639\u062F\u0645 \u0625\u0639\u062C\u0627\u0628';
+        fbRow.appendChild(fbRating);
+        if (entry.comment) {
+          var fbComment = document.createElement('span');
+          fbComment.className = 'audit-entry-comment';
+          fbComment.textContent = '\uD83D\uDCAC ' + entry.comment;
+          fbRow.appendChild(fbComment);
+        }
+        details.appendChild(fbRow);
+      }
+
+      if (entry.type === 'evicted') {
+        var evMsg = document.createElement('div');
+        evMsg.className = 'audit-entry-message audit-evicted-msg';
+        evMsg.textContent = '\u062A\u0645 \u0625\u0646\u0647\u0627\u0621 \u0627\u0644\u062C\u0644\u0633\u0629';
+        details.appendChild(evMsg);
+      }
+
+      row.appendChild(details);
+      timeline.appendChild(row);
+    }
+  }
+
+  function showAuditSkeleton() {
+    var timeline = DOM.auditTimeline;
+    if (!timeline) return;
+    while (timeline.firstChild) timeline.removeChild(timeline.firstChild);
+    for (var i = 0; i < 4; i++) {
+      var s = document.createElement('div');
+      s.className = 'admin-skeleton';
+      s.style.height = '60px';
+      s.style.borderRadius = '10px';
+      s.style.marginBottom = '8px';
+      timeline.appendChild(s);
+    }
+    if (DOM.auditEmpty) DOM.auditEmpty.classList.add('hidden');
+  }
+
+  async function loadAuditTrail(sessionId) {
+    if (!sessionId) {
+      if (DOM.auditTimeline) {
+        while (DOM.auditTimeline.firstChild) DOM.auditTimeline.removeChild(DOM.auditTimeline.firstChild);
+      }
+      if (DOM.auditEmpty) {
+        DOM.auditEmpty.textContent = '\u0623\u062F\u062E\u0644 \u0645\u0639\u0631\u0651\u0641 \u0627\u0644\u062C\u0644\u0633\u0629 \u0644\u0639\u0631\u0636 \u0645\u0633\u0627\u0631 \u0627\u0644\u062A\u062F\u0642\u064A\u0642';
+        DOM.auditEmpty.classList.remove('hidden');
+      }
+      return;
+    }
+    showAuditSkeleton();
+    try {
+      var data = await adminFetch('/api/admin/audit/' + encodeURIComponent(sessionId), { limit: 100 });
+      renderAuditTrail(data);
+    } catch (err) {
+      if (DOM.auditTimeline) {
+        while (DOM.auditTimeline.firstChild) DOM.auditTimeline.removeChild(DOM.auditTimeline.firstChild);
+      }
+      showSectionError(DOM.auditTimeline, err.message, function () { loadAuditTrail(sessionId); });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
   //  SECTION ERROR STATE
   // ══════════════════════════════════════════════════════════
   function showSectionError(container, msg, retryFn) {
@@ -1669,6 +1985,7 @@
     showCommandsSkeleton();
     showInsightsSkeleton();
     showFeedbackSkeleton();
+    showCorrelationSkeleton();
 
     // Parallel fetch
     var results = await Promise.allSettled([
@@ -1747,6 +2064,14 @@
       renderFeedback(results[7].value);
     } else {
       renderFeedback(null);
+    }
+
+    // Correlation Explorer (Phase 34) — uses same feedback endpoint (enriched)
+    if (results[7].status === 'fulfilled' && results[7].value) {
+      _correlationData = results[7].value;
+      renderCorrelationExplorer(results[7].value, _correlationFilter);
+    } else {
+      renderCorrelationExplorer(null, _correlationFilter);
     }
 
     // Last update
@@ -1833,6 +2158,42 @@
           renderLog(_logData);
         } else {
           fetchLog().then(function (data) { renderLog(data); });
+        }
+      });
+    }
+
+    // Correlation filter (Phase 34)
+    if (DOM.correlationFilter) {
+      DOM.correlationFilter.addEventListener('click', function (e) {
+        var btn = e.target.closest('.admin-rating-btn');
+        if (!btn) return;
+        var filter = btn.getAttribute('data-filter') || 'all';
+        // Update active state
+        var allBtns = DOM.correlationFilter.querySelectorAll('.admin-rating-btn');
+        for (var i = 0; i < allBtns.length; i++) { allBtns[i].classList.remove('active'); }
+        btn.classList.add('active');
+        _correlationFilter = filter;
+        if (_correlationData) {
+          renderCorrelationExplorer(_correlationData, filter);
+        } else {
+          loadCorrelationExplorer(filter);
+        }
+      });
+    }
+
+    // Audit trail (Phase 34)
+    if (DOM.auditBtn) {
+      DOM.auditBtn.addEventListener('click', function () {
+        var sessionId = DOM.auditInput ? DOM.auditInput.value.trim() : '';
+        loadAuditTrail(sessionId);
+      });
+    }
+    if (DOM.auditInput) {
+      DOM.auditInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          var sessionId = DOM.auditInput.value.trim();
+          loadAuditTrail(sessionId);
         }
       });
     }

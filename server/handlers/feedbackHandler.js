@@ -6,6 +6,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { feedbackCollector } from '../services/feedbackCollector.js';
+import { correlationIndex }  from '../services/correlationIndex.js';
 
 /**
  * POST /api/feedback
@@ -57,9 +58,21 @@ export async function handleAdminFeedback(req, res) {
     }
   } catch { /* use default */ }
 
+  const entries = feedbackCollector.recent(limit);
+  const enriched = entries.map(entry => {
+    const corr = correlationIndex.get(entry.correlationId);
+    return {
+      ...entry,
+      question:        corr?.message || null,
+      responseSnippet: corr?.fullText ? corr.fullText.slice(0, 200) : null,
+      queryType:       corr?.queryType || null,
+      avgScore:        corr?.avgScore ?? null,
+    };
+  });
+
   const payload = {
     counts: feedbackCollector.counts(),
-    recent: feedbackCollector.recent(limit),
+    recent: enriched,
   };
 
   res.writeHead(200, { 'Content-Type': 'application/json' });

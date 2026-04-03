@@ -50,6 +50,10 @@ function buildPayload() {
       allowComments:  config.FEEDBACK?.allowComments !== false,
     },
 
+    AUDIT: {
+      enabled: config.AUDIT?.enabled !== false,
+    },
+
     // TIERS: moved to GET /api/whoami (Phase 27 — per-request, not static config)
   });
   return cachedPayload;

@@ -496,6 +496,19 @@ const config = {
     maxCommentLength: 200,      // أقصى أحرف في التعليق
   },
 
+  // ═══════════════════════════════════════════════════════════
+  // 22. ربط التقييمات ومسار التدقيق (AUDIT)
+  //    — يربط correlationId بالسؤال والجواب (CorrelationIndex)
+  //    — يبني per-session audit trail من أحداث المحادثة
+  //    — مفعّل افتراضياً — أداة مراقبة مفيدة بدون risk
+  // ═══════════════════════════════════════════════════════════
+  AUDIT: {
+    enabled:                   true,   // true = تفعيل الـ correlation index + audit trail | false = معطّل (zero overhead)
+    maxCorrelationEntries:     500,    // أقصى entries في الـ correlation index (in-memory ring buffer — الأقدم يتحذف)
+    maxAuditEntriesPerSession: 100,    // أقصى audit events per session
+    maxAuditSessions:          200,    // أقصى sessions في الـ audit trail (الأقدم يتحذف)
+  },
+
 };
 
 export default deepFreeze(config);
