@@ -68,6 +68,14 @@ function buildPayload() {
       persistGaps: config.CONTENT_GAPS?.persistGaps === true,
     },
 
+    EXPORT: {
+      enabled: config.EXPORT?.enabled === true,
+    },
+
+    QUALITY: {
+      enabled: config.QUALITY?.enabled === true,
+    },
+
     // TIERS: moved to GET /api/whoami (Phase 27 — per-request, not static config)
   });
   return cachedPayload;

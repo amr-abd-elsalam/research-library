@@ -2105,6 +2105,144 @@
     }
   }
 
+  // ══════════════════════════════════════════════════════════
+  //  QUALITY OVERVIEW (Phase 40)
+  // ══════════════════════════════════════════════════════════
+  async function downloadExport(type) {
+    try {
+      var res = await fetch('/api/admin/export?type=' + type, {
+        headers: { 'Authorization': 'Bearer ' + (state.token || '') },
+      });
+      if (!res.ok) {
+        alert('فشل التصدير: HTTP ' + res.status);
+        return;
+      }
+      var blob = await res.blob();
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'ai8v-export-' + type + '-' + Date.now() + '.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('فشل التصدير: ' + err.message);
+    }
+  }
+
+  async function loadQualityOverview() {
+    var container = document.getElementById('admin-quality-content');
+    if (!container) return;
+
+    container.innerHTML = '<p class="admin-empty-msg">\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u062D\u0645\u064A\u0644...</p>';
+
+    try {
+      // Fetch config to check if features are enabled
+      var configData = await fetchConfig();
+      var qualityEnabled = configData && configData.QUALITY && configData.QUALITY.enabled;
+      var exportEnabled = configData && configData.EXPORT && configData.EXPORT.enabled;
+
+      var html = '';
+
+      // Quality section
+      if (!qualityEnabled) {
+        html += '<p class="admin-empty-msg">\u062A\u0642\u064A\u064A\u0645 \u062C\u0648\u062F\u0629 \u0627\u0644\u0628\u062D\u062B \u0645\u0639\u0637\u0651\u0644 \u2014 \u0641\u0639\u0651\u0644\u0647 \u0645\u0646 <code>QUALITY.enabled: true</code></p>';
+      } else {
+        // Fetch sessions list to get quality scores
+        var sessionsData = await fetchSessions(200, 0);
+        if (sessionsData && sessionsData.sessions) {
+          var sessions = sessionsData.sessions;
+          var scored = sessions.filter(function (s) { return s.qualityScore !== null && s.qualityScore !== undefined; });
+
+          if (scored.length === 0) {
+            html += '<p class="admin-empty-msg">\u0644\u0627 \u062A\u0648\u062C\u062F \u062C\u0644\u0633\u0627\u062A \u0645\u0642\u064A\u0651\u0645\u0629 \u0628\u0639\u062F \u2014 \u064A\u062D\u062A\u0627\u062C \session \u0644\u0639\u062F\u062F \u0623\u0633\u0626\u0644\u0629 \u0643\u0627\u0641\u064A</p>';
+          } else {
+            // Stats
+            var totalScored = scored.length;
+            var totalAll = sessions.length;
+            var sumScore = 0;
+            var goodCount = 0;
+            var mediumCount = 0;
+            var poorCount = 0;
+            for (var i = 0; i < scored.length; i++) {
+              var sc = scored[i].qualityScore;
+              sumScore += sc;
+              if (sc >= 0.7) goodCount++;
+              else if (sc >= 0.4) mediumCount++;
+              else poorCount++;
+            }
+            var avgScore = sumScore / totalScored;
+
+            html += '<div class="quality-stats">';
+            html += '<div class="quality-stat"><div class="quality-stat-value">' + totalScored + '</div><div class="quality-stat-label">\u062C\u0644\u0633\u0627\u062A \u0645\u0642\u064A\u0651\u0645\u0629</div></div>';
+            html += '<div class="quality-stat"><div class="quality-stat-value">' + Math.round(avgScore * 100) + '%</div><div class="quality-stat-label">\u0645\u0639\u062F\u0644 \u0627\u0644\u062C\u0648\u062F\u0629</div></div>';
+            html += '<div class="quality-stat quality-stat--good"><div class="quality-stat-value">' + goodCount + '</div><div class="quality-stat-label">\u062C\u064A\u062F (\u2265 70%)</div></div>';
+            html += '<div class="quality-stat quality-stat--medium"><div class="quality-stat-value">' + mediumCount + '</div><div class="quality-stat-label">\u0645\u062A\u0648\u0633\u0637 (40-70%)</div></div>';
+            html += '<div class="quality-stat quality-stat--poor"><div class="quality-stat-value">' + poorCount + '</div><div class="quality-stat-label">\u0636\u0639\u064A\u0641 (&lt; 40%)</div></div>';
+            html += '</div>';
+
+            // Distribution bars
+            html += '<h3 style="font-size:13px;color:var(--text-muted);margin:16px 0 8px;">\u062A\u0648\u0632\u064A\u0639 \u0627\u0644\u062C\u0648\u062F\u0629</h3>';
+            html += '<div class="quality-bars">';
+
+            var goodPct = totalScored > 0 ? ((goodCount / totalScored) * 100).toFixed(1) : 0;
+            var medPct = totalScored > 0 ? ((mediumCount / totalScored) * 100).toFixed(1) : 0;
+            var poorPct = totalScored > 0 ? ((poorCount / totalScored) * 100).toFixed(1) : 0;
+
+            html += '<div class="quality-bar-row"><div class="quality-bar-label">\u062C\u064A\u062F</div><div class="quality-bar-container"><div class="quality-bar-fill quality-bar-fill--good" style="width:' + goodPct + '%"></div></div><div class="quality-bar-score">' + goodPct + '%</div></div>';
+            html += '<div class="quality-bar-row"><div class="quality-bar-label">\u0645\u062A\u0648\u0633\u0637</div><div class="quality-bar-container"><div class="quality-bar-fill quality-bar-fill--medium" style="width:' + medPct + '%"></div></div><div class="quality-bar-score">' + medPct + '%</div></div>';
+            html += '<div class="quality-bar-row"><div class="quality-bar-label">\u0636\u0639\u064A\u0641</div><div class="quality-bar-container"><div class="quality-bar-fill quality-bar-fill--poor" style="width:' + poorPct + '%"></div></div><div class="quality-bar-score">' + poorPct + '%</div></div>';
+
+            html += '</div>';
+
+            // Worst sessions list
+            scored.sort(function (a, b) { return a.qualityScore - b.qualityScore; });
+            var worst = scored.slice(0, 5);
+            if (worst.length > 0) {
+              html += '<h3 style="font-size:13px;color:var(--text-muted);margin:16px 0 8px;">\u0623\u0636\u0639\u0641 \u0627\u0644\u062C\u0644\u0633\u0627\u062A</h3>';
+              html += '<div class="quality-worst">';
+              for (var wi = 0; wi < worst.length; wi++) {
+                var ws = worst[wi];
+                var pct = Math.round((ws.qualityScore || 0) * 100);
+                var cls = pct >= 70 ? 'good' : pct >= 40 ? 'medium' : 'poor';
+                html += '<div class="quality-worst-row">';
+                html += '<span class="quality-worst-id">' + (ws.session_id || '').slice(0, 8) + '\u2026</span>';
+                html += '<span class="quality-worst-score quality-worst-score--' + cls + '">' + pct + '%</span>';
+                html += '<span class="quality-worst-msgs">' + (ws.message_count || 0) + ' \u0631\u0633\u0627\u0644\u0629</span>';
+                html += '</div>';
+              }
+              html += '</div>';
+            }
+          }
+        } else {
+          html += '<p class="admin-empty-msg">\u0644\u0627 \u062A\u0648\u062C\u062F \u062C\u0644\u0633\u0627\u062A</p>';
+        }
+      }
+
+      // Export buttons
+      if (exportEnabled) {
+        html += '<div class="export-buttons">';
+        html += '<span style="font-size:13px;color:var(--text-muted);margin-left:8px;">\u062A\u0635\u062F\u064A\u0631 \u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A:</span>';
+        html += '<button type="button" class="export-btn" onclick="(function(){ document.dispatchEvent(new CustomEvent(\'ai8v:export\',{detail:\'feedback\'})); })()">Feedback</button>';
+        html += '<button type="button" class="export-btn" onclick="(function(){ document.dispatchEvent(new CustomEvent(\'ai8v:export\',{detail:\'audit\'})); })()">Audit</button>';
+        html += '<button type="button" class="export-btn" onclick="(function(){ document.dispatchEvent(new CustomEvent(\'ai8v:export\',{detail:\'gaps\'})); })()">Gaps</button>';
+        html += '</div>';
+      }
+
+      container.innerHTML = html;
+
+    } catch (err) {
+      container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623: ' + err.message + '</p>';
+    }
+  }
+
+  // Listen for export custom events
+  document.addEventListener('ai8v:export', function (e) {
+    var type = e.detail;
+    if (type) downloadExport(type);
+  });
+
   function renderContentGaps(container, data) {
     var html = '';
 
@@ -2249,6 +2387,9 @@
 
     // Content Gaps (Phase 38) — separate fetch (optional section)
     loadContentGaps();
+
+    // Quality Overview (Phase 40) — separate fetch (optional section)
+    loadQualityOverview();
 
     // Last update
     updateTimestamp();

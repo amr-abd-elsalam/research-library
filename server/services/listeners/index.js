@@ -21,6 +21,7 @@ import { register as registerFeedback }        from './feedbackListener.js';
 import { register as registerCorrelation }     from './correlationListener.js';
 import { register as registerAuditTrail }      from './auditTrailListener.js';
 import { register as registerContentGap }      from './contentGapListener.js';
+import { register as registerQuality }         from './qualityListener.js';
 import { logger }                            from '../logger.js';
 
 /**
@@ -46,6 +47,7 @@ export function registerAllListeners() {
   registerCorrelation();
   registerAuditTrail();
   registerContentGap();      // #17 — content gap detection (Phase 38)
+  registerQuality();         // #18 — session quality scoring (Phase 40)
 
-  logger.info('listeners', '17 EventBus listeners registered (analytics, cache, session, metrics, command, log, circuit, sessionStats, analyticsDigest, routing, context, suggestions, eviction, feedback, correlation, auditTrail, contentGap)');
+  logger.info('listeners', '18 EventBus listeners registered (analytics, cache, session, metrics, command, log, circuit, sessionStats, analyticsDigest, routing, context, suggestions, eviction, feedback, correlation, auditTrail, contentGap, quality)');
 }

@@ -31,6 +31,7 @@ import { auditPersister }        from '../services/auditPersister.js';
 import { libraryIndex }          from '../services/libraryIndex.js';
 import { contentGapDetector }    from '../services/contentGapDetector.js';
 import { gapPersister }          from '../services/gapPersister.js';
+import { sessionQualityScorer }  from '../services/sessionQualityScorer.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -144,6 +145,9 @@ export async function handleInspect(_req, res) {
 
       // ── Gap persistence (Phase 39) ─────────────────────────
       gapPersister: gapPersister.counts(),
+
+      // ── Session quality scorer (Phase 40) ──────────────────
+      sessionQualityScorer: sessionQualityScorer.counts(),
 
       // ── Permission Tiers (Phase 26) ────────────────────────
       tiers: {

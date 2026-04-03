@@ -564,6 +564,37 @@ const config = {
     alertThreshold:     0.20,      // نسبة الـ gap rate (gaps/requests) اللي لما تتعداها يظهر alert للأدمن في Content Gaps section. 0.20 = 20%
   },
 
+  // ═══════════════════════════════════════════════════════════
+  // 26. تصدير بيانات الأدمن (EXPORT)
+  //    — يسمح للأدمن بتصدير بيانات المنصة كملفات JSON
+  //    — معطّل افتراضياً — فعّله من هنا
+  //    — يدعم: feedback, audit, gaps
+  //    — الـ endpoint: GET /api/admin/export?type=feedback,audit,gaps
+  // ═══════════════════════════════════════════════════════════
+  EXPORT: {
+    enabled:        false,       // true = تفعيل API التصدير | false = معطّل (404)
+    allowedTypes:   ['feedback', 'audit', 'gaps'],  // أنواع البيانات المسموح تصديرها
+    maxExportRows:  10000,       // أقصى عدد صفوف لكل نوع بيانات في التصدير (حماية من exports كبيرة)
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // 27. تقييم جودة البحث (QUALITY)
+  //    — يحسب quality score لكل session بناءً على إشارات متعددة
+  //    — معطّل افتراضياً — فعّله من هنا
+  //    — in-memory فقط — البيانات تضيع عند restart
+  //    — zero overhead عند التعطيل
+  // ═══════════════════════════════════════════════════════════
+  QUALITY: {
+    enabled:              false,       // true = تفعيل حساب جودة البحث per session | false = معطّل (zero overhead)
+    weights: {
+      avgScore:           0.35,        // وزن متوسط درجة البحث (0-1)
+      feedbackPositive:   0.30,        // وزن نسبة التقييمات الإيجابية
+      completionRate:     0.20,        // وزن نسبة الأسئلة المكتملة (non-aborted)
+      rewriteSuccess:     0.15,        // وزن نجاح إعادة الصياغة المحلية
+    },
+    sessionMinTurns:      2,           // أقل عدد أسئلة في session قبل حساب الـ quality score
+  },
+
 };
 
 export default deepFreeze(config);

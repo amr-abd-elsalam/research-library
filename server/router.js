@@ -18,6 +18,7 @@ import { handleSubmitFeedback, handleAdminFeedback } from './handlers/feedbackHa
 import { handleAudit } from './handlers/auditHandler.js';
 import { handleLibraryOverview } from './handlers/libraryHandler.js';
 import { handleContentGaps } from './handlers/contentGapsHandler.js';
+import { handleExport } from './handlers/exportHandler.js';
 import { bootstrap } from './bootstrap.js';
 
 // ── URL matcher (strips query string + trailing slash) ─────────
@@ -171,6 +172,14 @@ export async function router(req, res) {
     requireAdmin(req, res);
     if (res.writableEnded) return;
     await handleContentGaps(req, res);
+    return;
+  }
+
+  // GET /api/admin/export (Phase 40 — admin data export)
+  if (method === 'GET' && matchRoute(url, '/api/admin/export')) {
+    requireAdmin(req, res);
+    if (res.writableEnded) return;
+    await handleExport(req, res);
     return;
   }
 

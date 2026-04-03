@@ -16,6 +16,7 @@ import {
 } from '../services/sessions.js';
 import { sessionBudget } from '../services/sessionBudget.js';
 import { conversationContext } from '../services/conversationContext.js';
+import { sessionQualityScorer } from '../services/sessionQualityScorer.js';
 import { contextPersister } from '../services/contextPersister.js';
 import { logger } from '../services/logger.js';
 
@@ -203,6 +204,13 @@ export async function handleListSessions(req, res) {
     const since  = url.searchParams.get('since')  || '0';
 
     const result = await listSessions({ limit, offset, since });
+
+    // Enrich sessions with quality score (Phase 40)
+    if (result.sessions) {
+      for (const session of result.sessions) {
+        session.qualityScore = sessionQualityScorer.getScore(session.session_id);
+      }
+    }
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(result));

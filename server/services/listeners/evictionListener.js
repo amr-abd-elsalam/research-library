@@ -15,6 +15,7 @@ import { sessionBudget } from '../sessionBudget.js';
 import { clearSuggestions } from './suggestionsListener.js';
 import { contextPersister } from '../contextPersister.js';
 import { auditPersister } from '../auditPersister.js';
+import { sessionQualityScorer } from '../sessionQualityScorer.js';
 
 export function register() {
   eventBus.on('session:evicted', (data) => {
@@ -46,5 +47,8 @@ export function register() {
     if (auditPersister.enabled) {
       auditPersister.remove(sessionId).catch(() => {});
     }
+
+    // 7. Quality scorer cleanup (Phase 40)
+    sessionQualityScorer.remove(sessionId);
   });
 }

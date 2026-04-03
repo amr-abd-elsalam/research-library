@@ -8,6 +8,7 @@
 
 import { getTrail } from '../services/listeners/auditTrailListener.js';
 import { auditPersister } from '../services/auditPersister.js';
+import { sessionQualityScorer } from '../services/sessionQualityScorer.js';
 
 /**
  * GET /api/admin/audit/:sessionId
@@ -44,7 +45,8 @@ export async function handleAudit(req, res) {
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({
     sessionId,
-    entries: trail,
-    total:   trail.length,
+    entries:      trail,
+    total:        trail.length,
+    qualityScore: sessionQualityScorer.getScore(sessionId),
   }));
 }
