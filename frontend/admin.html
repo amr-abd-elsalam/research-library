@@ -71,179 +71,231 @@
     <!-- ── CONTENT ────────────────────────────────────── -->
     <main id="admin-content" class="admin-content">
 
-      <!-- Overview Cards -->
-      <section id="section-overview" class="admin-section">
-        <h2 class="admin-section-title">نظرة عامة</h2>
-        <div id="admin-overview-grid" class="admin-cards-grid">
-          <!-- Cards injected by JS -->
-        </div>
-      </section>
+      <!-- ═══ Tab Navigation (Phase 42) ═══ -->
+      <nav class="ai8v-admin-tabs" id="adminTabs">
+        <button class="ai8v-tab-btn active" data-tab="overview" type="button">نظرة عامة</button>
+        <button class="ai8v-tab-btn" data-tab="content" type="button">المحتوى</button>
+        <button class="ai8v-tab-btn" data-tab="operations" type="button">العمليات</button>
+        <button class="ai8v-tab-btn" data-tab="data" type="button">البيانات</button>
+      </nav>
 
-      <!-- System Health -->
-      <section id="section-health" class="admin-section">
-        <h2 class="admin-section-title">حالة النظام</h2>
-        <div id="admin-health-grid" class="admin-health-grid">
-          <!-- Health items injected by JS -->
-        </div>
-      </section>
+      <!-- ═══════════════════════════════════════════════
+           TAB 1: OVERVIEW
+      ════════════════════════════════════════════════ -->
+      <div class="ai8v-tab-panel active" id="tab-overview">
 
-      <!-- Sessions Table -->
-      <section id="section-sessions" class="admin-section">
-        <h2 class="admin-section-title">الجلسات</h2>
-        <div id="admin-sessions-wrap" class="admin-table-wrap">
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>معرّف الجلسة</th>
-                <th>الإنشاء</th>
-                <th>آخر نشاط</th>
-                <th>الرسائل</th>
-                <th>IP Hash</th>
-                <th>التصنيف</th>
-              </tr>
-            </thead>
-            <tbody id="admin-sessions-tbody">
-              <!-- Rows injected by JS -->
-            </tbody>
-          </table>
+        <!-- Health Score Card (Phase 42) -->
+        <div class="ai8v-health-card" id="healthScoreCard">
+          <div class="health-score-circle disabled" id="healthScoreCircle">--</div>
+          <div class="health-score-label" id="healthScoreLabel">جاري التحميل...</div>
+          <div class="health-score-breakdown" id="healthBreakdown"></div>
         </div>
-        <div id="admin-sessions-pagination" class="admin-pagination">
-          <button id="admin-sessions-prev" type="button" class="admin-btn-page" disabled>السابق</button>
-          <span id="admin-sessions-info" class="admin-page-info"></span>
-          <button id="admin-sessions-next" type="button" class="admin-btn-page" disabled>التالي</button>
-        </div>
-        <p id="admin-sessions-empty" class="admin-empty-msg hidden">لا توجد جلسات محفوظة</p>
-      </section>
 
-      <!-- Pipeline Metrics -->
-      <section id="section-metrics" class="admin-section">
-        <h2 class="admin-section-title">أداء الـ Pipeline</h2>
-        <div id="admin-metrics-cards" class="admin-cards-grid admin-metrics-top-grid">
-          <!-- Metrics summary cards injected by JS -->
-        </div>
-        <div id="admin-metrics-stages" class="admin-metrics-stages">
-          <!-- Stage breakdown bars injected by JS -->
-        </div>
-        <p id="admin-metrics-empty" class="admin-empty-msg hidden">لا توجد بيانات أداء بعد</p>
-      </section>
+        <!-- Action Items (Phase 42) -->
+        <div class="ai8v-action-items" id="actionItems"></div>
 
-      <!-- Cost Breakdown -->
-      <section id="section-cost" class="admin-section">
-        <h2 class="admin-section-title">تفاصيل التكاليف</h2>
-        <div id="admin-cost-grid" class="admin-cards-grid admin-cost-grid">
-          <!-- Cost cards injected by JS -->
+        <!-- Quick Actions (Phase 42) -->
+        <div class="ai8v-quick-actions">
+          <button class="ai8v-action-btn" id="btnRefreshLibrary" type="button">تحديث فهرس المكتبة</button>
+          <button class="ai8v-action-btn" id="btnClearCache" type="button">مسح الكاش</button>
         </div>
-      </section>
 
-      <!-- ═══ تحليل الأوامر (Phase 20) ═══ -->
-      <section class="admin-section" id="admin-section-commands">
-        <h2 class="admin-section-title">تحليل الأوامر</h2>
-        <div class="admin-commands-graph" id="admin-commands-graph"></div>
-        <div class="admin-commands-metrics" id="admin-commands-metrics"></div>
-        <p class="admin-commands-empty admin-empty-msg hidden" id="admin-commands-empty">لا تتوفر بيانات عن الأوامر بعد</p>
-      </section>
+        <!-- Overview Cards -->
+        <section id="section-overview" class="admin-section">
+          <h2 class="admin-section-title">إحصائيات عامة</h2>
+          <div id="admin-overview-grid" class="admin-cards-grid">
+            <!-- Cards injected by JS -->
+          </div>
+        </section>
 
-      <!-- ═══ تحليل وتوصيات الـ Pipeline (Phase 22) ═══ -->
-      <section class="admin-section" id="admin-section-insights">
-        <h2 class="admin-section-title">تحليل وتوصيات الـ Pipeline</h2>
-        <div id="admin-insights-summary" class="admin-insights-grid"></div>
-        <div id="admin-insights-distributions" class="admin-insights-distributions"></div>
-        <div id="admin-insights-recommendations"></div>
-        <p id="admin-insights-empty" class="admin-empty-msg" style="display:none">خاصية التحليل الذكي معطّلة — فعّلها من <code>PIPELINE.adaptiveEnabled: true</code></p>
-      </section>
+      </div>
 
-      <!-- ═══ سجل الأحداث التشغيلية (Phase 16) ═══ -->
-      <section class="admin-section" id="admin-section-log">
-        <h2 class="admin-section-title">سجل الأحداث التشغيلية</h2>
-        <div class="admin-log-controls">
-          <select id="admin-log-filter" class="admin-log-select">
-            <option value="all">كل الأحداث</option>
-            <option value="pipeline:complete">اكتمال Pipeline</option>
-            <option value="pipeline:stageComplete">اكتمال Stage</option>
-            <option value="pipeline:cacheHit">Cache Hit</option>
-            <option value="command:complete">اكتمال أمر</option>
-            <option value="log:warn">تحذيرات</option>
-            <option value="log:error">أخطاء</option>
-          </select>
-        </div>
-        <div id="admin-log-entries" class="admin-log-entries">
-          <p class="admin-empty-msg">جاري التحميل...</p>
-        </div>
-      </section>
+      <!-- ═══════════════════════════════════════════════
+           TAB 2: CONTENT
+      ════════════════════════════════════════════════ -->
+      <div class="ai8v-tab-panel" id="tab-content">
 
-      <!-- ═══ تقييمات المستخدمين (Phase 33) ═══ -->
-      <section class="admin-section" id="admin-section-feedback">
-        <h2 class="admin-section-title">تقييمات المستخدمين</h2>
-        <div id="admin-feedback-counts" class="admin-feedback-counts"></div>
-        <div id="admin-feedback-recent" class="admin-feedback-recent"></div>
-        <p id="admin-feedback-empty" class="admin-empty-msg hidden">لا توجد تقييمات بعد</p>
-      </section>
+        <!-- ═══ محتوى المكتبة (Phase 36) ═══ -->
+        <section class="admin-section" id="admin-section-library">
+          <h2 class="admin-section-title">محتوى المكتبة</h2>
+          <div id="admin-library-content">
+            <p class="admin-empty-msg">جاري التحميل...</p>
+          </div>
+        </section>
 
-      <!-- ═══ مستكشف الربط (Phase 34) ═══ -->
-      <section class="admin-section" id="admin-section-correlation">
-        <h2 class="admin-section-title">مستكشف الربط</h2>
-        <div id="admin-correlation-filter" class="admin-rating-filter">
-          <button type="button" class="admin-rating-btn active" data-filter="all">الكل</button>
-          <button type="button" class="admin-rating-btn" data-filter="positive">إيجابي</button>
-          <button type="button" class="admin-rating-btn" data-filter="negative">سلبي</button>
-        </div>
-        <div id="admin-correlation-cards" class="admin-correlation-cards"></div>
-        <p id="admin-correlation-empty" class="admin-empty-msg hidden">لا توجد تقييمات مربوطة بعد</p>
-      </section>
+        <!-- ═══ فجوات المحتوى (Phase 38) ═══ -->
+        <section class="admin-section" id="admin-section-gaps">
+          <h2 class="admin-section-title">فجوات المحتوى</h2>
+          <div id="admin-gaps-content">
+            <p class="admin-empty-msg">جاري التحميل...</p>
+          </div>
+        </section>
 
-      <!-- ═══ مسار التدقيق (Phase 34) ═══ -->
-      <section class="admin-section" id="admin-section-audit">
-        <h2 class="admin-section-title">مسار التدقيق</h2>
-        <div class="admin-audit-input-group">
-          <input
-            type="text"
-            id="admin-audit-session-input"
-            class="admin-audit-input"
-            placeholder="أدخل معرّف الجلسة (Session ID)"
-            autocomplete="off"
-            spellcheck="false"
-            dir="ltr"
-          />
-          <button type="button" id="admin-audit-btn" class="admin-btn-action">عرض</button>
-        </div>
-        <div id="admin-audit-timeline" class="admin-audit-timeline"></div>
-        <p id="admin-audit-empty" class="admin-empty-msg hidden">أدخل معرّف الجلسة لعرض مسار التدقيق</p>
-      </section>
+        <!-- ═══ تقييم جودة البحث (Phase 40) ═══ -->
+        <section class="admin-section" id="admin-section-quality">
+          <h2 class="admin-section-title">تقييم جودة البحث</h2>
+          <div id="admin-quality-content">
+            <p class="admin-empty-msg">جاري التحميل...</p>
+          </div>
+        </section>
 
-      <!-- ═══ فحص النظام (Phase 17) ═══ -->
-      <section class="admin-section" id="admin-section-inspect">
-        <h2 class="admin-section-title">فحص النظام</h2>
-        <div class="admin-inspect-grid" id="admin-inspect-grid">
-          <!-- Summary cards injected by JS -->
-        </div>
-        <div class="admin-inspect-details" id="admin-inspect-details">
-          <!-- Detail lists injected by JS -->
-        </div>
-      </section>
+      </div>
 
-      <!-- ═══ محتوى المكتبة (Phase 36) ═══ -->
-      <section class="admin-section" id="admin-section-library">
-        <h2 class="admin-section-title">محتوى المكتبة</h2>
-        <div id="admin-library-content">
-          <p class="admin-empty-msg">جاري التحميل...</p>
-        </div>
-      </section>
+      <!-- ═══════════════════════════════════════════════
+           TAB 3: OPERATIONS
+      ════════════════════════════════════════════════ -->
+      <div class="ai8v-tab-panel" id="tab-operations">
 
-      <!-- ═══ فجوات المحتوى (Phase 38) ═══ -->
-      <section class="admin-section" id="admin-section-gaps">
-        <h2 class="admin-section-title">فجوات المحتوى</h2>
-        <div id="admin-gaps-content">
-          <p class="admin-empty-msg">جاري التحميل...</p>
-        </div>
-      </section>
+        <!-- System Health -->
+        <section id="section-health" class="admin-section">
+          <h2 class="admin-section-title">حالة النظام</h2>
+          <div id="admin-health-grid" class="admin-health-grid">
+            <!-- Health items injected by JS -->
+          </div>
+        </section>
 
-      <!-- ═══ تقييم جودة البحث (Phase 40) ═══ -->
-      <section class="admin-section" id="admin-section-quality">
-        <h2 class="admin-section-title">تقييم جودة البحث</h2>
-        <div id="admin-quality-content">
-          <p class="admin-empty-msg">جاري التحميل...</p>
-        </div>
-      </section>
+        <!-- Sessions Table -->
+        <section id="section-sessions" class="admin-section">
+          <h2 class="admin-section-title">الجلسات</h2>
+          <div id="admin-sessions-wrap" class="admin-table-wrap">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>معرّف الجلسة</th>
+                  <th>الإنشاء</th>
+                  <th>آخر نشاط</th>
+                  <th>الرسائل</th>
+                  <th>IP Hash</th>
+                  <th>التصنيف</th>
+                </tr>
+              </thead>
+              <tbody id="admin-sessions-tbody">
+                <!-- Rows injected by JS -->
+              </tbody>
+            </table>
+          </div>
+          <div id="admin-sessions-pagination" class="admin-pagination">
+            <button id="admin-sessions-prev" type="button" class="admin-btn-page" disabled>السابق</button>
+            <span id="admin-sessions-info" class="admin-page-info"></span>
+            <button id="admin-sessions-next" type="button" class="admin-btn-page" disabled>التالي</button>
+          </div>
+          <p id="admin-sessions-empty" class="admin-empty-msg hidden">لا توجد جلسات محفوظة</p>
+        </section>
+
+        <!-- Pipeline Metrics -->
+        <section id="section-metrics" class="admin-section">
+          <h2 class="admin-section-title">أداء الـ Pipeline</h2>
+          <div id="admin-metrics-cards" class="admin-cards-grid admin-metrics-top-grid">
+            <!-- Metrics summary cards injected by JS -->
+          </div>
+          <div id="admin-metrics-stages" class="admin-metrics-stages">
+            <!-- Stage breakdown bars injected by JS -->
+          </div>
+          <p id="admin-metrics-empty" class="admin-empty-msg hidden">لا توجد بيانات أداء بعد</p>
+        </section>
+
+        <!-- Cost Breakdown -->
+        <section id="section-cost" class="admin-section">
+          <h2 class="admin-section-title">تفاصيل التكاليف</h2>
+          <div id="admin-cost-grid" class="admin-cards-grid admin-cost-grid">
+            <!-- Cost cards injected by JS -->
+          </div>
+        </section>
+
+        <!-- ═══ تحليل الأوامر (Phase 20) ═══ -->
+        <section class="admin-section" id="admin-section-commands">
+          <h2 class="admin-section-title">تحليل الأوامر</h2>
+          <div class="admin-commands-graph" id="admin-commands-graph"></div>
+          <div class="admin-commands-metrics" id="admin-commands-metrics"></div>
+          <p class="admin-commands-empty admin-empty-msg hidden" id="admin-commands-empty">لا تتوفر بيانات عن الأوامر بعد</p>
+        </section>
+
+        <!-- ═══ سجل الأحداث التشغيلية (Phase 16) ═══ -->
+        <section class="admin-section" id="admin-section-log">
+          <h2 class="admin-section-title">سجل الأحداث التشغيلية</h2>
+          <div class="admin-log-controls">
+            <select id="admin-log-filter" class="admin-log-select">
+              <option value="all">كل الأحداث</option>
+              <option value="pipeline:complete">اكتمال Pipeline</option>
+              <option value="pipeline:stageComplete">اكتمال Stage</option>
+              <option value="pipeline:cacheHit">Cache Hit</option>
+              <option value="command:complete">اكتمال أمر</option>
+              <option value="log:warn">تحذيرات</option>
+              <option value="log:error">أخطاء</option>
+            </select>
+          </div>
+          <div id="admin-log-entries" class="admin-log-entries">
+            <p class="admin-empty-msg">جاري التحميل...</p>
+          </div>
+        </section>
+
+      </div>
+
+      <!-- ═══════════════════════════════════════════════
+           TAB 4: DATA & DEBUG
+      ════════════════════════════════════════════════ -->
+      <div class="ai8v-tab-panel" id="tab-data">
+
+        <!-- ═══ تقييمات المستخدمين (Phase 33) ═══ -->
+        <section class="admin-section" id="admin-section-feedback">
+          <h2 class="admin-section-title">تقييمات المستخدمين</h2>
+          <div id="admin-feedback-counts" class="admin-feedback-counts"></div>
+          <div id="admin-feedback-recent" class="admin-feedback-recent"></div>
+          <p id="admin-feedback-empty" class="admin-empty-msg hidden">لا توجد تقييمات بعد</p>
+        </section>
+
+        <!-- ═══ مستكشف الربط (Phase 34) ═══ -->
+        <section class="admin-section" id="admin-section-correlation">
+          <h2 class="admin-section-title">مستكشف الربط</h2>
+          <div id="admin-correlation-filter" class="admin-rating-filter">
+            <button type="button" class="admin-rating-btn active" data-filter="all">الكل</button>
+            <button type="button" class="admin-rating-btn" data-filter="positive">إيجابي</button>
+            <button type="button" class="admin-rating-btn" data-filter="negative">سلبي</button>
+          </div>
+          <div id="admin-correlation-cards" class="admin-correlation-cards"></div>
+          <p id="admin-correlation-empty" class="admin-empty-msg hidden">لا توجد تقييمات مربوطة بعد</p>
+        </section>
+
+        <!-- ═══ مسار التدقيق (Phase 34) ═══ -->
+        <section class="admin-section" id="admin-section-audit">
+          <h2 class="admin-section-title">مسار التدقيق</h2>
+          <div class="admin-audit-input-group">
+            <input
+              type="text"
+              id="admin-audit-session-input"
+              class="admin-audit-input"
+              placeholder="أدخل معرّف الجلسة (Session ID)"
+              autocomplete="off"
+              spellcheck="false"
+              dir="ltr"
+            />
+            <button type="button" id="admin-audit-btn" class="admin-btn-action">عرض</button>
+          </div>
+          <div id="admin-audit-timeline" class="admin-audit-timeline"></div>
+          <p id="admin-audit-empty" class="admin-empty-msg hidden">أدخل معرّف الجلسة لعرض مسار التدقيق</p>
+        </section>
+
+        <!-- ═══ تحليل وتوصيات الـ Pipeline (Phase 22) ═══ -->
+        <section class="admin-section" id="admin-section-insights">
+          <h2 class="admin-section-title">تحليل وتوصيات الـ Pipeline</h2>
+          <div id="admin-insights-summary" class="admin-insights-grid"></div>
+          <div id="admin-insights-distributions" class="admin-insights-distributions"></div>
+          <div id="admin-insights-recommendations"></div>
+          <p id="admin-insights-empty" class="admin-empty-msg" style="display:none">خاصية التحليل الذكي معطّلة — فعّلها من <code>PIPELINE.adaptiveEnabled: true</code></p>
+        </section>
+
+        <!-- ═══ فحص النظام (Phase 17) ═══ -->
+        <section class="admin-section" id="admin-section-inspect">
+          <h2 class="admin-section-title">فحص النظام</h2>
+          <div class="admin-inspect-grid" id="admin-inspect-grid">
+            <!-- Summary cards injected by JS -->
+          </div>
+          <div class="admin-inspect-details" id="admin-inspect-details">
+            <!-- Detail lists injected by JS -->
+          </div>
+        </section>
+
+      </div>
 
     </main>
   </div>

@@ -32,6 +32,7 @@ import { libraryIndex }          from '../services/libraryIndex.js';
 import { contentGapDetector }    from '../services/contentGapDetector.js';
 import { gapPersister }          from '../services/gapPersister.js';
 import { sessionQualityScorer }  from '../services/sessionQualityScorer.js';
+import { libraryHealthScorer }   from '../services/libraryHealthScorer.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -148,6 +149,9 @@ export async function handleInspect(_req, res) {
 
       // ── Session quality scorer (Phase 40) ──────────────────
       sessionQualityScorer: sessionQualityScorer.counts(),
+
+      // ── Library health scorer (Phase 42) ───────────────────
+      libraryHealthScorer: libraryHealthScorer.counts(),
 
       // ── Permission Tiers (Phase 26) ────────────────────────
       tiers: {

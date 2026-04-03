@@ -77,6 +77,10 @@ function buildPayload() {
       enabled: config.QUALITY?.enabled === true,
     },
 
+    HEALTH_SCORE: {
+      enabled: config.HEALTH_SCORE?.enabled === true,
+    },
+
     // TIERS: moved to GET /api/whoami (Phase 27 — per-request, not static config)
   });
   return cachedPayload;

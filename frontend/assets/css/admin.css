@@ -1946,3 +1946,220 @@ img { max-width: 100%; display: block; }
   .quality-bar-row { grid-template-columns: 60px 1fr 40px; }
   .quality-worst-row { grid-template-columns: 80px 50px 1fr; }
 }
+
+/* ══════════════════════════════════════════════════════════
+   21. TAB NAVIGATION (Phase 42)
+══════════════════════════════════════════════════════════ */
+.ai8v-admin-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 24px;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.ai8v-tab-btn {
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-family: var(--font-base);
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all var(--speed) var(--ease);
+  white-space: nowrap;
+}
+
+.ai8v-tab-btn:hover {
+  color: var(--text-secondary);
+}
+
+.ai8v-tab-btn.active {
+  color: var(--accent-light);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.ai8v-tab-panel {
+  display: none;
+}
+
+.ai8v-tab-panel.active {
+  display: block;
+}
+
+/* ══════════════════════════════════════════════════════════
+   22. HEALTH SCORE CARD (Phase 42)
+══════════════════════════════════════════════════════════ */
+.ai8v-health-card {
+  text-align: center;
+  padding: 28px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  margin-bottom: 20px;
+}
+
+.health-score-circle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  font-weight: 700;
+  font-family: var(--font-en);
+  margin: 0 auto 12px;
+  border: 6px solid;
+  transition: all 0.3s var(--ease);
+}
+
+.health-score-circle.healthy {
+  border-color: var(--status-ok);
+  color: var(--status-ok);
+  background: rgba(52, 211, 153, 0.08);
+}
+
+.health-score-circle.warning {
+  border-color: var(--status-warn);
+  color: var(--status-warn);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.health-score-circle.critical {
+  border-color: var(--status-error);
+  color: var(--status-error);
+  background: rgba(248, 113, 113, 0.08);
+}
+
+.health-score-circle.disabled {
+  border-color: var(--border);
+  color: var(--text-muted);
+  background: var(--bg-elevated);
+}
+
+.health-score-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+}
+
+.health-score-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.breakdown-item {
+  background: var(--bg-elevated);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  border: 1px solid var(--border);
+}
+
+.breakdown-item .label {
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+
+.breakdown-item .value {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-en);
+}
+
+/* ══════════════════════════════════════════════════════════
+   23. ACTION ITEMS (Phase 42)
+══════════════════════════════════════════════════════════ */
+.ai8v-action-items {
+  margin-bottom: 20px;
+}
+
+.action-item {
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border-right: 4px solid var(--border);
+}
+
+.action-item.critical {
+  background: rgba(248, 113, 113, 0.08);
+  border-right-color: var(--status-error);
+}
+
+.action-item.warning {
+  background: rgba(245, 158, 11, 0.08);
+  border-right-color: var(--status-warn);
+}
+
+.action-item.info {
+  background: rgba(52, 211, 153, 0.08);
+  border-right-color: var(--accent);
+}
+
+.action-item .icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  line-height: 1.5;
+}
+
+.action-item .text {
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* ══════════════════════════════════════════════════════════
+   24. QUICK ACTIONS (Phase 42)
+══════════════════════════════════════════════════════════ */
+.ai8v-quick-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.ai8v-action-btn {
+  padding: 8px 18px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: var(--font-base);
+  color: var(--text-muted);
+  transition: all var(--speed) var(--ease);
+}
+
+.ai8v-action-btn:hover:not(:disabled) {
+  color: var(--accent-light);
+  border-color: var(--accent-border);
+  background: var(--accent-dim);
+}
+
+.ai8v-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ai8v-action-btn.loading {
+  opacity: 0.7;
+}
+
+@media (max-width: 640px) {
+  .ai8v-admin-tabs { gap: 0; }
+  .ai8v-tab-btn { padding: 8px 14px; font-size: 13px; }
+  .health-score-circle { width: 100px; height: 100px; font-size: 2rem; }
+  .health-score-breakdown { gap: 6px; }
+  .breakdown-item { font-size: 11px; padding: 4px 8px; }
+  .ai8v-quick-actions { flex-direction: column; }
+}

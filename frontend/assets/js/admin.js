@@ -2279,117 +2279,316 @@
   }
 
   // ══════════════════════════════════════════════════════════
-  //  LOAD ALL
+  //  TAB NAVIGATION (Phase 42)
   // ══════════════════════════════════════════════════════════
-  async function loadAll() {
-    // Show skeletons
+  var _loadedTabs = {};
+
+  function initTabs() {
+    var tabBtns = document.querySelectorAll('.ai8v-tab-btn');
+    var tabPanels = document.querySelectorAll('.ai8v-tab-panel');
+
+    for (var i = 0; i < tabBtns.length; i++) {
+      tabBtns[i].addEventListener('click', function () {
+        var targetTab = this.getAttribute('data-tab');
+
+        // Deactivate all
+        for (var j = 0; j < tabBtns.length; j++) tabBtns[j].classList.remove('active');
+        for (var k = 0; k < tabPanels.length; k++) tabPanels[k].classList.remove('active');
+
+        // Activate selected
+        this.classList.add('active');
+        var panel = document.getElementById('tab-' + targetTab);
+        if (panel) panel.classList.add('active');
+
+        // Lazy load tab content
+        loadTabContent(targetTab);
+      });
+    }
+  }
+
+  function loadTabContent(tabName) {
+    if (_loadedTabs[tabName]) return;
+    _loadedTabs[tabName] = true;
+
+    switch (tabName) {
+      case 'overview':
+        loadOverviewTab();
+        break;
+      case 'content':
+        loadContentTab();
+        break;
+      case 'operations':
+        loadOperationsTab();
+        break;
+      case 'data':
+        loadDataTab();
+        break;
+    }
+  }
+
+  async function loadOverviewTab() {
+    loadHealthScore();
+
+    // Overview stats
     showOverviewSkeleton();
+    try {
+      var statsData = await fetchStats();
+      if (statsData) renderOverview(statsData);
+    } catch (_) {}
+  }
+
+  async function loadContentTab() {
+    loadLibraryOverview();
+    loadContentGaps();
+    loadQualityOverview();
+  }
+
+  async function loadOperationsTab() {
     showHealthSkeleton();
     showSessionsSkeleton();
-    showCostSkeleton();
     showMetricsSkeleton();
-    showLogSkeleton();
-    showInspectSkeleton();
+    showCostSkeleton();
     showCommandsSkeleton();
-    showInsightsSkeleton();
-    showFeedbackSkeleton();
-    showCorrelationSkeleton();
+    showLogSkeleton();
 
-    // Parallel fetch
     var results = await Promise.allSettled([
-      fetchStats(),
       fetchHealth(),
       fetchSessions(DEFAULTS.sessionsPageSize, 0),
+      fetchStats(),
       fetchMetrics(),
       fetchLog(),
-      fetchInspect(),
       fetchCommandGraph(),
-      fetchFeedback(),
     ]);
 
-    // Stats
-    if (results[0].status === 'fulfilled' && results[0].value) {
-      renderOverview(results[0].value);
-      renderCost(results[0].value);
-    } else {
-      var statsErr = results[0].reason ? results[0].reason.message : 'فشل تحميل الإحصائيات';
-      showSectionError(DOM.overviewGrid, statsErr, loadAll);
-      showSectionError(DOM.costGrid, statsErr, loadAll);
-    }
-
     // Health
-    if (results[1].status === 'fulfilled' && results[1].value) {
-      renderHealth(results[1].value);
-    } else {
-      showSectionError(DOM.healthGrid,
-        (results[1].reason ? results[1].reason.message : 'فشل تحميل حالة النظام'),
-        loadAll);
+    if (results[0].status === 'fulfilled' && results[0].value) {
+      renderHealth(results[0].value);
     }
 
     // Sessions
     state.sessionsPage = 0;
-    if (results[2].status === 'fulfilled' && results[2].value) {
-      renderSessions(results[2].value);
-    } else {
-      showSectionError(
-        DOM.sessionsTbody ? DOM.sessionsTbody.parentElement.parentElement : null,
-        (results[2].reason ? results[2].reason.message : 'فشل تحميل الجلسات'),
-        function () { loadSessionsPage(0); });
+    if (results[1].status === 'fulfilled' && results[1].value) {
+      renderSessions(results[1].value);
     }
 
-    // Metrics (Phase 14)
+    // Cost
+    if (results[2].status === 'fulfilled' && results[2].value) {
+      renderCost(results[2].value);
+    }
+
+    // Metrics
     if (results[3].status === 'fulfilled' && results[3].value) {
       renderMetrics(results[3].value);
-    } else {
-      renderMetrics(null);
     }
 
-    // Pipeline Insights (Phase 22) — uses same metricsData (has digest + recommendations)
-    var insightsData = (results[3].status === 'fulfilled') ? results[3].value : null;
-    renderInsights(insightsData);
-
-    // Log (Phase 16)
+    // Log
     if (results[4].status === 'fulfilled' && results[4].value) {
       renderLog(results[4].value);
-    } else {
-      renderLog(null);
     }
 
-    // Inspect (Phase 17)
-    if (results[5].status === 'fulfilled' && results[5].value) {
-      renderInspect(results[5].value);
-    } else {
-      renderInspect(null);
-    }
-
-    // Command metrics (Phase 20) — uses graphData [6] + metricsData [3]
-    var commandGraphData = (results[6].status === 'fulfilled') ? results[6].value : null;
+    // Commands
+    var commandGraphData = (results[5].status === 'fulfilled') ? results[5].value : null;
     var metricsDataForCmds = (results[3].status === 'fulfilled') ? results[3].value : null;
     renderCommandMetrics(commandGraphData, metricsDataForCmds);
+  }
 
-    // Feedback (Phase 33)
-    if (results[7].status === 'fulfilled' && results[7].value) {
-      renderFeedback(results[7].value);
+  async function loadDataTab() {
+    showFeedbackSkeleton();
+    showCorrelationSkeleton();
+    showInspectSkeleton();
+    showInsightsSkeleton();
+
+    var results = await Promise.allSettled([
+      fetchFeedback(),
+      fetchMetrics(),
+      fetchInspect(),
+    ]);
+
+    // Feedback
+    if (results[0].status === 'fulfilled' && results[0].value) {
+      renderFeedback(results[0].value);
+      _correlationData = results[0].value;
+      renderCorrelationExplorer(results[0].value, _correlationFilter);
     } else {
       renderFeedback(null);
-    }
-
-    // Correlation Explorer (Phase 34) — uses same feedback endpoint (enriched)
-    if (results[7].status === 'fulfilled' && results[7].value) {
-      _correlationData = results[7].value;
-      renderCorrelationExplorer(results[7].value, _correlationFilter);
-    } else {
       renderCorrelationExplorer(null, _correlationFilter);
     }
 
-    // Library Overview (Phase 36) — separate fetch (not in parallel — optional section)
-    loadLibraryOverview();
+    // Insights (from metrics)
+    var insightsData = (results[1].status === 'fulfilled') ? results[1].value : null;
+    renderInsights(insightsData);
 
-    // Content Gaps (Phase 38) — separate fetch (optional section)
-    loadContentGaps();
+    // Inspect
+    if (results[2].status === 'fulfilled' && results[2].value) {
+      renderInspect(results[2].value);
+    } else {
+      renderInspect(null);
+    }
+  }
 
-    // Quality Overview (Phase 40) — separate fetch (optional section)
-    loadQualityOverview();
+  // ══════════════════════════════════════════════════════════
+  //  HEALTH SCORE (Phase 42)
+  // ══════════════════════════════════════════════════════════
+  async function loadHealthScore() {
+    var circle = $('healthScoreCircle');
+    var label  = $('healthScoreLabel');
+    var breakdown = $('healthBreakdown');
+    var actionItemsEl = $('actionItems');
+
+    if (!circle) return;
+
+    try {
+      var data = await adminFetch('/api/admin/health-score');
+      if (!data) {
+        // Feature disabled or auth error
+        circle.textContent = '--';
+        circle.className = 'health-score-circle disabled';
+        if (label) label.textContent = '\u0645\u0624\u0634\u0631 \u0627\u0644\u0635\u062D\u0629 \u0645\u0639\u0637\u0651\u0644';
+        return;
+      }
+
+      // Render score circle
+      circle.textContent = String(data.score);
+      circle.className = 'health-score-circle ' + (data.level || 'disabled');
+
+      // Render label
+      if (label) {
+        var labels = { healthy: '\u0627\u0644\u0645\u0643\u062A\u0628\u0629 \u0628\u0635\u062D\u0629 \u062C\u064A\u062F\u0629', warning: '\u062A\u062D\u062A\u0627\u062C \u0627\u0646\u062A\u0628\u0627\u0647', critical: '\u062D\u0627\u0644\u0629 \u062D\u0631\u062C\u0629' };
+        label.textContent = labels[data.level] || data.level || '';
+      }
+
+      // Render breakdown
+      if (breakdown && data.breakdown) {
+        var names = {
+          qualityAvg: '\u062C\u0648\u062F\u0629 \u0627\u0644\u062C\u0644\u0633\u0627\u062A',
+          feedbackPositive: '\u0627\u0644\u0641\u064A\u062F\u0628\u0627\u0643',
+          gapRate: '\u0641\u062C\u0648\u0627\u062A \u0627\u0644\u0645\u062D\u062A\u0648\u0649',
+          cacheHitRate: '\u0627\u0644\u0643\u0627\u0634',
+          errorRate: '\u0627\u0644\u0623\u062E\u0637\u0627\u0621',
+          libraryCoverage: '\u0627\u0644\u062A\u063A\u0637\u064A\u0629',
+        };
+        while (breakdown.firstChild) breakdown.removeChild(breakdown.firstChild);
+        var bdKeys = Object.keys(data.breakdown);
+        for (var bi = 0; bi < bdKeys.length; bi++) {
+          var item = document.createElement('div');
+          item.className = 'breakdown-item';
+          var lbl = document.createElement('span');
+          lbl.className = 'label';
+          lbl.textContent = names[bdKeys[bi]] || bdKeys[bi];
+          var val = document.createElement('span');
+          val.className = 'value';
+          val.textContent = data.breakdown[bdKeys[bi]] + '%';
+          item.appendChild(val);
+          item.appendChild(lbl);
+          breakdown.appendChild(item);
+        }
+      }
+
+      // Render action items
+      if (actionItemsEl && data.actionItems) {
+        while (actionItemsEl.firstChild) actionItemsEl.removeChild(actionItemsEl.firstChild);
+        var icons = { critical: '\uD83D\uDD34', warning: '\uD83D\uDFE1', info: '\u2139\uFE0F' };
+        for (var ai = 0; ai < data.actionItems.length; ai++) {
+          var aItem = data.actionItems[ai];
+          var row = document.createElement('div');
+          row.className = 'action-item ' + (aItem.priority || 'info');
+          var iconEl = document.createElement('span');
+          iconEl.className = 'icon';
+          iconEl.textContent = icons[aItem.priority] || '';
+          row.appendChild(iconEl);
+          var textEl = document.createElement('span');
+          textEl.className = 'text';
+          textEl.textContent = aItem.text || '';
+          row.appendChild(textEl);
+          actionItemsEl.appendChild(row);
+        }
+      }
+
+    } catch (err) {
+      circle.textContent = '--';
+      circle.className = 'health-score-circle disabled';
+      if (label) label.textContent = '\u062E\u0637\u0623 \u0641\u064A \u062A\u062D\u0645\u064A\u0644 \u0627\u0644\u0645\u0624\u0634\u0631';
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  QUICK ACTIONS (Phase 42)
+  // ══════════════════════════════════════════════════════════
+  function initQuickActions() {
+    var btnRefresh = $('btnRefreshLibrary');
+    var btnClear   = $('btnClearCache');
+
+    if (btnRefresh) {
+      btnRefresh.addEventListener('click', async function () {
+        btnRefresh.disabled = true;
+        btnRefresh.classList.add('loading');
+        btnRefresh.textContent = '\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u062D\u062F\u064A\u062B...';
+        try {
+          var url = new URL('/api/admin/actions/refresh-library', window.location.origin);
+          var res = await fetch(url.toString(), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + (state.token || ''),
+            },
+          });
+          var data = await res.json();
+          btnRefresh.textContent = data.success ? '\u062A\u0645 \u0627\u0644\u062A\u062D\u062F\u064A\u062B \u2713' : '\u0641\u0634\u0644';
+          // Reload health score after refresh
+          _loadedTabs['overview'] = false;
+          loadHealthScore();
+        } catch (err) {
+          btnRefresh.textContent = '\u062E\u0637\u0623';
+        }
+        setTimeout(function () {
+          btnRefresh.disabled = false;
+          btnRefresh.classList.remove('loading');
+          btnRefresh.textContent = '\u062A\u062D\u062F\u064A\u062B \u0641\u0647\u0631\u0633 \u0627\u0644\u0645\u0643\u062A\u0628\u0629';
+        }, 3000);
+      });
+    }
+
+    if (btnClear) {
+      btnClear.addEventListener('click', async function () {
+        btnClear.disabled = true;
+        btnClear.classList.add('loading');
+        btnClear.textContent = '\u062C\u0627\u0631\u064A \u0627\u0644\u0645\u0633\u062D...';
+        try {
+          var url = new URL('/api/admin/actions/clear-cache', window.location.origin);
+          var res = await fetch(url.toString(), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ' + (state.token || ''),
+            },
+          });
+          var data = await res.json();
+          btnClear.textContent = data.success ? '\u062A\u0645 \u0645\u0633\u062D ' + data.cleared + ' \u0639\u0646\u0635\u0631 \u2713' : '\u0641\u0634\u0644';
+        } catch (err) {
+          btnClear.textContent = '\u062E\u0637\u0623';
+        }
+        setTimeout(function () {
+          btnClear.disabled = false;
+          btnClear.classList.remove('loading');
+          btnClear.textContent = '\u0645\u0633\u062D \u0627\u0644\u0643\u0627\u0634';
+        }, 3000);
+      });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  LOAD ALL
+  // ══════════════════════════════════════════════════════════
+  async function loadAll() {
+    // Reset loaded tabs so they reload
+    _loadedTabs = {};
+
+    // Determine which tab is currently active
+    var activeTabBtn = document.querySelector('.ai8v-tab-btn.active');
+    var activeTab = activeTabBtn ? activeTabBtn.getAttribute('data-tab') : 'overview';
+
+    // Load the active tab content
+    loadTabContent(activeTab);
 
     // Last update
     updateTimestamp();
@@ -2538,6 +2737,8 @@
   // ══════════════════════════════════════════════════════════
   document.addEventListener('DOMContentLoaded', async function () {
     bindEvents();
+    initTabs();
+    initQuickActions();
 
     // Fetch brand from config (public endpoint — no auth needed)
     var configData = await fetchConfig();
