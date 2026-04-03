@@ -557,6 +557,11 @@ const config = {
     minFrequencyToShow: 2,         // أقل تكرار لعرض gap في الأدمن (1 = كل سؤال بدون إجابة يظهر)
     clusterThreshold:   0.6,       // حد التشابه لتجميع الأسئلة في cluster واحد (0-1). 0.6 = متساهل — أسئلة بتشترك في 60%+ من الكلمات المفتاحية يتجمعوا مع بعض
     lowScoreThreshold:  0.45,      // أسئلة بـ avgScore أقل من كده تُعتبر gap (حتى لو مش aborted). 0.45 يغطي الأسئلة اللي أخذت نتائج ضعيفة بدون ما يكونوا aborted
+
+    // ── Persistence (Phase 39) ────────────────────────────────
+    persistGaps:        false,     // true = حفظ gap entries على الديسك واستعادتها عند restart | false = in-memory فقط (السلوك الحالي بالظبط). يعمل فقط لما enabled: true
+    gapDir:             './data/gaps',  // مجلد حفظ ملف الـ gaps — ملف واحد gaps.jsonl (append-only). يتعمل تلقائياً لو مش موجود
+    alertThreshold:     0.20,      // نسبة الـ gap rate (gaps/requests) اللي لما تتعداها يظهر alert للأدمن في Content Gaps section. 0.20 = 20%
   },
 
 };

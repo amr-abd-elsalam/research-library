@@ -30,6 +30,7 @@ import { getTrailCounts }        from '../services/listeners/auditTrailListener.
 import { auditPersister }        from '../services/auditPersister.js';
 import { libraryIndex }          from '../services/libraryIndex.js';
 import { contentGapDetector }    from '../services/contentGapDetector.js';
+import { gapPersister }          from '../services/gapPersister.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -140,6 +141,9 @@ export async function handleInspect(_req, res) {
 
       // ── Content gap detector (Phase 38) ────────────────────
       contentGapDetector: contentGapDetector.counts(),
+
+      // ── Gap persistence (Phase 39) ─────────────────────────
+      gapPersister: gapPersister.counts(),
 
       // ── Permission Tiers (Phase 26) ────────────────────────
       tiers: {

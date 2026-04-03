@@ -9,6 +9,7 @@
 
 import config from '../../config.js';
 import { logger } from './logger.js';
+import { gapPersister } from './gapPersister.js';
 
 // ── Arabic + English stop words (hardcoded — no external dependency) ──
 const STOP_WORDS = new Set([
@@ -99,6 +100,9 @@ class ContentGapDetector {
 
     // Assign to cluster
     this.#assignToCluster(entry);
+
+    // Persist entry to disk (Phase 39)
+    gapPersister.scheduleWrite(entry);
   }
 
   /**
@@ -126,6 +130,42 @@ class ContentGapDetector {
     gaps.sort((a, b) => b.count - a.count || b.lastSeen - a.lastSeen);
 
     return gaps.slice(0, limit);
+  }
+
+  /**
+   * Restores gap entries from persisted data (Phase 39).
+   * Rebuilds the ring buffer and clusters from an array of entries.
+   * Does NOT call gapPersister.scheduleWrite() — avoids re-persisting restored data.
+   * @param {Array<object>} entries — array of persisted entry objects
+   */
+  restoreFromEntries(entries) {
+    if (!this.#enabled || !Array.isArray(entries)) return;
+
+    let restoredCount = 0;
+    for (const raw of entries) {
+      if (!raw || !raw.message) continue;
+
+      const entry = {
+        message:   raw.message,
+        reason:    raw.reason || 'unknown',
+        sessionId: raw.sessionId || null,
+        avgScore:  typeof raw.avgScore === 'number' ? raw.avgScore : null,
+        timestamp: raw.timestamp || Date.now(),
+      };
+
+      this.#entries.push(entry);
+      this.#assignToCluster(entry);
+      restoredCount++;
+    }
+
+    // Enforce ring buffer limit
+    while (this.#entries.length > this.#maxGapEntries) {
+      this.#entries.shift();
+    }
+
+    if (restoredCount > 0) {
+      logger.info('contentGapDetector', `restored ${restoredCount} entries (${this.#clusters.size} clusters)`);
+    }
   }
 
   /**

@@ -24,6 +24,8 @@ import { contextPersister } from './services/contextPersister.js';
 import { feedbackCollector } from './services/feedbackCollector.js';
 import { auditPersister } from './services/auditPersister.js';
 import { libraryIndex } from './services/libraryIndex.js';
+import { gapPersister } from './services/gapPersister.js';
+import { contentGapDetector } from './services/contentGapDetector.js';
 
 // ── Timeout helper (for bootstrap-specific timeouts) ──────────
 function raceTimeout(promise, ms) {
@@ -89,6 +91,15 @@ class BootstrapManager {
     // ── Audit Data Directory (Phase 35) ──────────────────────
     if (auditPersister.enabled) {
       await auditPersister.ensureDir();
+    }
+
+    // ── Gap Persistence Directory (Phase 39) ─────────────────
+    if (gapPersister.enabled) {
+      await gapPersister.ensureDir();
+      const gapEntries = await gapPersister.read();
+      if (gapEntries.length > 0) {
+        contentGapDetector.restoreFromEntries(gapEntries);
+      }
     }
 
     // ── Register EventBus listeners (Phase 13) ───────────────

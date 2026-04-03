@@ -65,6 +65,7 @@ function buildPayload() {
 
     CONTENT_GAPS: {
       enabled: config.CONTENT_GAPS?.enabled === true,
+      persistGaps: config.CONTENT_GAPS?.persistGaps === true,
     },
 
     // TIERS: moved to GET /api/whoami (Phase 27 — per-request, not static config)

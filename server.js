@@ -7,6 +7,7 @@ import { metricsPersister }    from './server/services/metricsPersister.js';
 import { auditPersister }      from './server/services/auditPersister.js';
 import { conversationContext } from './server/services/conversationContext.js';
 import { libraryIndex }       from './server/services/libraryIndex.js';
+import { gapPersister }       from './server/services/gapPersister.js';
 
 const PORT = process.env.PORT || 3000;
 
@@ -94,6 +95,14 @@ async function gracefulShutdown(signal) {
     auditPersister.stop();
   } catch (err) {
     console.error('[server] audit flush error:', err.message);
+  }
+
+  // Flush gap persistence before exit (Phase 39)
+  try {
+    await gapPersister.flush();
+    gapPersister.stop();
+  } catch (err) {
+    console.error('[server] gap persister flush error:', err.message);
   }
 
   // Stop eviction sweep (Phase 30)

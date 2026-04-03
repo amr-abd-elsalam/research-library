@@ -2080,10 +2080,25 @@
 
       if (!data.gaps || data.gaps.length === 0) {
         container.innerHTML = '<p class="admin-empty-msg">\u0644\u0627 \u062A\u0648\u062C\u062F \u0641\u062C\u0648\u0627\u062A \u0645\u062D\u062A\u0648\u0649 \u0645\u0643\u062A\u0634\u0641\u0629 \u062D\u0627\u0644\u064A\u0627\u064B</p>';
+        // Admin alert banner even when no gaps detected yet (Phase 39)
+        if (data.adminAlert) {
+          var alertDiv = document.createElement('div');
+          alertDiv.className = 'ai8v-admin-alert ai8v-admin-alert--warning';
+          alertDiv.textContent = '\u26A0\uFE0F \u0646\u0633\u0628\u0629 \u0641\u062C\u0648\u0627\u062A \u0627\u0644\u0645\u062D\u062A\u0648\u0649 \u0645\u0631\u062A\u0641\u0639\u0629 (' + (data.gapRate * 100).toFixed(1) + '%) \u2014 \u0631\u0627\u062C\u0639 \u0627\u0644\u0645\u0648\u0627\u0636\u064A\u0639 \u0627\u0644\u0646\u0627\u0642\u0635\u0629 \u0648\u0623\u0636\u0641 \u0645\u062D\u062A\u0648\u0649 \u062C\u062F\u064A\u062F \u064A\u063A\u0637\u064A\u0647\u0627';
+          container.insertBefore(alertDiv, container.firstChild);
+        }
         return;
       }
 
       renderContentGaps(container, data);
+
+      // Admin alert banner (Phase 39)
+      if (data.adminAlert) {
+        var alertDiv2 = document.createElement('div');
+        alertDiv2.className = 'ai8v-admin-alert ai8v-admin-alert--warning';
+        alertDiv2.textContent = '\u26A0\uFE0F \u0646\u0633\u0628\u0629 \u0641\u062C\u0648\u0627\u062A \u0627\u0644\u0645\u062D\u062A\u0648\u0649 \u0645\u0631\u062A\u0641\u0639\u0629 (' + (data.gapRate * 100).toFixed(1) + '%) \u2014 \u0631\u0627\u062C\u0639 \u0627\u0644\u0645\u0648\u0627\u0636\u064A\u0639 \u0627\u0644\u0646\u0627\u0642\u0635\u0629 \u0623\u062F\u0646\u0627\u0647 \u0648\u0623\u0636\u0641 \u0645\u062D\u062A\u0648\u0649 \u062C\u062F\u064A\u062F \u064A\u063A\u0637\u064A\u0647\u0627';
+        container.insertBefore(alertDiv2, container.firstChild);
+      }
 
     } catch (err) {
       container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623: ' + err.message + '</p>';
