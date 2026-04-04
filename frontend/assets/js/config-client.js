@@ -124,6 +124,15 @@ async function loadConfig() {
       FEATURE_FLAGS:   Object.freeze(data.FEATURE_FLAGS   || { persistOverrides: false }),
     });
 
+    // ── Phase 46: Store effective feature state ───────────────────
+    window.__effectiveFeatures = {
+      FEEDBACK:     data.FEEDBACK?.effectiveEnabled     ?? data.FEEDBACK?.enabled     ?? false,
+      SUGGESTIONS:  data.SUGGESTIONS?.effectiveEnabled  ?? data.SUGGESTIONS?.enabled  ?? false,
+      CONTENT_GAPS: data.CONTENT_GAPS?.effectiveEnabled ?? data.CONTENT_GAPS?.enabled ?? false,
+      QUALITY:      data.QUALITY?.effectiveEnabled      ?? data.QUALITY?.enabled      ?? false,
+      HEALTH_SCORE: data.HEALTH_SCORE?.effectiveEnabled ?? data.HEALTH_SCORE?.enabled ?? false,
+    };
+
     console.log('[config] ✅ تم تحميل الإعدادات من السيرفر');
     return true;
 
@@ -133,3 +142,26 @@ async function loadConfig() {
     return false;
   }
 }
+
+// ── Phase 46: Public API for effective feature state ──────────
+window.getEffective = function(section) {
+  return window.__effectiveFeatures?.[section.toUpperCase()] ?? false;
+};
+
+// ── Phase 46: On-demand refresh of effective feature state ────
+window.refreshEffectiveFeatures = async function() {
+  try {
+    var resp = await fetch('/api/config/features');
+    if (!resp.ok) return;
+    var data = await resp.json();
+    window.__effectiveFeatures = {
+      FEEDBACK:     data.FEEDBACK     ?? false,
+      SUGGESTIONS:  data.SUGGESTIONS  ?? false,
+      CONTENT_GAPS: data.CONTENT_GAPS ?? false,
+      QUALITY:      data.QUALITY      ?? false,
+      HEALTH_SCORE: data.HEALTH_SCORE ?? false,
+    };
+  } catch (_) {
+    // Silent fail — keep existing values
+  }
+};

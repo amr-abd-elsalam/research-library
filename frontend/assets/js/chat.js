@@ -466,8 +466,8 @@ const ChatModule = (() => {
               refs.msgEl.setAttribute('data-correlation-id', parsed.correlationId);
             }
 
-            // Feedback buttons (Phase 33)
-            if (refs && refs.msgEl && CLIENT_CONFIG.FEEDBACK && CLIENT_CONFIG.FEEDBACK.enabled) {
+            // Feedback buttons (Phase 33, Phase 46: uses getEffective)
+            if (refs && refs.msgEl && window.getEffective('FEEDBACK')) {
               _addFeedbackButtons(refs.msgEl);
             }
 
@@ -927,8 +927,8 @@ const ChatModule = (() => {
     var prev = document.querySelector('.dynamic-suggestions');
     if (prev) prev.remove();
 
-    // Guard: check feature enabled via CLIENT_CONFIG
-    if (!CLIENT_CONFIG.SUGGESTIONS || CLIENT_CONFIG.SUGGESTIONS.enabled !== true) return;
+    // Guard: check feature enabled (Phase 46: uses getEffective for runtime toggle support)
+    if (!window.getEffective('SUGGESTIONS')) return;
 
     // Guard: need suggestions
     if (!suggestions || !suggestions.length) return;

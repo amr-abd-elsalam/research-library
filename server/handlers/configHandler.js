@@ -110,3 +110,22 @@ export async function handleConfig(req, res) {
   res.writeHead(200, HEADERS);
   res.end(buildPayload());
 }
+
+/**
+ * GET /api/config/features — Phase 46
+ * Lightweight endpoint returning effective feature state only.
+ * Public (no admin auth required) — same access level as /api/config.
+ * Returns 5 boolean values: one per managed feature section.
+ * Always computed fresh (no caching) — reflects runtime overrides immediately.
+ */
+export async function handleConfigFeatures(_req, res) {
+  const payload = {
+    FEEDBACK:     featureFlags.isEnabled('FEEDBACK'),
+    SUGGESTIONS:  featureFlags.isEnabled('SUGGESTIONS'),
+    CONTENT_GAPS: featureFlags.isEnabled('CONTENT_GAPS'),
+    QUALITY:      featureFlags.isEnabled('QUALITY'),
+    HEALTH_SCORE: featureFlags.isEnabled('HEALTH_SCORE'),
+  };
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(payload));
+}

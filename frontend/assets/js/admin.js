@@ -2858,6 +2858,10 @@
           }
           loadActionHistory();
           loadFeatureStatus();
+          // Phase 46: Refresh effective feature state for chat page
+          if (typeof window.refreshEffectiveFeatures === 'function') {
+            window.refreshEffectiveFeatures();
+          }
         } catch (err) {
           btnToggle.textContent = '\u062E\u0637\u0623';
         }

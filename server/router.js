@@ -5,7 +5,7 @@ import { requireAdmin, requireAccess } from './middleware/auth.js';
 import { handleChat }     from './handlers/chat.js';
 import { handleTopics }   from './handlers/topics.js';
 import { handleHealth }   from './handlers/health.js';
-import { handleConfig }   from './handlers/configHandler.js';
+import { handleConfig, handleConfigFeatures } from './handlers/configHandler.js';
 import { handleAdminStats } from './handlers/adminStats.js';
 import { handleMetrics }    from './handlers/metricsHandler.js';
 import { handleAdminLog }   from './handlers/adminLogHandler.js';
@@ -62,6 +62,12 @@ export async function router(req, res) {
     const statusCode = payload.ready ? 200 : 503;
     res.writeHead(statusCode, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(payload));
+    return;
+  }
+
+  // GET /api/config/features (Phase 46 — lightweight effective feature state)
+  if (method === 'GET' && matchRoute(url, '/api/config/features')) {
+    await handleConfigFeatures(req, res);
     return;
   }
 
