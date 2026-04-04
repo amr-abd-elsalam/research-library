@@ -122,4 +122,47 @@ describe('FeatureFlags', () => {
     assert.strictEqual(typeof c.persisted, 'boolean');
   });
 
+  // T-FF13: clearOverride emits feature:toggled event
+  it('T-FF13: clearOverride emits feature:toggled event', async () => {
+    const { eventBus } = await import('../server/services/eventBus.js');
+    let emittedData = null;
+    const unsub = eventBus.on('feature:toggled', (data) => {
+      // Capture only the clearOverride emission (enabled will be false for SUGGESTIONS)
+      if (data.section === 'SUGGESTIONS' && data.enabled === false) {
+        emittedData = data;
+      }
+    });
+
+    featureFlags.setOverride('SUGGESTIONS', true);
+    featureFlags.clearOverride('SUGGESTIONS');
+
+    unsub();
+
+    assert.ok(emittedData !== null, 'feature:toggled event should be emitted on clearOverride');
+    assert.strictEqual(emittedData.section, 'SUGGESTIONS');
+    assert.strictEqual(typeof emittedData.timestamp, 'number');
+  });
+
+  // T-FF14: clearOverride event has correct previousValue and enabled
+  it('T-FF14: clearOverride event has correct previousValue and enabled', async () => {
+    const { eventBus } = await import('../server/services/eventBus.js');
+    let emittedData = null;
+    const unsub = eventBus.on('feature:toggled', (data) => {
+      if (data.section === 'FEEDBACK' && data.previousValue === true) {
+        emittedData = data;
+      }
+    });
+
+    featureFlags.setOverride('FEEDBACK', true);
+    assert.strictEqual(featureFlags.isEnabled('FEEDBACK'), true);
+
+    featureFlags.clearOverride('FEEDBACK');
+
+    unsub();
+
+    assert.ok(emittedData !== null, 'feature:toggled event should be emitted');
+    assert.strictEqual(emittedData.previousValue, true, 'previousValue should be true (was overridden to true)');
+    assert.strictEqual(emittedData.enabled, false, 'enabled should be false (config default)');
+  });
+
 });

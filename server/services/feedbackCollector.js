@@ -124,6 +124,16 @@ class FeedbackCollector {
   }
 
   /**
+   * Resets all in-memory state. For testing only.
+   * Does NOT touch persisted JSONL file.
+   */
+  reset() {
+    this.#buffer = [];
+    this.#positiveCount = 0;
+    this.#negativeCount = 0;
+  }
+
+  /**
    * Summary for inspect endpoint.
    * @returns {{ enabled: boolean, totalPositive: number, totalNegative: number, recentCount: number }}
    */

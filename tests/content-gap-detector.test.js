@@ -123,4 +123,74 @@ describe('ContentGapDetector', () => {
     assert.strictEqual(gaps.length, 0, 'getGaps should return empty when disabled');
   });
 
+  // T-CGD11: reset() clears all accumulated state
+  it('T-CGD11: reset clears all accumulated state', () => {
+    featureFlags.setOverride('CONTENT_GAPS', true);
+    contentGapDetector.record({ message: 'سؤال عن الهندسة المعمارية الحديثة والتصميم', reason: 'low_score', avgScore: 0.1 });
+    contentGapDetector.record({ message: 'سؤال عن الهندسة المعمارية الحديثة والتصميم', reason: 'low_score', avgScore: 0.1 });
+    assert.ok(contentGapDetector.counts().totalEntries > 0, 'should have entries before reset');
+
+    contentGapDetector.reset();
+    const gaps = contentGapDetector.getGaps(50);
+    assert.strictEqual(gaps.length, 0, 'getGaps should return empty after reset');
+  });
+
+  // T-CGD12: reset() then counts shows zero totalEntries
+  it('T-CGD12: reset then counts shows zero totalEntries', () => {
+    featureFlags.setOverride('CONTENT_GAPS', true);
+    contentGapDetector.record({ message: 'اختبار العدّاد بعد إعادة التعيين للبيانات', reason: 'low_score', avgScore: 0.2 });
+    assert.ok(contentGapDetector.counts().totalEntries > 0, 'should have entries before reset');
+
+    contentGapDetector.reset();
+    const c = contentGapDetector.counts();
+    assert.strictEqual(c.totalEntries, 0, 'totalEntries should be 0 after reset');
+    assert.strictEqual(c.clusterCount, 0, 'clusterCount should be 0 after reset');
+  });
+
+  // T-CGD13: restoreFromEntries when disabled stores data for later
+  it('T-CGD13: restoreFromEntries when disabled stores data for later', () => {
+    contentGapDetector.reset();
+    // Ensure disabled (config default + no override)
+    featureFlags.clearOverride('CONTENT_GAPS');
+    assert.strictEqual(contentGapDetector.enabled, false, 'should be disabled');
+
+    // Restore entries while disabled — should NOT be rejected
+    const entries = [
+      { message: 'سؤال فريد عن الفيزياء النووية وتطبيقاتها السلمية', reason: 'low_score', avgScore: 0.2, timestamp: Date.now() },
+      { message: 'سؤال فريد عن الفيزياء النووية وتطبيقاتها العسكرية', reason: 'low_score', avgScore: 0.15, timestamp: Date.now() },
+    ];
+    contentGapDetector.restoreFromEntries(entries);
+
+    // Now enable and check — data should be accessible
+    featureFlags.setOverride('CONTENT_GAPS', true);
+    const c = contentGapDetector.counts();
+    assert.ok(c.totalEntries >= 2, `totalEntries should be >= 2 after restore-then-enable — got ${c.totalEntries}`);
+  });
+
+  // T-CGD14: full restore-then-enable lifecycle
+  it('T-CGD14: full restore then enable lifecycle', () => {
+    contentGapDetector.reset();
+    featureFlags.clearOverride('CONTENT_GAPS');
+    assert.strictEqual(contentGapDetector.enabled, false, 'should start disabled');
+
+    // Restore entries while disabled
+    const entries = [
+      { message: 'بحث شامل عن تاريخ الرياضيات العربية والإسلامية', reason: 'low_score', avgScore: 0.3, timestamp: Date.now() - 10000 },
+      { message: 'بحث شامل عن تاريخ الرياضيات العربية وإسهاماتها', reason: 'low_score', avgScore: 0.25, timestamp: Date.now() - 5000 },
+      { message: 'سؤال عن الذكاء الاصطناعي التوليدي ومستقبله', reason: 'aborted', avgScore: 0.1, timestamp: Date.now() },
+    ];
+    contentGapDetector.restoreFromEntries(entries);
+
+    // getGaps should still be empty while disabled
+    assert.strictEqual(contentGapDetector.getGaps(10).length, 0, 'getGaps should be empty while disabled');
+
+    // Enable feature
+    featureFlags.setOverride('CONTENT_GAPS', true);
+
+    // Now data should be accessible
+    const c = contentGapDetector.counts();
+    assert.ok(c.totalEntries >= 3, `totalEntries should be >= 3 — got ${c.totalEntries}`);
+    assert.ok(c.clusterCount >= 1, `clusterCount should be >= 1 — got ${c.clusterCount}`);
+  });
+
 });

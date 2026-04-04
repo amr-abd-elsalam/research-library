@@ -134,13 +134,25 @@ class ContentGapDetector {
   }
 
   /**
+   * Resets all internal state. For testing and admin reanalyze-gaps action.
+   * Does NOT touch persisted JSONL file (GapPersister handles file persistence separately).
+   */
+  reset() {
+    this.#entries = [];
+    this.#clusters = new Map();
+    this.#clusterIdSeq = 0;
+  }
+
+  /**
    * Restores gap entries from persisted data (Phase 39).
    * Rebuilds the ring buffer and clusters from an array of entries.
    * Does NOT call gapPersister.scheduleWrite() — avoids re-persisting restored data.
+   * Guard on read, not write — always accepts restored data even when disabled.
+   * getGaps() and record() still respect enabled flag for output/new writes.
    * @param {Array<object>} entries — array of persisted entry objects
    */
   restoreFromEntries(entries) {
-    if (!this.enabled || !Array.isArray(entries)) return;
+    if (!Array.isArray(entries) || entries.length === 0) return;
 
     let restoredCount = 0;
     for (const raw of entries) {

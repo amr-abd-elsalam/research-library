@@ -362,6 +362,13 @@ const config = {
     snapshotEnabled:    false,        // true = حفظ snapshot دوري | false = in-memory فقط (zero overhead)
     snapshotIntervalMs: 300000,       // مللي ثانية بين كل حفظ (minimum 60000). 300000 = 5 دقائق
     snapshotPath:       './data/metrics-snapshot.json',  // مسار ملف الـ snapshot (الـ directory يتعمل تلقائياً)
+
+    // ── Pipeline Request Timeout (Phase 49) ─────────────────────
+    // أقصى مدة لتنفيذ الـ pipeline الكامل (مللي ثانية).
+    // لو الـ pipeline أخد أكتر من كده → يتوقف gracefully ويرجع abort.
+    // القيمة الافتراضية (25 ثانية) أقل من server.timeout (30 ثانية) — ده يسمح بـ graceful cleanup.
+    // ضعها على 0 لتعطيل الـ timeout (غير مستحسن في production).
+    maxRequestMs:       25000,
   },
 
   // ═══════════════════════════════════════════════════════════

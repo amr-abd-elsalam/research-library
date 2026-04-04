@@ -420,9 +420,21 @@ class PipelineRunner {
     // ── beforePipeline hooks ────────────────────────────────
     if (this.#hooks) await this.#hooks.run('beforePipeline', null, ctx, trace);
 
+    // ── Pipeline-level timeout (Phase 49) ───────────────────
+    const maxMs = config.PIPELINE?.maxRequestMs ?? 25000;
+    const deadline = maxMs > 0 ? ctx.startTime + maxMs : 0;
+
     for (const stage of this.#stages) {
       // Stop if a previous stage signalled abort
       if (ctx.aborted) break;
+
+      // Pipeline timeout check (Phase 49)
+      if (deadline > 0 && Date.now() > deadline) {
+        ctx.aborted = true;
+        ctx.abortReason = 'pipeline_timeout';
+        trace.record('pipeline_timeout', Date.now() - ctx.startTime, 'timeout', { maxMs });
+        break;
+      }
 
       // ── Stage gating (Phase 21) — skip stages based on intent ──
       if (ctx._skipStages && ctx._skipStages.has(stage.name)) {

@@ -89,6 +89,14 @@ class CorrelationIndex {
   }
 
   /**
+   * Resets all in-memory state. For testing only.
+   */
+  reset() {
+    this.#entries.clear();
+    this.#order.length = 0;
+  }
+
+  /**
    * Summary for inspect endpoint.
    * @returns {{ enabled: boolean, size: number, maxSize: number }}
    */

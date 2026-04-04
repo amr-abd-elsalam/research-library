@@ -78,10 +78,25 @@ class FeatureFlags {
 
   /**
    * Removes a runtime override (reverts to config value).
+   * Emits 'feature:toggled' EventBus event (consistent with setOverride).
    * @param {string} section
    */
   clearOverride(section) {
-    this.#overrides.delete(section.toUpperCase());
+    const upper = section.toUpperCase();
+    const previousValue = this.isEnabled(upper);
+    const hadOverride = this.#overrides.has(upper);
+    this.#overrides.delete(upper);
+
+    if (hadOverride) {
+      const enabled = this.isEnabled(upper);
+      eventBus.emit('feature:toggled', {
+        section: upper,
+        enabled,
+        previousValue,
+        timestamp: Date.now(),
+      });
+    }
+
     this.#scheduleWrite();
   }
 

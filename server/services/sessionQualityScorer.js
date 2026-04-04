@@ -176,6 +176,13 @@ class SessionQualityScorer {
   }
 
   /**
+   * Resets all in-memory state. For testing only.
+   */
+  reset() {
+    this.#sessions.clear();
+  }
+
+  /**
    * Summary for inspect endpoint.
    * @returns {{ enabled: boolean, trackedSessions: number }}
    */
