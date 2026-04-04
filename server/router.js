@@ -30,6 +30,8 @@ function matchRoute(reqUrl, routePath) {
   return pathname === routePath || pathname === routePath + '/';
 }
 
+export { matchRoute };
+
 export async function router(req, res) {
   const { method, url } = req;
 

@@ -1,0 +1,105 @@
+// tests/config-features-endpoint.test.js
+// ═══════════════════════════════════════════════════════════════
+// Phase T — handleConfigFeatures() handler tests
+// Tests the lightweight /api/config/features endpoint (Phase 46).
+// Handler-level test — no HTTP server needed.
+// ═══════════════════════════════════════════════════════════════
+
+import { describe, it, afterEach } from 'node:test';
+import assert from 'node:assert/strict';
+import { handleConfigFeatures } from '../server/handlers/configHandler.js';
+import { featureFlags } from '../server/services/featureFlags.js';
+
+// ── Mock response object ──────────────────────────────────────
+function createMockRes() {
+  let _status = 0;
+  let _headers = {};
+  let _body = '';
+  return {
+    writeHead(status, headers) { _status = status; _headers = headers || {}; },
+    end(body) { _body = body || ''; },
+    get statusCode() { return _status; },
+    get headers() { return _headers; },
+    get body() { return _body; },
+    get json() { return JSON.parse(_body); },
+  };
+}
+
+// ── Cleanup ───────────────────────────────────────────────────
+const SECTIONS = ['FEEDBACK', 'SUGGESTIONS', 'CONTENT_GAPS', 'QUALITY', 'HEALTH_SCORE'];
+
+describe('handleConfigFeatures()', () => {
+
+  afterEach(() => {
+    for (const s of SECTIONS) featureFlags.clearOverride(s);
+  });
+
+  // T-CF01: returns 200 with JSON content type
+  it('T-CF01: returns 200 with JSON content type', async () => {
+    const res = createMockRes();
+    await handleConfigFeatures({}, res);
+    assert.strictEqual(res.statusCode, 200);
+    assert.strictEqual(res.headers['Content-Type'], 'application/json');
+  });
+
+  // T-CF02: returns all 5 feature sections
+  it('T-CF02: returns all 5 feature sections', async () => {
+    const res = createMockRes();
+    await handleConfigFeatures({}, res);
+    const data = res.json;
+    assert.ok('FEEDBACK' in data);
+    assert.ok('SUGGESTIONS' in data);
+    assert.ok('CONTENT_GAPS' in data);
+    assert.ok('QUALITY' in data);
+    assert.ok('HEALTH_SCORE' in data);
+  });
+
+  // T-CF03: all values are booleans
+  it('T-CF03: all values are booleans', async () => {
+    const res = createMockRes();
+    await handleConfigFeatures({}, res);
+    const data = res.json;
+    for (const key of SECTIONS) {
+      assert.strictEqual(typeof data[key], 'boolean', `${key} should be boolean`);
+    }
+  });
+
+  // T-CF04: defaults match config (all false with default config)
+  it('T-CF04: defaults match config (all false)', async () => {
+    const res = createMockRes();
+    await handleConfigFeatures({}, res);
+    const data = res.json;
+    // All 5 sections are false by default in config.js
+    assert.strictEqual(data.FEEDBACK, false);
+    assert.strictEqual(data.SUGGESTIONS, false);
+    assert.strictEqual(data.CONTENT_GAPS, false);
+    assert.strictEqual(data.QUALITY, false);
+    assert.strictEqual(data.HEALTH_SCORE, false);
+  });
+
+  // T-CF05: reflects runtime override
+  it('T-CF05: reflects runtime override', async () => {
+    featureFlags.setOverride('FEEDBACK', true);
+    const res = createMockRes();
+    await handleConfigFeatures({}, res);
+    const data = res.json;
+    assert.strictEqual(data.FEEDBACK, true);
+    assert.strictEqual(data.SUGGESTIONS, false); // not overridden
+  });
+
+  // T-CF06: override removed — reverts to config value
+  it('T-CF06: reverts when override is cleared', async () => {
+    featureFlags.setOverride('QUALITY', true);
+
+    let res = createMockRes();
+    await handleConfigFeatures({}, res);
+    assert.strictEqual(res.json.QUALITY, true);
+
+    featureFlags.clearOverride('QUALITY');
+
+    res = createMockRes();
+    await handleConfigFeatures({}, res);
+    assert.strictEqual(res.json.QUALITY, false);
+  });
+
+});

@@ -18,7 +18,8 @@
     "pm2:logs": "pm2 logs research-library",
     "pm2:status": "pm2 status",
     "pm2:save": "pm2 save",
-    "health": "node --env-file=.env -e \"fetch('http://localhost:'+(process.env.PORT||3000)+'/api/health').then(r=>r.json()).then(d=>console.log(JSON.stringify(d,null,2)))\""
+    "health": "node --env-file=.env -e \"fetch('http://localhost:'+(process.env.PORT||3000)+'/api/health').then(r=>r.json()).then(d=>console.log(JSON.stringify(d,null,2)))\"",
+    "test": "node --test tests/"
   },
   "dependencies": {
     "@qdrant/js-client-rest": "^1.9.0",
