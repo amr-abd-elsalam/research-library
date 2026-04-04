@@ -58,6 +58,19 @@
         </div>
       </div>
       <div class="admin-header-actions">
+        <!-- Notification Bell (Phase 53) -->
+        <div class="admin-notification-wrap" id="notificationWrap">
+          <button type="button" class="admin-notification-bell" id="notificationBell" aria-label="الإشعارات">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+            <span class="admin-notification-badge" id="notificationBadge" style="display:none;">0</span>
+          </button>
+          <div class="admin-notification-dropdown hidden" id="notificationDropdown">
+            <div class="admin-notification-dropdown-header">الإشعارات</div>
+            <div class="admin-notification-dropdown-list" id="notificationList">
+              <p class="admin-empty-msg">لا توجد إشعارات</p>
+            </div>
+          </div>
+        </div>
         <span id="admin-last-update" class="admin-last-update"></span>
         <label class="admin-auto-refresh-label">
           <input type="checkbox" id="admin-auto-refresh" checked />
@@ -115,6 +128,14 @@
         <section class="admin-section" id="admin-section-action-history">
           <h2 class="admin-section-title">سجل الإجراءات الإدارية</h2>
           <div id="admin-action-history" class="ai8v-action-history">
+            <p class="admin-empty-msg">جاري التحميل...</p>
+          </div>
+        </section>
+
+        <!-- Intelligence Section (Phase 53) -->
+        <section class="admin-section" id="admin-section-intelligence">
+          <h2 class="admin-section-title">ذكاء النظام</h2>
+          <div id="admin-intelligence-content">
             <p class="admin-empty-msg">جاري التحميل...</p>
           </div>
         </section>

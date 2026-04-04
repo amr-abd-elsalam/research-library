@@ -9,6 +9,7 @@ import { conversationContext } from './server/services/conversationContext.js';
 import { libraryIndex }       from './server/services/libraryIndex.js';
 import { gapPersister }       from './server/services/gapPersister.js';
 import { featureFlags }       from './server/services/featureFlags.js';
+import { adminIntelligence }  from './server/services/adminIntelligence.js';
 
 const PORT = process.env.PORT || 3000;
 
@@ -113,6 +114,9 @@ async function gracefulShutdown(signal) {
   } catch (err) {
     console.error('[server] feature flags persist error:', err.message);
   }
+
+  // Stop admin intelligence analysis (Phase 53)
+  adminIntelligence.stopAnalysis();
 
   // Stop eviction sweep (Phase 30)
   conversationContext.stopEviction();

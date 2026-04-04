@@ -21,6 +21,8 @@ import { handleContentGaps } from './handlers/contentGapsHandler.js';
 import { handleExport } from './handlers/exportHandler.js';
 import { handleHealthScore } from './handlers/healthScoreHandler.js';
 import { handleAdminAction } from './handlers/adminActionsHandler.js';
+import { handleAdminIntelligence } from './handlers/adminIntelligenceHandler.js';
+import { handleAdminNotifications } from './handlers/adminNotificationsHandler.js';
 import { bootstrap } from './bootstrap.js';
 
 // ── URL matcher (strips query string + trailing slash) ─────────
@@ -198,6 +200,22 @@ export async function router(req, res) {
     requireAdmin(req, res);
     if (res.writableEnded) return;
     await handleHealthScore(req, res);
+    return;
+  }
+
+  // GET /api/admin/intelligence (Phase 53 — admin intelligence insights)
+  if (method === 'GET' && matchRoute(url, '/api/admin/intelligence')) {
+    requireAdmin(req, res);
+    if (res.writableEnded) return;
+    await handleAdminIntelligence(req, res);
+    return;
+  }
+
+  // GET /api/admin/notifications/stream (Phase 53 — SSE real-time admin alerts)
+  if (method === 'GET' && matchRoute(url, '/api/admin/notifications/stream')) {
+    requireAdmin(req, res);
+    if (res.writableEnded) return;
+    await handleAdminNotifications(req, res);
     return;
   }
 

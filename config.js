@@ -656,6 +656,25 @@ const config = {
     overrideDir:       './data/overrides', // مجلد حفظ ملف الـ overrides (overrides.json) — يتعمل تلقائياً لو مش موجود
   },
 
+  // ═══════════════════════════════════════════════════════════
+  // 31. ذكاء النظام الإداري (ADMIN_INTELLIGENCE)
+  //    — تحليل دوري لبيانات 6+ singletons (HealthScorer, PipelineAnalytics,
+  //      FeedbackCollector, ContentGapDetector, SessionQualityScorer, Metrics + Cache)
+  //    — يولّد insights مُرتّبة حسب الأولوية + auto-remediation اختياري
+  //    — SSE endpoint لـ real-time admin notifications (اختياري)
+  //    — معطّل افتراضياً — فعّله من هنا
+  //    — zero overhead عند التعطيل
+  // ═══════════════════════════════════════════════════════════
+  ADMIN_INTELLIGENCE: {
+    enabled:                 false,     // true = تحليل دوري للبيانات وتوليد insights | false = معطّل (zero overhead)
+    analysisIntervalMs:      300000,    // مللي ثانية بين كل تحليل (minimum 60000). 300000 = 5 دقائق
+    autoRemediationEnabled:  false,     // true = تنفيذ safe actions تلقائياً لما health score critical | false = insights فقط
+    maxInsights:             10,        // أقصى عدد insights نشطة في الذاكرة
+    notificationsEnabled:    false,     // true = SSE endpoint لـ real-time admin alerts | false = polling فقط
+    notificationMaxQueue:    50,        // أقصى عدد notifications محفوظة في الذاكرة (ring buffer)
+    insightCooldownMs:       600000,    // مللي ثانية — نفس الـ insight ما يتولدش مرتين خلال هذه المدة. 600000 = 10 دقائق
+  },
+
 };
 
 export default deepFreeze(config);

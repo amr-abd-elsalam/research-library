@@ -2315,3 +2315,213 @@ img { max-width: 100%; display: block; }
     flex-direction: column;
   }
 }
+
+/* ══════════════════════════════════════════════════════════
+   27. NOTIFICATION BELL (Phase 53)
+══════════════════════════════════════════════════════════ */
+.admin-notification-wrap {
+  position: relative;
+}
+
+.admin-notification-bell {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  position: relative;
+  transition: all var(--speed) var(--ease);
+  display: flex;
+  align-items: center;
+}
+
+.admin-notification-bell:hover {
+  color: var(--accent-light);
+  border-color: var(--accent-border);
+  background: var(--accent-dim);
+}
+
+.admin-notification-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: var(--status-error);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-en);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.admin-notification-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 6px;
+  width: 300px;
+  max-height: 360px;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 200;
+}
+
+.admin-notification-dropdown-header {
+  padding: 12px 14px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.admin-notification-dropdown-list {
+  padding: 6px;
+}
+
+.notif-item {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  margin-bottom: 4px;
+  border-right: 3px solid var(--border);
+  transition: background var(--speed) var(--ease);
+}
+
+.notif-item:hover {
+  background: var(--bg-hover);
+}
+
+.notif-critical {
+  border-right-color: var(--status-error);
+  background: rgba(248, 113, 113, 0.05);
+}
+
+.notif-warning {
+  border-right-color: var(--status-warn);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.notif-info {
+  border-right-color: var(--accent);
+}
+
+.notif-title {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.notif-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: var(--font-en);
+}
+
+/* ══════════════════════════════════════════════════════════
+   28. INTELLIGENCE SECTION (Phase 53)
+══════════════════════════════════════════════════════════ */
+.intelligence-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.intelligence-meta strong {
+  color: var(--text-primary);
+  font-family: var(--font-en);
+}
+
+.intelligence-insights {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.insight-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  border-right: 4px solid var(--border);
+  transition: border-color var(--speed) var(--ease);
+}
+
+.insight-card:hover {
+  border-color: var(--border-accent);
+}
+
+.insight-card--critical {
+  border-right-color: var(--status-error);
+  background: rgba(248, 113, 113, 0.05);
+}
+
+.insight-card--warning {
+  border-right-color: var(--status-warn);
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.insight-card--info {
+  border-right-color: var(--accent);
+}
+
+.insight-card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.insight-card-message {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.insight-card-suggestion {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.insight-action-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm);
+  background: var(--accent-dim);
+  color: var(--accent-light);
+  font-size: 12px;
+  font-family: var(--font-base);
+  cursor: pointer;
+  transition: all var(--speed) var(--ease);
+}
+
+.insight-action-btn:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+@media (max-width: 640px) {
+  .admin-notification-dropdown {
+    width: 260px;
+    left: auto;
+    right: 0;
+  }
+  .intelligence-meta {
+    flex-direction: column;
+    gap: 6px;
+  }
+}

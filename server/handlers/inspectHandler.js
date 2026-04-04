@@ -34,6 +34,7 @@ import { gapPersister }          from '../services/gapPersister.js';
 import { sessionQualityScorer }  from '../services/sessionQualityScorer.js';
 import { libraryHealthScorer }   from '../services/libraryHealthScorer.js';
 import { featureFlags }          from '../services/featureFlags.js';
+import { adminIntelligence }     from '../services/adminIntelligence.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -167,6 +168,9 @@ export async function handleInspect(_req, res) {
         ...featureFlags.counts(),
         status: featureFlags.getStatus(),
       },
+
+      // ── Admin intelligence (Phase 53) ─────────────────────
+      adminIntelligence: adminIntelligence.counts(),
 
       // ── Permission Tiers (Phase 26) ────────────────────────
       tiers: {

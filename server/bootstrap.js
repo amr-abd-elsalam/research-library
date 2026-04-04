@@ -27,6 +27,7 @@ import { libraryIndex } from './services/libraryIndex.js';
 import { gapPersister } from './services/gapPersister.js';
 import { contentGapDetector } from './services/contentGapDetector.js';
 import { featureFlags } from './services/featureFlags.js';
+import { adminIntelligence } from './services/adminIntelligence.js';
 
 // ── Timeout helper (for bootstrap-specific timeouts) ──────────
 function raceTimeout(promise, ms) {
@@ -218,6 +219,9 @@ class BootstrapManager {
 
     // ── Start library index periodic refresh (Phase 36) ──────
     libraryIndex.startPeriodicRefresh();
+
+    // ── Start admin intelligence analysis (Phase 53) ─────────
+    adminIntelligence.startAnalysis();
 
     return this.#report;
   }

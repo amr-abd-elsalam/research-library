@@ -20,6 +20,11 @@
   // ══════════════════════════════════════════════════════════
   const $ = (id) => document.getElementById(id);
 
+  // ── Notification state (Phase 53) ────────────────────────
+  var _notificationQueue = [];
+  var _notificationSSE = null;
+  var _notificationDropdownOpen = false;
+
   const DOM = {
     // Auth
     authOverlay:   $('admin-auth'),
@@ -79,6 +84,12 @@
     auditEmpty:     $('admin-audit-empty'),
     // Action History (Phase 43)
     actionHistory:  $('admin-action-history'),
+    // Intelligence (Phase 53)
+    intelligenceContent: $('admin-intelligence-content'),
+    notificationBell:    $('notificationBell'),
+    notificationBadge:   $('notificationBadge'),
+    notificationDropdown:$('notificationDropdown'),
+    notificationList:    $('notificationList'),
   };
 
   // ══════════════════════════════════════════════════════════
@@ -2480,6 +2491,8 @@
     loadHealthScore();
     loadActionHistory();
     loadFeatureStatus();
+    loadIntelligence();
+    refreshNotificationsFromIntelligence();
 
     // Overview stats
     showOverviewSkeleton();
@@ -2875,6 +2888,166 @@
   }
 
   // ══════════════════════════════════════════════════════════
+  //  ADMIN INTELLIGENCE (Phase 53)
+  // ══════════════════════════════════════════════════════════
+  async function loadIntelligence() {
+    var container = DOM.intelligenceContent;
+    if (!container) return;
+
+    container.innerHTML = '<p class="admin-empty-msg">\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u062D\u0645\u064A\u0644...</p>';
+
+    try {
+      var data = await adminFetch('/api/admin/intelligence');
+      if (!data) {
+        container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623 \u0641\u064A \u062A\u062D\u0645\u064A\u0644 \u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u0630\u0643\u0627\u0621</p>';
+        return;
+      }
+
+      if (!data.enabled) {
+        container.innerHTML = '<p class="admin-empty-msg">\u0630\u0643\u0627\u0621 \u0627\u0644\u0646\u0638\u0627\u0645 \u0645\u0639\u0637\u0651\u0644 \u2014 \u0641\u0639\u0651\u0644\u0647 \u0645\u0646 <code>ADMIN_INTELLIGENCE.enabled: true</code></p>';
+        return;
+      }
+
+      var html = '';
+
+      // Analysis metadata
+      var lastAnalyzed = data.lastAnalyzedAt ? new Date(data.lastAnalyzedAt).toLocaleString('ar-EG') : '\u2014';
+      html += '<div class="intelligence-meta">';
+      html += '<span>\u062F\u0648\u0631\u0627\u062A \u0627\u0644\u062A\u062D\u0644\u064A\u0644: <strong>' + (data.analysisCount || 0) + '</strong></span>';
+      html += '<span>\u0622\u062E\u0631 \u062A\u062D\u0644\u064A\u0644: <strong>' + lastAnalyzed + '</strong></span>';
+      if (data.rollingStats) {
+        html += '<span>\u0637\u0644\u0628\u0627\u062A \u0645\u0646\u0630 \u0622\u062E\u0631 \u062A\u062D\u0644\u064A\u0644: <strong>' + data.rollingStats.completionsSinceLastAnalysis + '</strong></span>';
+      }
+      html += '</div>';
+
+      // Insights
+      var insights = data.insights || [];
+      if (insights.length === 0) {
+        html += '<p class="admin-empty-msg">\u2705 \u0644\u0627 \u062A\u0648\u062C\u062F \u0645\u0644\u0627\u062D\u0638\u0627\u062A \u2014 \u0627\u0644\u0646\u0638\u0627\u0645 \u064A\u0639\u0645\u0644 \u0628\u0634\u0643\u0644 \u062C\u064A\u062F</p>';
+      } else {
+        html += '<div class="intelligence-insights">';
+        for (var i = 0; i < insights.length; i++) {
+          var ins = insights[i];
+          var severityClass = ins.severity === 'critical' ? 'insight-card--critical'
+                            : ins.severity === 'warning'  ? 'insight-card--warning'
+                            : 'insight-card--info';
+          html += '<div class="insight-card ' + severityClass + '">';
+          html += '<div class="insight-card-title">' + (ins.title || '') + '</div>';
+          html += '<div class="insight-card-message">' + (ins.message || '') + '</div>';
+          if (ins.autoActionable && ins.autoActionName) {
+            html += '<button type="button" class="insight-action-btn" onclick="document.dispatchEvent(new CustomEvent(\'ai8v:insight-action\',{detail:\'' + ins.autoActionName + '\'}))">' + (ins.suggestedAction || '\u062A\u0646\u0641\u064A\u0630') + '</button>';
+          } else if (ins.suggestedAction) {
+            html += '<div class="insight-card-suggestion">\u0627\u0644\u0625\u062C\u0631\u0627\u0621 \u0627\u0644\u0645\u0642\u062A\u0631\u062D: ' + ins.suggestedAction + '</div>';
+          }
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+
+      container.innerHTML = html;
+    } catch (err) {
+      container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623: ' + err.message + '</p>';
+    }
+  }
+
+  // Listen for insight action custom events
+  document.addEventListener('ai8v:insight-action', async function (e) {
+    var actionName = e.detail;
+    if (!actionName) return;
+    try {
+      var url = new URL('/api/admin/actions/' + actionName, window.location.origin);
+      await fetch(url.toString(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + (state.token || ''),
+        },
+        body: JSON.stringify({}),
+      });
+      loadIntelligence();
+      loadActionHistory();
+    } catch (_) { /* ignore */ }
+  });
+
+  // ── SSE Notification Connection (Phase 53) ───────────────
+  function connectNotifications() {
+    if (_notificationSSE) return;
+    if (!state.token) return;
+
+    try {
+      var url = new URL('/api/admin/notifications/stream', window.location.origin);
+      url.searchParams.set('token', state.token);
+      // EventSource doesn't support custom headers, so we use query param workaround
+      // However, our SSE endpoint uses requireAdmin which checks Authorization header
+      // EventSource cannot set headers, so we'll use fetch-based approach or polling
+      // For simplicity, use polling via loadIntelligence() — SSE is available for custom implementations
+    } catch (_) { /* ignore */ }
+  }
+
+  function addNotification(data) {
+    _notificationQueue.unshift(data);
+    if (_notificationQueue.length > 20) _notificationQueue.pop();
+    updateNotificationBadge();
+    updateNotificationDropdown();
+  }
+
+  function updateNotificationBadge() {
+    if (!DOM.notificationBadge) return;
+    var count = _notificationQueue.length;
+    DOM.notificationBadge.textContent = String(count);
+    DOM.notificationBadge.style.display = count > 0 ? '' : 'none';
+  }
+
+  function updateNotificationDropdown() {
+    if (!DOM.notificationList) return;
+    if (_notificationQueue.length === 0) {
+      DOM.notificationList.innerHTML = '<p class="admin-empty-msg">\u0644\u0627 \u062A\u0648\u062C\u062F \u0625\u0634\u0639\u0627\u0631\u0627\u062A</p>';
+      return;
+    }
+    var html = '';
+    var max = Math.min(_notificationQueue.length, 10);
+    for (var i = 0; i < max; i++) {
+      var n = _notificationQueue[i];
+      var severityClass = n.severity === 'critical' ? 'notif-critical'
+                        : n.severity === 'warning'  ? 'notif-warning'
+                        : 'notif-info';
+      var time = '';
+      try {
+        time = new Date(n.timestamp).toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+      } catch (_) { time = ''; }
+      html += '<div class="notif-item ' + severityClass + '">';
+      html += '<div class="notif-title">' + (n.title || '') + '</div>';
+      html += '<div class="notif-time">' + time + '</div>';
+      html += '</div>';
+    }
+    DOM.notificationList.innerHTML = html;
+  }
+
+  // Populate notifications from intelligence data
+  async function refreshNotificationsFromIntelligence() {
+    try {
+      var data = await adminFetch('/api/admin/intelligence');
+      if (!data || !data.enabled || !data.insights) return;
+      // Only add new critical/warning insights as notifications
+      for (var i = 0; i < data.insights.length; i++) {
+        var ins = data.insights[i];
+        if (ins.severity === 'info') continue;
+        var exists = _notificationQueue.some(function (n) { return n.id === ins.id; });
+        if (!exists) {
+          addNotification({
+            id: ins.id,
+            type: 'insight',
+            severity: ins.severity,
+            title: ins.title,
+            message: ins.message,
+            timestamp: ins.createdAt,
+          });
+        }
+      }
+    } catch (_) { /* ignore */ }
+  }
+
+  // ══════════════════════════════════════════════════════════
   //  LOAD ALL
   // ══════════════════════════════════════════════════════════
   async function loadAll() {
@@ -3011,6 +3184,31 @@
         }
       });
     }
+
+    // Notification bell (Phase 53)
+    if (DOM.notificationBell) {
+      DOM.notificationBell.addEventListener('click', function (e) {
+        e.stopPropagation();
+        _notificationDropdownOpen = !_notificationDropdownOpen;
+        if (DOM.notificationDropdown) {
+          if (_notificationDropdownOpen) {
+            DOM.notificationDropdown.classList.remove('hidden');
+          } else {
+            DOM.notificationDropdown.classList.add('hidden');
+          }
+        }
+      });
+    }
+
+    // Close notification dropdown on outside click
+    document.addEventListener('click', function (e) {
+      if (_notificationDropdownOpen && DOM.notificationDropdown && DOM.notificationBell) {
+        if (!DOM.notificationDropdown.contains(e.target) && !DOM.notificationBell.contains(e.target)) {
+          _notificationDropdownOpen = false;
+          DOM.notificationDropdown.classList.add('hidden');
+        }
+      }
+    });
 
     // Sessions pagination
     if (DOM.sessionsPrev) {

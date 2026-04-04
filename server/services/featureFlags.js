@@ -33,11 +33,12 @@ class FeatureFlags {
 
   // Section name → config path mapping (uppercase)
   #sectionPaths = {
-    SUGGESTIONS:    () => config.SUGGESTIONS?.enabled === true,
-    CONTENT_GAPS:   () => config.CONTENT_GAPS?.enabled === true,
-    FEEDBACK:       () => config.FEEDBACK?.enabled === true,
-    QUALITY:        () => config.QUALITY?.enabled === true,
-    HEALTH_SCORE:   () => config.HEALTH_SCORE?.enabled === true,
+    ADMIN_INTELLIGENCE: () => config.ADMIN_INTELLIGENCE?.enabled === true,
+    SUGGESTIONS:        () => config.SUGGESTIONS?.enabled === true,
+    CONTENT_GAPS:       () => config.CONTENT_GAPS?.enabled === true,
+    FEEDBACK:           () => config.FEEDBACK?.enabled === true,
+    QUALITY:            () => config.QUALITY?.enabled === true,
+    HEALTH_SCORE:       () => config.HEALTH_SCORE?.enabled === true,
   };
 
   /**
