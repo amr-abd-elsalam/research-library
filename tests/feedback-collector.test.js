@@ -1,20 +1,19 @@
 // tests/feedback-collector.test.js
 // ═══════════════════════════════════════════════════════════════
-// Phase 50 — FeedbackCollector unit tests
+// Phase 51 — FeedbackCollector unit tests
 // Tests the FeedbackCollector singleton lifecycle:
 //   - Disabled-path guards (config.FEEDBACK.enabled = false by default)
 //   - Dynamic enabled getter via featureFlags.setOverride()
+//   - submit() with dynamic featureFlags gate (BUG-3 fixed in Phase 51)
 //   - submit() validation (correlationId, rating, comment)
-//   - recent() retrieval + limit
+//   - Positive/negative counters + recent() retrieval
 //   - counts() structure
 //   - reset() lifecycle
 //
-// ⚠️ Known issue (BUG-3 from Phase 50 audit):
-//   submit() checks this.#enabled (static config value), NOT this.enabled
-//   (dynamic featureFlags getter). So even after setOverride('FEEDBACK', true),
-//   submit() still returns false because config.FEEDBACK.enabled = false.
-//   Tests document the actual behavior. A future Phase should fix submit()
-//   to use the dynamic getter.
+// BUG-3 (fixed in Phase 51):
+//   submit() and ensureDir() previously checked this.#enabled (static config
+//   value) instead of this.enabled (dynamic featureFlags getter). Fixed to
+//   use this.enabled — submit() now works after setOverride('FEEDBACK', true).
 //
 // Uses singleton + featureFlags.setOverride() + reset() pattern.
 // Zero external service dependency — all operations are in-memory.
@@ -58,17 +57,16 @@ describe('FeedbackCollector', () => {
     assert.strictEqual(feedbackCollector.enabled, true);
   });
 
-  // T-FC04: submit() still returns false even after setOverride (BUG-3: static #enabled check)
-  // This documents the known inconsistency between dynamic getter and static submit guard
-  it('T-FC04: submit returns false even after setOverride due to static #enabled check (BUG-3)', async () => {
+  // T-FC04: submit() returns true after setOverride (BUG-3 fixed in Phase 51)
+  // submit() now uses this.enabled (dynamic featureFlags getter) instead of this.#enabled
+  it('T-FC04: submit returns true after setOverride (BUG-3 fixed)', async () => {
     featureFlags.setOverride('FEEDBACK', true);
     assert.strictEqual(feedbackCollector.enabled, true, 'dynamic getter should be true');
     const result = await feedbackCollector.submit({
       correlationId: 'test-corr-002',
       rating: 'positive',
     });
-    // BUG-3: submit() uses this.#enabled (static config = false), not this.enabled (dynamic)
-    assert.strictEqual(result, false, 'submit still returns false due to static #enabled guard');
+    assert.strictEqual(result, true, 'submit should return true when featureFlags enabled');
   });
 
   // T-FC05: submit() validates correlationId is required — returns false without it
@@ -138,6 +136,83 @@ describe('FeedbackCollector', () => {
     featureFlags.setOverride('FEEDBACK', true);
     const c = feedbackCollector.counts();
     assert.strictEqual(c.enabled, true, 'counts().enabled should reflect dynamic featureFlags');
+  });
+
+  // T-FC13: submit() positive rating — counters and recent updated correctly
+  it('T-FC13: submit positive rating updates counters and recent', async () => {
+    featureFlags.setOverride('FEEDBACK', true);
+    const result = await feedbackCollector.submit({
+      correlationId: 'test-corr-013',
+      sessionId: 'sess-013',
+      rating: 'positive',
+    });
+    assert.strictEqual(result, true);
+    const c = feedbackCollector.counts();
+    assert.strictEqual(c.totalPositive, 1);
+    assert.strictEqual(c.totalNegative, 0);
+    assert.strictEqual(c.recentCount, 1);
+    const entries = feedbackCollector.recent();
+    assert.strictEqual(entries.length, 1);
+    assert.strictEqual(entries[0].correlationId, 'test-corr-013');
+    assert.strictEqual(entries[0].rating, 'positive');
+  });
+
+  // T-FC14: submit() negative rating — negative counter incremented
+  it('T-FC14: submit negative rating increments negative counter', async () => {
+    featureFlags.setOverride('FEEDBACK', true);
+    const result = await feedbackCollector.submit({
+      correlationId: 'test-corr-014',
+      rating: 'negative',
+      comment: 'Not helpful',
+    });
+    assert.strictEqual(result, true);
+    const c = feedbackCollector.counts();
+    assert.strictEqual(c.totalPositive, 0);
+    assert.strictEqual(c.totalNegative, 1);
+    const entries = feedbackCollector.recent();
+    assert.strictEqual(entries[0].rating, 'negative');
+    assert.strictEqual(entries[0].comment, 'Not helpful');
+  });
+
+  // T-FC15: recent() respects limit when buffer has entries
+  it('T-FC15: recent respects limit when buffer has entries', async () => {
+    featureFlags.setOverride('FEEDBACK', true);
+    for (let i = 0; i < 5; i++) {
+      await feedbackCollector.submit({
+        correlationId: `test-corr-15-${i}`,
+        rating: 'positive',
+      });
+    }
+    const limited = feedbackCollector.recent(3);
+    assert.strictEqual(limited.length, 3, 'should return only last 3 entries');
+    // recent() uses slice(-limit) — returns last N entries
+    assert.strictEqual(limited[0].correlationId, 'test-corr-15-2');
+    assert.strictEqual(limited[2].correlationId, 'test-corr-15-4');
+  });
+
+  // T-FC16: submit() with comment longer than maxCommentLength — truncated
+  it('T-FC16: submit truncates comment to maxCommentLength', async () => {
+    featureFlags.setOverride('FEEDBACK', true);
+    const longComment = 'A'.repeat(300);
+    await feedbackCollector.submit({
+      correlationId: 'test-corr-016',
+      rating: 'positive',
+      comment: longComment,
+    });
+    const entries = feedbackCollector.recent();
+    // Default maxCommentLength is 200
+    assert.strictEqual(entries[0].comment.length, 200);
+  });
+
+  // T-FC17: submit() still returns false when disabled (after BUG-3 fix)
+  it('T-FC17: submit returns false when feature disabled via clearOverride', async () => {
+    featureFlags.setOverride('FEEDBACK', true);
+    const r1 = await feedbackCollector.submit({ correlationId: 'test-corr-017a', rating: 'positive' });
+    assert.strictEqual(r1, true, 'should succeed while enabled');
+
+    featureFlags.clearOverride('FEEDBACK');
+    const r2 = await feedbackCollector.submit({ correlationId: 'test-corr-017b', rating: 'positive' });
+    assert.strictEqual(r2, false, 'should fail after disabling');
   });
 
 });

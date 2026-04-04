@@ -157,15 +157,23 @@ describe('CorrelationIndex', () => {
   });
 
   // T-CI12: bySession() respects limit parameter
+  // Uses non-zero timestamps to avoid falsy || fallback in record()
   it('T-CI12: bySession respects limit parameter', () => {
-    for (let i = 0; i < 5; i++) {
-      correlationIndex.record(`corr-${i}`, { message: `q${i}`, sessionId: 'sess-limit', timestamp: i });
-    }
+    correlationIndex.record('corr-lim-a', { message: 'q1', sessionId: 'sess-limit', timestamp: 1000 });
+    correlationIndex.record('corr-lim-b', { message: 'q2', sessionId: 'sess-limit', timestamp: 2000 });
+    correlationIndex.record('corr-lim-c', { message: 'q3', sessionId: 'sess-limit', timestamp: 3000 });
+    correlationIndex.record('corr-lim-d', { message: 'q4', sessionId: 'sess-limit', timestamp: 4000 });
+    correlationIndex.record('corr-lim-e', { message: 'q5', sessionId: 'sess-limit', timestamp: 5000 });
+
+    // Pre-assertion: verify all 5 entries exist
+    const all = correlationIndex.bySession('sess-limit');
+    assert.strictEqual(all.length, 5, 'should have 5 total entries for sess-limit');
+
     const results = correlationIndex.bySession('sess-limit', 2);
     assert.strictEqual(results.length, 2, 'bySession should respect limit');
-    // Should return the first 2 by timestamp (ascending sort, then slice)
-    assert.strictEqual(results[0].correlationId, 'corr-0');
-    assert.strictEqual(results[1].correlationId, 'corr-1');
+    // bySession sorts ascending by timestamp, then slices first N
+    assert.strictEqual(results[0].correlationId, 'corr-lim-a');
+    assert.strictEqual(results[1].correlationId, 'corr-lim-b');
   });
 
 });

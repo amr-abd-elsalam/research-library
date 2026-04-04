@@ -49,7 +49,7 @@ class FeedbackCollector {
    * Called once during bootstrap — before any listener writes.
    */
   async ensureDir() {
-    if (!this.#enabled) return;
+    if (!this.enabled) return;
     try {
       const dir = './data';
       if (!existsSync(dir)) {
@@ -67,7 +67,7 @@ class FeedbackCollector {
    * @returns {boolean} true if submitted, false if invalid or disabled
    */
   async submit({ correlationId, sessionId, rating, comment }) {
-    if (!this.#enabled) return false;
+    if (!this.enabled) return false;
 
     // Validate required fields
     if (!correlationId || typeof correlationId !== 'string') return false;
