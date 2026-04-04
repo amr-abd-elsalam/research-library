@@ -178,6 +178,7 @@ export async function handleAdminAction(req, res) {
         if (gapPersister.enabled) {
           const entries = await gapPersister.read();
           if (entries.length > 0) {
+            contentGapDetector.reset();                    // Phase 50 fix: clear before restore to prevent duplicate accumulation
             contentGapDetector.restoreFromEntries(entries);
             entriesProcessed = entries.length;
           }

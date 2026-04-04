@@ -544,7 +544,7 @@ function buildStageRecord(stageName, ctx, _elapsed) {
 
     case 'stageConfidenceCheck':
       return {
-        status: ctx.aborted ? 'ok' : 'ok',
+        status: ctx.aborted ? 'aborted' : 'ok',
         detail: { result: ctx._confidenceResult },
       };
 
