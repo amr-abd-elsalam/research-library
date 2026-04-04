@@ -2,9 +2,10 @@
 // Limits: chat 10/min — topics 30/min — health 10/min
 
 const LIMITS = {
-  chat:   { max: 10,  windowMs: 60_000 },
-  topics: { max: 30,  windowMs: 60_000 },
-  health: { max: 10,  windowMs: 60_000 },
+  chat:     { max: 10,  windowMs: 60_000 },
+  topics:   { max: 30,  windowMs: 60_000 },
+  health:   { max: 10,  windowMs: 60_000 },
+  feedback: { max: 10,  windowMs: 60_000 },
 };
 
 // store: Map<route, Map<ip, { count, resetAt }>>

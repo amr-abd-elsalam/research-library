@@ -10,6 +10,7 @@
 import { eventBus } from '../eventBus.js';
 import { suggestionsEngine } from '../suggestionsEngine.js';
 import { conversationContext } from '../conversationContext.js';
+import { metrics } from '../metrics.js';
 
 // In-memory store for latest suggestions per session
 const latestSuggestions = new Map();
@@ -29,6 +30,12 @@ export function register() {
       suggestions,
       timestamp:   Date.now(),
     });
+  });
+
+  // Suggestion click tracking (Phase 54)
+  eventBus.on('suggestion:clicked', (data) => {
+    suggestionsEngine.recordClick(data.text);
+    metrics.increment('suggestion_click_total');
   });
 }
 

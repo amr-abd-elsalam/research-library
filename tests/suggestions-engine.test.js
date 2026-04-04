@@ -134,4 +134,52 @@ describe('SuggestionsEngine.generate()', () => {
     assert.strictEqual(r1.length, r2.length, 'output length should be deterministic');
   });
 
+  // ── Click Tracking (Phase 54) ──────────────────────────────────
+
+  // T-SE09: recordClick() stores click and increments totalClicks
+  it('T-SE09: recordClick stores click and increments totalClicks', () => {
+    featureFlags.setOverride('SUGGESTIONS', true);
+    suggestionsEngine.recordClick('test suggestion');
+    const counts = suggestionsEngine.getClickCounts();
+    assert.strictEqual(counts.totalClicks, 1);
+    assert.strictEqual(counts.uniqueSuggestions, 1);
+    suggestionsEngine.reset();
+  });
+
+  // T-SE10: recordClick() when disabled → no-op
+  it('T-SE10: recordClick when disabled is a no-op', () => {
+    // No setOverride — SUGGESTIONS defaults to false
+    suggestionsEngine.recordClick('test suggestion');
+    const counts = suggestionsEngine.getClickCounts();
+    assert.strictEqual(counts.totalClicks, 0);
+    assert.strictEqual(counts.uniqueSuggestions, 0);
+  });
+
+  // T-SE11: getClickCounts() returns correct structure with top sorted
+  it('T-SE11: getClickCounts returns sorted top suggestions', () => {
+    featureFlags.setOverride('SUGGESTIONS', true);
+    suggestionsEngine.recordClick('A');
+    suggestionsEngine.recordClick('B');
+    suggestionsEngine.recordClick('A');
+    const counts = suggestionsEngine.getClickCounts();
+    assert.strictEqual(counts.totalClicks, 3);
+    assert.strictEqual(counts.uniqueSuggestions, 2);
+    assert.strictEqual(counts.top[0].text, 'A');
+    assert.strictEqual(counts.top[0].count, 2);
+    assert.strictEqual(counts.top[1].text, 'B');
+    assert.strictEqual(counts.top[1].count, 1);
+    suggestionsEngine.reset();
+  });
+
+  // T-SE12: reset() clears click data
+  it('T-SE12: reset clears click data', () => {
+    featureFlags.setOverride('SUGGESTIONS', true);
+    suggestionsEngine.recordClick('test');
+    assert.strictEqual(suggestionsEngine.getClickCounts().totalClicks, 1);
+    suggestionsEngine.reset();
+    const counts = suggestionsEngine.getClickCounts();
+    assert.strictEqual(counts.totalClicks, 0);
+    assert.strictEqual(counts.uniqueSuggestions, 0);
+  });
+
 });

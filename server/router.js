@@ -24,6 +24,7 @@ import { handleAdminAction } from './handlers/adminActionsHandler.js';
 import { handleAdminIntelligence } from './handlers/adminIntelligenceHandler.js';
 import { handleAdminNotifications } from './handlers/adminNotificationsHandler.js';
 import { bootstrap } from './bootstrap.js';
+import { eventBus } from './services/eventBus.js';
 
 // ── URL matcher (strips query string + trailing slash) ─────────
 function matchRoute(reqUrl, routePath) {
@@ -109,13 +110,32 @@ export async function router(req, res) {
     return;
   }
 
-  // POST /api/feedback (Phase 33 — user feedback submission)
+  // POST /api/feedback (Phase 33 — user feedback submission, Phase 54 — rate limited)
   if (method === 'POST' && matchRoute(url, '/api/feedback')) {
     requireAccess(req, res);
+    if (res.writableEnded) return;
+    await applyRateLimit(req, res, 'feedback');
     if (res.writableEnded) return;
     await validateBody(req, res);
     if (res.writableEnded) return;
     await handleSubmitFeedback(req, res);
+    return;
+  }
+
+  // POST /api/suggestion-click (Phase 54 — suggestion click tracking, fire-and-forget)
+  if (method === 'POST' && matchRoute(url, '/api/suggestion-click')) {
+    requireAccess(req, res);
+    if (res.writableEnded) return;
+    await applyRateLimit(req, res, 'feedback');
+    if (res.writableEnded) return;
+    await validateBody(req, res);
+    if (res.writableEnded) return;
+    const { text } = req._validatedBody;
+    if (text && typeof text === 'string') {
+      eventBus.emit('suggestion:clicked', { text, timestamp: Date.now() });
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
     return;
   }
 

@@ -944,6 +944,16 @@ const ChatModule = (() => {
         chip.textContent = text;
 
         chip.addEventListener('click', function() {
+          // Suggestion click tracking (Phase 54 — fire-and-forget)
+          fetch('/api/suggestion-click', {
+            method: 'POST',
+            headers: Object.assign(
+              { 'Content-Type': 'application/json' },
+              AuthModule.getAccessHeaders()
+            ),
+            body: JSON.stringify({ text: text }),
+          }).catch(function() {});
+
           var textarea = AppModule.DOM.chatTextarea;
           if (textarea) {
             textarea.value = text;

@@ -9,7 +9,7 @@
 // Zero overhead when no overrides are set.
 // ═══════════════════════════════════════════════════════════════
 
-import { mkdir, writeFile, readFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile, rename } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import config from '../../config.js';
 import { eventBus } from './eventBus.js';
@@ -169,7 +169,9 @@ class FeatureFlags {
       for (const [key, value] of this.#overrides) {
         data[key] = value;
       }
-      await writeFile(this.#filePath, JSON.stringify(data, null, 2), 'utf-8');
+      const tmpPath = this.#filePath + '.tmp';
+      await writeFile(tmpPath, JSON.stringify(data, null, 2), 'utf-8');
+      await rename(tmpPath, this.#filePath);
     } catch (err) {
       logger.warn('featureFlags', 'persist failed', { error: err.message });
     }

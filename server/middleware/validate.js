@@ -118,6 +118,30 @@ export async function validateBody(req, res) {
     return;
   }
 
+  // ── 3c. Suggestion click validation (Phase 54) ─────────────────
+  if (reqPath === '/api/suggestion-click' || reqPath === '/api/suggestion-click/') {
+    if (typeof parsed.text !== 'string' || parsed.text.trim().length === 0) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        error: 'حقل text مطلوب',
+        code:  'VALIDATION_ERROR',
+      }));
+      return;
+    }
+    if (parsed.text.trim().length > 200) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        error: 'حقل text يتجاوز 200 حرف',
+        code:  'VALIDATION_ERROR',
+      }));
+      return;
+    }
+    req._validatedBody = {
+      text: parsed.text.trim().slice(0, 200),
+    };
+    return;
+  }
+
   // ── 4. Validate message ────────────────────────────────────────
   const message = parsed.message;
   if (typeof message !== 'string' || message.trim().length === 0) {

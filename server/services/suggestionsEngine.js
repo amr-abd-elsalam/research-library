@@ -42,6 +42,8 @@ class SuggestionsEngine {
   #maxSuggestions;
   #minTurns;
   #templates;
+  #clickCounts = new Map();
+  #totalClicks = 0;
 
   constructor() {
     const cfg = config.SUGGESTIONS ?? {};
@@ -91,16 +93,56 @@ class SuggestionsEngine {
     return result;
   }
 
+  /** Whether suggestions feature is enabled. */
+  get enabled() { return featureFlags.isEnabled('SUGGESTIONS'); }
+
+  /**
+   * Records a suggestion click.
+   * @param {string} text — the suggestion text that was clicked
+   */
+  recordClick(text) {
+    if (!this.enabled) return;
+    if (!text || typeof text !== 'string') return;
+    const key = text.trim().slice(0, 200);
+    if (!key) return;
+    this.#clickCounts.set(key, (this.#clickCounts.get(key) || 0) + 1);
+    this.#totalClicks++;
+  }
+
+  /**
+   * Returns click tracking summary.
+   * @returns {{ totalClicks: number, uniqueSuggestions: number, top: Array<{text: string, count: number}> }}
+   */
+  getClickCounts() {
+    return {
+      totalClicks: this.#totalClicks,
+      uniqueSuggestions: this.#clickCounts.size,
+      top: [...this.#clickCounts.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([text, count]) => ({ text, count })),
+    };
+  }
+
+  /**
+   * Resets click tracking state. For testing.
+   */
+  reset() {
+    this.#clickCounts.clear();
+    this.#totalClicks = 0;
+  }
+
   /**
    * Summary for inspect endpoint.
-   * @returns {{ enabled: boolean, maxSuggestions: number, minTurns: number, templateCount: number }}
+   * @returns {{ enabled: boolean, maxSuggestions: number, minTurns: number, templateCount: number, totalClicks: number }}
    */
   counts() {
     return {
-      enabled:        featureFlags.isEnabled('SUGGESTIONS'),
+      enabled:        this.enabled,
       maxSuggestions:  this.#maxSuggestions,
       minTurns:       this.#minTurns,
       templateCount:  this.#templates.length,
+      totalClicks:    this.#totalClicks,
     };
   }
 }
