@@ -9,9 +9,10 @@
 // Zero overhead when disabled (persistContext: false, default).
 // ═══════════════════════════════════════════════════════════════
 
-import { writeFile, readFile, unlink, mkdir } from 'node:fs/promises';
+import { readFile, unlink, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { atomicWriteFile } from './atomicWrite.js';
 import config from '../../config.js';
 import { logger } from './logger.js';
 
@@ -65,7 +66,7 @@ class ContextPersister {
       this.#writeQueue.delete(sessionId);
       try {
         const filePath = join(this.#dir, `${sessionId}.json`);
-        await writeFile(filePath, JSON.stringify(data), 'utf-8');
+        await atomicWriteFile(filePath, JSON.stringify(data));
         logger.debug('contextPersister', `wrote context for session ${sessionId.slice(0, 8)}`);
       } catch (err) {
         logger.warn('contextPersister', 'write failed', { sessionId: sessionId.slice(0, 8), error: err.message });

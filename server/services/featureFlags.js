@@ -9,8 +9,9 @@
 // Zero overhead when no overrides are set.
 // ═══════════════════════════════════════════════════════════════
 
-import { mkdir, writeFile, readFile, rename } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { atomicWriteFile } from './atomicWrite.js';
 import config from '../../config.js';
 import { eventBus } from './eventBus.js';
 import { logger } from './logger.js';
@@ -169,9 +170,7 @@ class FeatureFlags {
       for (const [key, value] of this.#overrides) {
         data[key] = value;
       }
-      const tmpPath = this.#filePath + '.tmp';
-      await writeFile(tmpPath, JSON.stringify(data, null, 2), 'utf-8');
-      await rename(tmpPath, this.#filePath);
+      await atomicWriteFile(this.#filePath, JSON.stringify(data, null, 2));
     } catch (err) {
       logger.warn('featureFlags', 'persist failed', { error: err.message });
     }

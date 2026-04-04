@@ -8,8 +8,9 @@
 // Zero overhead when disabled (snapshotEnabled: false).
 // ═══════════════════════════════════════════════════════════════
 
-import { writeFile, readFile, mkdir } from 'node:fs/promises';
+import { readFile, mkdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { atomicWriteFile } from './atomicWrite.js';
 import { metrics }        from './metrics.js';
 import { operationalLog } from './operationalLog.js';
 import { logger }         from './logger.js';
@@ -104,11 +105,8 @@ class MetricsSnapshotPersister {
         operationalLogEntries: operationalLog.dump(),
       };
 
-      // Ensure directory exists
-      await mkdir(dirname(this.#filePath), { recursive: true });
-
-      // Write atomically: write to file (single overwrite, not append)
-      await writeFile(this.#filePath, JSON.stringify(data), 'utf-8');
+      // Write atomically: temp file + rename (crash-safe)
+      await atomicWriteFile(this.#filePath, JSON.stringify(data));
 
       this.#lastSavedAt = data.savedAt;
 
