@@ -270,6 +270,15 @@ class PluginRegistry {
   get initialized() {
     return this.#initialized;
   }
+
+  /**
+   * Clears all registered plugins and resets initialized flag.
+   * Intended for testing only.
+   */
+  reset() {
+    this.#plugins.clear();
+    this.#initialized = false;
+  }
 }
 
 // ── Singleton instance ─────────────────────────────────────────

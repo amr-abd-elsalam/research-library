@@ -44,7 +44,7 @@ class CorrelationIndex {
 
     this.#entries.set(correlationId, {
       ...entry,
-      timestamp: entry.timestamp || Date.now(),
+      timestamp: entry.timestamp ?? Date.now(),
     });
 
     this.#order.push(correlationId);

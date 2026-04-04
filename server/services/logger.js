@@ -115,6 +115,13 @@ class Logger {
   get listenerCount() {
     return this.#listeners.length;
   }
+
+  /**
+   * Clears all registered listeners. Intended for testing only.
+   */
+  reset() {
+    this.#listeners.length = 0;
+  }
 }
 
 // ── Singleton instance ─────────────────────────────────────────

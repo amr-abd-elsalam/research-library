@@ -176,4 +176,18 @@ describe('CorrelationIndex', () => {
     assert.strictEqual(results[1].correlationId, 'corr-lim-b');
   });
 
+  // T-CI13: BUG-4 fix — timestamp: 0 is stored literally (not replaced by Date.now())
+  // Before fix: || operator treated 0 as falsy → stored Date.now() instead of 0
+  // After fix: ?? operator only falls back for null/undefined → 0 stored correctly
+  it('T-CI13: record with timestamp: 0 stores 0 literally (BUG-4 fix)', () => {
+    correlationIndex.record('corr-zero-ts', {
+      message: 'zero timestamp test',
+      sessionId: 'sess-zero',
+      timestamp: 0,
+    });
+    const result = correlationIndex.get('corr-zero-ts');
+    assert.notStrictEqual(result, null, 'entry should exist');
+    assert.strictEqual(result.timestamp, 0, 'timestamp: 0 should be stored as 0, not Date.now()');
+  });
+
 });
