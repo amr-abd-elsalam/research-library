@@ -1,0 +1,105 @@
+// tests/health-scorer.test.js
+// ═══════════════════════════════════════════════════════════════
+// Phase 48 — LibraryHealthScorer unit tests
+// Tests disabled→enabled toggle via FeatureFlags, compute() return
+// structure (score/level/breakdown/actionItems), score range 0-100,
+// level enum, and cache invalidation.
+// Uses the singleton instance + featureFlags.setOverride().
+// Config default: HEALTH_SCORE.enabled = false.
+// When enabled with empty singletons, compute() uses fallback values.
+// ═══════════════════════════════════════════════════════════════
+
+import { describe, it, afterEach } from 'node:test';
+import assert from 'node:assert/strict';
+import { libraryHealthScorer } from '../server/services/libraryHealthScorer.js';
+import { featureFlags } from '../server/services/featureFlags.js';
+
+describe('LibraryHealthScorer', () => {
+
+  afterEach(() => {
+    featureFlags.clearOverride('HEALTH_SCORE');
+    libraryHealthScorer.invalidateCache();
+  });
+
+  // T-HS01: compute() returns null when HEALTH_SCORE disabled (default config)
+  it('T-HS01: compute returns null when HEALTH_SCORE disabled', () => {
+    const result = libraryHealthScorer.compute();
+    assert.strictEqual(result, null);
+  });
+
+  // T-HS02: enabled getter returns false with default config
+  it('T-HS02: enabled returns false with default config', () => {
+    assert.strictEqual(libraryHealthScorer.enabled, false);
+  });
+
+  // T-HS03: counts() returns object with enabled field
+  it('T-HS03: counts returns object with enabled field', () => {
+    const c = libraryHealthScorer.counts();
+    assert.ok('enabled' in c, 'should have enabled key');
+    assert.strictEqual(typeof c.enabled, 'boolean');
+  });
+
+  // T-HS04: invalidateCache() does not throw
+  it('T-HS04: invalidateCache does not throw', () => {
+    assert.doesNotThrow(() => {
+      libraryHealthScorer.invalidateCache();
+    });
+  });
+
+  // T-HS05: After setOverride('HEALTH_SCORE', true) — enabled returns true
+  it('T-HS05: enabled returns true after setOverride HEALTH_SCORE true', () => {
+    featureFlags.setOverride('HEALTH_SCORE', true);
+    assert.strictEqual(libraryHealthScorer.enabled, true);
+  });
+
+  // T-HS06: After enabling — compute() returns non-null object
+  it('T-HS06: compute returns non-null object when enabled', () => {
+    featureFlags.setOverride('HEALTH_SCORE', true);
+    const result = libraryHealthScorer.compute();
+    assert.notStrictEqual(result, null);
+    assert.strictEqual(typeof result, 'object');
+  });
+
+  // T-HS07: compute() result has score, level, breakdown, totalRequests, actionItems
+  it('T-HS07: compute result has score, level, breakdown, totalRequests, actionItems', () => {
+    featureFlags.setOverride('HEALTH_SCORE', true);
+    const result = libraryHealthScorer.compute();
+    assert.strictEqual(typeof result.score, 'number');
+    assert.strictEqual(typeof result.level, 'string');
+    assert.strictEqual(typeof result.breakdown, 'object');
+    assert.strictEqual(typeof result.totalRequests, 'number');
+    assert.ok(Array.isArray(result.actionItems), 'actionItems should be an array');
+  });
+
+  // T-HS08: compute() result score is number between 0 and 100 (inclusive)
+  it('T-HS08: compute result score is between 0 and 100', () => {
+    featureFlags.setOverride('HEALTH_SCORE', true);
+    const result = libraryHealthScorer.compute();
+    assert.ok(result.score >= 0, `score ${result.score} should be >= 0`);
+    assert.ok(result.score <= 100, `score ${result.score} should be <= 100`);
+  });
+
+  // T-HS09: compute() result level is one of 'critical', 'warning', 'healthy'
+  it('T-HS09: compute result level is one of critical, warning, healthy', () => {
+    featureFlags.setOverride('HEALTH_SCORE', true);
+    const result = libraryHealthScorer.compute();
+    const validLevels = ['critical', 'warning', 'healthy'];
+    assert.ok(
+      validLevels.includes(result.level),
+      `level '${result.level}' should be one of: ${validLevels.join(', ')}`
+    );
+  });
+
+  // T-HS10: After clearOverride('HEALTH_SCORE') — compute() returns null again
+  it('T-HS10: compute returns null after clearOverride HEALTH_SCORE', () => {
+    featureFlags.setOverride('HEALTH_SCORE', true);
+    const enabled = libraryHealthScorer.compute();
+    assert.notStrictEqual(enabled, null, 'should be non-null while enabled');
+
+    featureFlags.clearOverride('HEALTH_SCORE');
+    libraryHealthScorer.invalidateCache();
+    const disabled = libraryHealthScorer.compute();
+    assert.strictEqual(disabled, null);
+  });
+
+});
