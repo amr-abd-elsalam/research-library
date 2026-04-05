@@ -3,6 +3,7 @@ import { getAccessMode } from '../middleware/auth.js';
 import { commandRegistry } from '../services/commandRegistry.js';
 import { featureFlags } from '../services/featureFlags.js';
 import { eventBus } from '../services/eventBus.js';
+import { dynamicWelcomeSuggestions } from '../services/dynamicWelcomeSuggestions.js';
 
 const HEADERS = {
   'Content-Type':  'application/json',
@@ -15,11 +16,23 @@ let cachedPayload = null;
 // Phase 45: Invalidate config cache when feature toggled
 eventBus.on('feature:toggled', () => {
   cachedPayload = null;
+  dynamicWelcomeSuggestions.invalidate();
+});
+
+// Phase 59: Invalidate config cache + dynamic suggestions when library content changes
+eventBus.on('library:changed', () => {
+  cachedPayload = null;
+  dynamicWelcomeSuggestions.invalidate();
 });
 
 // Note: CONTEXT, FOLLOWUP, ADMIN, SYSTEM_PROMPT — backend-only, not exposed to client
 function buildPayload() {
   if (cachedPayload) return cachedPayload;
+
+  // Phase 59: dynamic welcome suggestions (null when disabled or empty)
+  const dynSuggestions = dynamicWelcomeSuggestions.generate();
+  const dynamicSuggestionsValue = dynSuggestions.length > 0 ? dynSuggestions : null;
+
   cachedPayload = JSON.stringify({
     BRAND:      config.BRAND,
     META:       config.META,
@@ -100,6 +113,9 @@ function buildPayload() {
     FEATURE_FLAGS: {
       persistOverrides: config.FEATURE_FLAGS?.persistOverrides ?? false,
     },
+
+    // Phase 59: dynamic welcome suggestions from library content + click analytics
+    dynamicSuggestions: dynamicSuggestionsValue,
 
     // TIERS: moved to GET /api/whoami (Phase 27 — per-request, not static config)
   });

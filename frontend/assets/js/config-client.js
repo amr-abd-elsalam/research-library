@@ -122,7 +122,16 @@ async function loadConfig() {
       HEALTH_SCORE:    Object.freeze(data.HEALTH_SCORE    || { enabled: false }),
       ADMIN_ACTIONS:   Object.freeze(data.ADMIN_ACTIONS   || { enabled: true }),
       FEATURE_FLAGS:   Object.freeze(data.FEATURE_FLAGS   || { persistOverrides: false }),
+      dynamicSuggestions: Array.isArray(data.dynamicSuggestions) ? Object.freeze(data.dynamicSuggestions) : null,
     });
+
+    // ── Phase 59: Store dynamic suggestions from server ───────────
+    if (data.dynamicSuggestions !== undefined) {
+      CLIENT_CONFIG = Object.freeze({
+        ...CLIENT_CONFIG,
+        dynamicSuggestions: Array.isArray(data.dynamicSuggestions) ? Object.freeze(data.dynamicSuggestions) : null,
+      });
+    }
 
     // ── Phase 46: Store effective feature state ───────────────────
     window.__effectiveFeatures = {

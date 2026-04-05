@@ -71,6 +71,13 @@ const SuggestionsModule = (() => {
 
   /* ── Init ─────────────────────────────────────────────────── */
   function init() {
+    // Phase 59: dynamic suggestions from library content (priority over static)
+    const dynamic = CLIENT_CONFIG.dynamicSuggestions;
+    if (Array.isArray(dynamic) && dynamic.length > 0) {
+      _render(dynamic);
+      return;
+    }
+
     const configSuggestions = CLIENT_CONFIG.CHAT.suggestions;
     const list = (Array.isArray(configSuggestions) && configSuggestions.length > 0)
       ? configSuggestions
@@ -80,10 +87,18 @@ const SuggestionsModule = (() => {
 
   /* ── Refresh ─────── */
   function refresh(newList) {
-    const list = Array.isArray(newList) && newList.length > 0
-      ? newList
-      : CLIENT_CONFIG.CHAT.suggestions || DEFAULT_SUGGESTIONS;
-    _render(list);
+    if (Array.isArray(newList) && newList.length > 0) {
+      _render(newList);
+      return;
+    }
+    // Phase 59: try dynamic suggestions before static fallback
+    const dynamic = CLIENT_CONFIG.dynamicSuggestions;
+    if (Array.isArray(dynamic) && dynamic.length > 0) {
+      _render(dynamic);
+      return;
+    }
+    const list = CLIENT_CONFIG.CHAT.suggestions || DEFAULT_SUGGESTIONS;
+    _render(Array.isArray(list) && list.length > 0 ? list : DEFAULT_SUGGESTIONS);
   }
 
   /* ── Public API ───────────────────────────────────────────── */

@@ -675,6 +675,26 @@ const config = {
     insightCooldownMs:       600000,    // مللي ثانية — نفس الـ insight ما يتولدش مرتين خلال هذه المدة. 600000 = 10 دقائق
   },
 
+  // ═══════════════════════════════════════════════════════════
+  // 32. دعم مكتبات متعددة (MULTI_LIBRARY)
+  //    — يسمح بربط أكثر من collection في Qdrant بنفس الـ instance
+  //    — معطّل افتراضياً — لما معطّل = المشروع يشتغل بالسلوك الحالي بالظبط (collection واحدة من .env)
+  //    — لا تحتاج تعديل عادةً
+  // ═══════════════════════════════════════════════════════════
+  MULTI_LIBRARY: {
+    enabled:        false,       // true = دعم مكتبات متعددة | false = collection واحدة من .env (السلوك الحالي بالظبط)
+    defaultLibrary: null,        // library ID الافتراضي — null = أول library في القائمة. يُستخدم لما المستخدم ما يحددش library
+    libraries:      [
+      // كل library = collection في Qdrant
+      // {
+      //   id:               'main',                    // معرف فريد (مطلوب)
+      //   name:             'المكتبة الرئيسية',         // اسم ظاهر
+      //   qdrantCollection: 'knowledge',               // اسم الـ collection في Qdrant
+      //   domainLabel:      'مكتبة بحثية ذكية',         // يظهر في الـ frontend
+      // },
+    ],
+  },
+
 };
 
 export default deepFreeze(config);

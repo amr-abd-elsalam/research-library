@@ -88,4 +88,29 @@ describe('LibraryIndex', () => {
     assert.ok(Array.isArray(result), 'getTopicNames should always return an Array');
   });
 
+  // ── Multi-collection foundation (Phase 59) ──────────────────
+
+  // T-LI11: MULTI_LIBRARY disabled → getIndex() returns same as before (single collection)
+  it('T-LI11: getIndex with no argument returns default index (backward compatible)', () => {
+    const index = libraryIndex.getIndex();
+    // Same as T-LI02 — null when no refresh done
+    assert.strictEqual(index, null);
+    // Also test with explicit null
+    const indexNull = libraryIndex.getIndex(null);
+    assert.strictEqual(indexNull, null);
+  });
+
+  // T-LI12: getIndex with libraryId when MULTI_LIBRARY disabled → returns null
+  it('T-LI12: getIndex with libraryId when MULTI_LIBRARY disabled → null', () => {
+    const index = libraryIndex.getIndex('some-library');
+    assert.strictEqual(index, null, 'should return null — MULTI_LIBRARY disabled by default');
+  });
+
+  // T-LI13: getAllIndices() when MULTI_LIBRARY disabled → returns empty array
+  it('T-LI13: getAllIndices when MULTI_LIBRARY disabled → empty array', () => {
+    const result = libraryIndex.getAllIndices();
+    assert.ok(Array.isArray(result), 'should return an array');
+    assert.strictEqual(result.length, 0, 'should be empty when MULTI_LIBRARY disabled');
+  });
+
 });

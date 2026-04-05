@@ -119,6 +119,23 @@ describe('Integration HTTP — Config & Features', () => {
     assert.ok(!('CONTEXT' in data), 'CONTEXT should not be exposed to client');
     assert.ok(!('FOLLOWUP' in data), 'FOLLOWUP should not be exposed to client');
   });
+
+  // T-IH39: GET /api/config — response contains dynamicSuggestions field (Phase 59)
+  it('T-IH39: GET /api/config — response contains dynamicSuggestions field', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('dynamicSuggestions' in data, 'response should contain dynamicSuggestions field');
+  });
+
+  // T-IH40: GET /api/config — dynamicSuggestions is null or array (never undefined)
+  it('T-IH40: GET /api/config — dynamicSuggestions is null or array', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config`);
+    const data = await res.json();
+    const val = data.dynamicSuggestions;
+    const valid = val === null || Array.isArray(val);
+    assert.ok(valid, `dynamicSuggestions should be null or array, got ${typeof val}: ${JSON.stringify(val)}`);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════

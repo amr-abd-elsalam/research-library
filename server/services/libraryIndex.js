@@ -28,6 +28,7 @@ class LibraryIndex {
   #index;
   #refreshCount;
   #previousVersion;
+  #libraries = new Map();
 
   constructor() {
     this.#enabled           = config.LIBRARY_INDEX?.enabled === true;
@@ -58,8 +59,11 @@ class LibraryIndex {
   /**
    * Scrolls Qdrant collection and builds the library index.
    * Respects SCAN_LIMIT (500 points max per refresh).
+   * @param {string|null} [libraryId=null] — when MULTI_LIBRARY enabled and libraryId provided,
+   *   stores result in #libraries Map. When null or MULTI_LIBRARY disabled → default behavior.
+   *   NOTE: Multi-library collection switching requires qdrant.js changes (future phase).
    */
-  async refresh() {
+  async refresh(libraryId = null) {
     if (!this.#enabled) return;
 
     // Get total points from collection info
@@ -113,7 +117,7 @@ class LibraryIndex {
     }
 
     // Build index
-    this.#index = {
+    const builtIndex = {
       files:          this.#includeFileList ? [...fileSet] : [],
       fileCount:      fileSet.size,
       topics:         Object.fromEntries(topicMap),
@@ -122,6 +126,13 @@ class LibraryIndex {
       scannedPoints:  scanned,
       lastRefresh:    Date.now(),
     };
+
+    this.#index = builtIndex;
+
+    // Phase 59: store in multi-library map when libraryId provided
+    if (libraryId && config.MULTI_LIBRARY?.enabled === true) {
+      this.#libraries.set(libraryId, builtIndex);
+    }
 
     // Phase 41: detect library content changes
     const newVersion = this.#computeVersion(this.#index);
@@ -167,11 +178,27 @@ class LibraryIndex {
 
   /**
    * Returns a shallow copy of the current index, or null if not refreshed yet.
+   * @param {string|null} [libraryId=null] — when provided and MULTI_LIBRARY enabled,
+   *   returns index for that specific library. When null → returns default index.
    * @returns {object|null}
    */
-  getIndex() {
+  getIndex(libraryId = null) {
+    if (libraryId && config.MULTI_LIBRARY?.enabled === true) {
+      const lib = this.#libraries.get(libraryId);
+      return lib ? { ...lib } : null;
+    }
     if (!this.#index) return null;
     return { ...this.#index };
+  }
+
+  /**
+   * Returns all library indices as an array of [libraryId, index] pairs.
+   * Empty array when MULTI_LIBRARY is disabled or no libraries indexed.
+   * @returns {Array<[string, object]>}
+   */
+  getAllIndices() {
+    if (config.MULTI_LIBRARY?.enabled !== true) return [];
+    return [...this.#libraries.entries()].map(([id, idx]) => [id, { ...idx }]);
   }
 
   /**
