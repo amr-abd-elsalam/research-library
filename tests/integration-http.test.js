@@ -336,6 +336,18 @@ describe('Integration HTTP — CORS Behavior', () => {
     const data = await res.json();
     assert.strictEqual(data.code, 'CORS_REJECTED');
   });
+
+  // T-IH36: CORS — Access-Control-Allow-Headers includes Authorization (Phase 57 fix)
+  it('T-IH36: CORS — Allow-Headers includes Authorization', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config`, {
+      method: 'OPTIONS',
+      headers: { 'Origin': 'http://localhost:3000' },
+    });
+    const allowHeaders = res.headers.get('access-control-allow-headers') || '';
+    assert.ok(allowHeaders.includes('Authorization'), `Allow-Headers should include Authorization, got: ${allowHeaders}`);
+    assert.ok(allowHeaders.includes('X-Access-Pin'), `Allow-Headers should include X-Access-Pin, got: ${allowHeaders}`);
+    assert.ok(allowHeaders.includes('X-Access-Token'), `Allow-Headers should include X-Access-Token, got: ${allowHeaders}`);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -428,5 +440,24 @@ describe('Integration HTTP — Whoami & Misc', () => {
     assert.strictEqual(res.status, 404);
     const data = await res.json();
     assert.strictEqual(data.code, 'NOT_FOUND');
+  });
+
+  // T-IH37: GET /api/admin/suggestions without auth — returns 401 (Phase 57)
+  it('T-IH37: GET /api/admin/suggestions without auth — returns 401', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/suggestions`);
+    assert.strictEqual(res.status, 401);
+  });
+
+  // T-IH38: GET /api/admin/suggestions with valid token — returns 200 (Phase 57)
+  it('T-IH38: GET /api/admin/suggestions with valid token — returns 200', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/suggestions`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('totalClicks' in data, 'should contain totalClicks');
+    assert.ok('uniqueSuggestions' in data, 'should contain uniqueSuggestions');
+    assert.ok('topClicked' in data, 'should contain topClicked');
+    assert.ok(Array.isArray(data.topClicked), 'topClicked should be an array');
   });
 });

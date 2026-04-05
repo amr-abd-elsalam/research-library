@@ -122,6 +122,9 @@ export async function handleInspect(_req, res) {
       // ── Suggestions engine (Phase 29) ──────────────────────
       suggestionsEngine: suggestionsEngine.counts(),
 
+      // ── Suggestion click analytics (Phase 57) ──────────────
+      suggestionAnalytics: suggestionsEngine.getClickCounts(),
+
       // ── Feedback collector (Phase 33) ──────────────────────
       feedbackCollector: feedbackCollector.counts(),
 

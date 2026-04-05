@@ -2428,6 +2428,98 @@ img { max-width: 100%; display: block; }
 }
 
 /* ══════════════════════════════════════════════════════════
+   29. SUGGESTION ANALYTICS (Phase 57)
+══════════════════════════════════════════════════════════ */
+.suggestion-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.suggestion-stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  text-align: center;
+  transition: border-color var(--speed) var(--ease);
+}
+
+.suggestion-stat-card:hover {
+  border-color: var(--border-accent);
+}
+
+.suggestion-stat-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--accent-light);
+  font-family: var(--font-en);
+}
+
+.suggestion-stat-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.suggestion-top-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.suggestion-top-row {
+  display: grid;
+  grid-template-columns: 1fr 120px 50px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.suggestion-top-text {
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggestion-top-bar {
+  height: 8px;
+  background: var(--bg-elevated);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.suggestion-top-bar-fill {
+  height: 100%;
+  background: var(--gradient-brand);
+  border-radius: 4px;
+  min-width: 2px;
+  transition: width 0.4s var(--ease);
+}
+
+.suggestion-top-count {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-family: var(--font-en);
+  text-align: end;
+}
+
+@media (max-width: 960px) {
+  .suggestion-stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .suggestion-stats { grid-template-columns: 1fr; }
+  .suggestion-top-row { grid-template-columns: 1fr 80px 40px; }
+}
+
+/* ══════════════════════════════════════════════════════════
    28. INTELLIGENCE SECTION (Phase 53)
 ══════════════════════════════════════════════════════════ */
 .intelligence-meta {

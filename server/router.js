@@ -22,6 +22,7 @@ import { handleExport } from './handlers/exportHandler.js';
 import { handleHealthScore } from './handlers/healthScoreHandler.js';
 import { handleAdminAction } from './handlers/adminActionsHandler.js';
 import { handleAdminIntelligence } from './handlers/adminIntelligenceHandler.js';
+import { handleSuggestionAnalytics } from './handlers/suggestionsHandler.js';
 import { handleAdminNotifications } from './handlers/adminNotificationsHandler.js';
 import { bootstrap } from './bootstrap.js';
 import { eventBus } from './services/eventBus.js';
@@ -220,6 +221,14 @@ export async function router(req, res) {
     requireAdmin(req, res);
     if (res.writableEnded) return;
     await handleHealthScore(req, res);
+    return;
+  }
+
+  // GET /api/admin/suggestions (Phase 57 — suggestion click analytics)
+  if (method === 'GET' && matchRoute(url, '/api/admin/suggestions')) {
+    requireAdmin(req, res);
+    if (res.writableEnded) return;
+    await handleSuggestionAnalytics(req, res);
     return;
   }
 

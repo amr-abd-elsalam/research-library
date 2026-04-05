@@ -17,7 +17,7 @@ export function applyCors(req, res) {
   if (isAllowed) {
     res.setHeader('Access-Control-Allow-Origin',      origin);
     res.setHeader('Access-Control-Allow-Methods',     'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers',     'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers',     'Content-Type, Authorization, X-Access-Pin, X-Access-Token');
     res.setHeader('Access-Control-Allow-Credentials', 'false');
     res.setHeader('Access-Control-Max-Age',           '86400');
     return;

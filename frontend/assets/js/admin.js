@@ -2250,6 +2250,64 @@
     }
   }
 
+  // ══════════════════════════════════════════════════════════
+  //  SUGGESTION ANALYTICS (Phase 57)
+  // ══════════════════════════════════════════════════════════
+  async function loadSuggestionAnalytics() {
+    var container = document.getElementById('admin-suggestions-content');
+    if (!container) return;
+
+    container.innerHTML = '<p class="admin-empty-msg">\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u062D\u0645\u064A\u0644...</p>';
+
+    try {
+      var data = await adminFetch('/api/admin/suggestions');
+      if (!data) {
+        container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623 \u0641\u064A \u062A\u062D\u0645\u064A\u0644 \u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u0627\u0642\u062A\u0631\u0627\u062D\u0627\u062A</p>';
+        return;
+      }
+
+      if (!data.enabled) {
+        container.innerHTML = '<p class="admin-empty-msg">\u0627\u0644\u0627\u0642\u062A\u0631\u0627\u062D\u0627\u062A \u0627\u0644\u0630\u0643\u064A\u0629 \u0645\u0639\u0637\u0651\u0644\u0629 \u2014 \u0641\u0639\u0651\u0644\u0647\u0627 \u0645\u0646 <code>SUGGESTIONS.enabled: true</code></p>';
+        return;
+      }
+
+      var html = '';
+
+      // Stats cards
+      html += '<div class="suggestion-stats">';
+      html += '<div class="suggestion-stat-card"><div class="suggestion-stat-value">' + (data.totalClicks || 0) + '</div><div class="suggestion-stat-label">\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0646\u0642\u0631\u0627\u062A</div></div>';
+      html += '<div class="suggestion-stat-card"><div class="suggestion-stat-value">' + (data.uniqueSuggestions || 0) + '</div><div class="suggestion-stat-label">\u0627\u0642\u062A\u0631\u0627\u062D\u0627\u062A \u0641\u0631\u064A\u062F\u0629</div></div>';
+      html += '<div class="suggestion-stat-card"><div class="suggestion-stat-value">' + (data.templateCount || 0) + '</div><div class="suggestion-stat-label">\u0642\u0648\u0627\u0644\u0628</div></div>';
+      html += '<div class="suggestion-stat-card"><div class="suggestion-stat-value">' + (data.maxSuggestions || 0) + '</div><div class="suggestion-stat-label">\u0623\u0642\u0635\u0649 \u0627\u0642\u062A\u0631\u0627\u062D\u0627\u062A/\u0631\u062F</div></div>';
+      html += '</div>';
+
+      // Top clicked suggestions
+      var topClicked = data.topClicked || [];
+      if (topClicked.length > 0) {
+        var maxCount = topClicked[0].count || 1;
+        html += '<h3 style="font-size:13px;color:var(--text-muted);margin:16px 0 8px;">\u0623\u0643\u062B\u0631 \u0627\u0644\u0627\u0642\u062A\u0631\u0627\u062D\u0627\u062A \u0646\u0642\u0631\u0627\u064B</h3>';
+        html += '<div class="suggestion-top-list">';
+        for (var i = 0; i < topClicked.length; i++) {
+          var item = topClicked[i];
+          var pct = Math.max((item.count / maxCount) * 100, 2);
+          html += '<div class="suggestion-top-row">';
+          html += '<div class="suggestion-top-text">' + item.text + '</div>';
+          html += '<div class="suggestion-top-bar"><div class="suggestion-top-bar-fill" style="width:' + pct + '%"></div></div>';
+          html += '<div class="suggestion-top-count">' + item.count + '</div>';
+          html += '</div>';
+        }
+        html += '</div>';
+      } else {
+        html += '<p class="admin-empty-msg">\u0644\u0627 \u062A\u0648\u062C\u062F \u0646\u0642\u0631\u0627\u062A \u0645\u0633\u062C\u0644\u0629 \u0628\u0639\u062F</p>';
+      }
+
+      container.innerHTML = html;
+
+    } catch (err) {
+      container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623: ' + err.message + '</p>';
+    }
+  }
+
   // Listen for export custom events
   document.addEventListener('ai8v:export', function (e) {
     var type = e.detail;
@@ -2562,6 +2620,7 @@
     showCorrelationSkeleton();
     showInspectSkeleton();
     showInsightsSkeleton();
+    loadSuggestionAnalytics();
 
     var results = await Promise.allSettled([
       fetchFeedback(),
