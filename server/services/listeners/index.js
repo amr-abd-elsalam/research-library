@@ -23,6 +23,7 @@ import { register as registerAuditTrail }      from './auditTrailListener.js';
 import { register as registerContentGap }      from './contentGapListener.js';
 import { register as registerQuality }         from './qualityListener.js';
 import { register as registerIntelligence }    from './intelligenceListener.js';
+import { register as registerConfigCache }     from './configCacheListener.js';
 import { logger }                            from '../logger.js';
 
 /**
@@ -50,6 +51,7 @@ export function registerAllListeners() {
   registerContentGap();      // #17 — content gap detection (Phase 38)
   registerQuality();         // #18 — session quality scoring (Phase 40)
   registerIntelligence();    // #19 — admin intelligence feed (Phase 53)
+  registerConfigCache();     // #20 — config cache + DWS invalidation (Phase 62)
 
-  logger.info('listeners', '19 EventBus listeners registered (analytics, cache, session, metrics, command, log, circuit, sessionStats, analyticsDigest, routing, context, suggestions, eviction, feedback, correlation, auditTrail, contentGap, quality, intelligence)');
+  logger.info('listeners', '20 EventBus listeners registered (analytics, cache, session, metrics, command, log, circuit, sessionStats, analyticsDigest, routing, context, suggestions, eviction, feedback, correlation, auditTrail, contentGap, quality, intelligence, configCache)');
 }

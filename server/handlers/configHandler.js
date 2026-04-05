@@ -2,7 +2,6 @@ import config from '../../config.js';
 import { getAccessMode } from '../middleware/auth.js';
 import { commandRegistry } from '../services/commandRegistry.js';
 import { featureFlags } from '../services/featureFlags.js';
-import { eventBus } from '../services/eventBus.js';
 import { dynamicWelcomeSuggestions } from '../services/dynamicWelcomeSuggestions.js';
 
 const HEADERS = {
@@ -10,20 +9,13 @@ const HEADERS = {
   'Cache-Control': 'public, max-age=300',
 };
 
-// ── Build payload (lazy — computed on first request, invalidated on feature toggle) ──
+// ── Build payload (lazy — computed on first request, invalidated via configCacheListener) ──
 let cachedPayload = null;
 
-// Phase 45: Invalidate config cache when feature toggled
-eventBus.on('feature:toggled', () => {
+/** Invalidates the cached config payload. Called by configCacheListener (Phase 62). */
+export function invalidateConfigCache() {
   cachedPayload = null;
-  dynamicWelcomeSuggestions.invalidate();
-});
-
-// Phase 59: Invalidate config cache + dynamic suggestions when library content changes
-eventBus.on('library:changed', () => {
-  cachedPayload = null;
-  dynamicWelcomeSuggestions.invalidate();
-});
+}
 
 // Note: CONTEXT, FOLLOWUP, ADMIN, SYSTEM_PROMPT — backend-only, not exposed to client
 function buildPayload() {

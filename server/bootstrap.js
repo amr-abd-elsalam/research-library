@@ -28,6 +28,8 @@ import { gapPersister } from './services/gapPersister.js';
 import { contentGapDetector } from './services/contentGapDetector.js';
 import { featureFlags } from './services/featureFlags.js';
 import { adminIntelligence } from './services/adminIntelligence.js';
+import { setConfigCacheInvalidator } from './services/listeners/configCacheListener.js';
+import { invalidateConfigCache } from './handlers/configHandler.js';
 
 // ── Timeout helper (for bootstrap-specific timeouts) ──────────
 function raceTimeout(promise, ms) {
@@ -112,6 +114,9 @@ class BootstrapManager {
 
     // ── Register EventBus listeners (Phase 13) ───────────────
     registerAllListeners();
+
+    // ── Wire config cache invalidator (Phase 62) ─────────────
+    setConfigCacheInvalidator(invalidateConfigCache);
 
     // ── Wire eviction callback (Phase 30) ────────────────────
     conversationContext.setEvictionCallback((sessionId) => {

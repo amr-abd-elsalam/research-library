@@ -7,7 +7,7 @@
 
 import { adminIntelligence } from '../services/adminIntelligence.js';
 
-export async function handleAdminIntelligence(_req, res) {
+export async function handleAdminIntelligence(req, res) {
   try {
     if (!adminIntelligence.enabled) {
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -21,12 +21,14 @@ export async function handleAdminIntelligence(_req, res) {
       return;
     }
 
+    const urlObj = new URL(req.url, 'http://localhost');
+    const libraryId = urlObj.searchParams.get('library_id') || undefined;
     const counts = adminIntelligence.counts();
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
       enabled: true,
-      insights: adminIntelligence.getInsights(),
+      insights: adminIntelligence.getInsights(10, libraryId),
       analysisCount: counts.analysisCount,
       lastAnalyzedAt: counts.lastAnalyzedAt,
       rollingStats: adminIntelligence.getRollingStats(),

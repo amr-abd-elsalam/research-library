@@ -79,14 +79,14 @@ class AdminIntelligenceEngine {
    * optionally executes auto-remediation, and queues notifications.
    * All data sources are in-memory — no async I/O needed.
    */
-  analyze() {
+  analyze(libraryId = null) {
     if (!this.enabled) return;
 
     const newInsights = [];
 
     // ── 1. Health Score ──────────────────────────────────────
     try {
-      const health = libraryHealthScorer.enabled ? libraryHealthScorer.compute() : null;
+      const health = libraryHealthScorer.enabled ? libraryHealthScorer.compute(libraryId) : null;
       if (health) {
         if (health.level === 'critical') {
           newInsights.push(this.#makeInsight({
@@ -96,6 +96,7 @@ class AdminIntelligenceEngine {
             message: `مؤشر الصحة ${health.score}/100 — حالة حرجة. راجع نقاط العمل في لوحة التحكم.`,
             insightKey: 'health_critical',
             autoActionable: false,
+            libraryId,
           }));
         } else if (health.level === 'warning') {
           newInsights.push(this.#makeInsight({
@@ -105,6 +106,7 @@ class AdminIntelligenceEngine {
             message: `مؤشر الصحة ${health.score}/100 — يحتاج تحسين.`,
             insightKey: 'health_warning',
             autoActionable: false,
+            libraryId,
           }));
         }
       }
@@ -112,7 +114,7 @@ class AdminIntelligenceEngine {
 
     // ── 2. Feedback Analysis ─────────────────────────────────
     try {
-      const fbCounts = feedbackCollector.counts();
+      const fbCounts = feedbackCollector.counts(libraryId);
       const totalFb = fbCounts.totalPositive + fbCounts.totalNegative;
       if (totalFb > 5) {
         const negativeRate = fbCounts.totalNegative / totalFb;
@@ -124,6 +126,7 @@ class AdminIntelligenceEngine {
             message: `${Math.round(negativeRate * 100)}% من التقييمات سلبية (${fbCounts.totalNegative} من ${totalFb}). راجع الإجابات وحسّن المحتوى.`,
             insightKey: 'feedback_negative_high',
             autoActionable: false,
+            libraryId,
           }));
         }
       }
@@ -148,6 +151,7 @@ class AdminIntelligenceEngine {
             insightKey: 'gap_rate_high',
             autoActionable: true,
             autoActionName: 'refresh-library',
+            libraryId,
           }));
         }
       }
@@ -166,13 +170,14 @@ class AdminIntelligenceEngine {
           insightKey: 'cache_hit_low',
           autoActionable: true,
           autoActionName: 'clear-cache',
+          libraryId,
         }));
       }
 
       // ── 5. Quality Average ───────────────────────────────────
       try {
         if (sessionQualityScorer.enabled) {
-          const allScores = sessionQualityScorer.getAllScores(200);
+          const allScores = sessionQualityScorer.getAllScores(200, libraryId);
           if (allScores.length >= 3) {
             const sum = allScores.reduce((acc, s) => acc + s.score, 0);
             const avg = sum / allScores.length;
@@ -184,6 +189,7 @@ class AdminIntelligenceEngine {
                 message: `متوسط جودة الجلسات ${Math.round(avg * 100)}% — راجع محتوى المكتبة.`,
                 insightKey: 'quality_avg_low',
                 autoActionable: false,
+                libraryId,
               }));
             }
           }
@@ -199,6 +205,7 @@ class AdminIntelligenceEngine {
           message: 'لم تُسجّل أي طلبات بعد — أرسل بعض الأسئلة للحصول على تحليلات.',
           insightKey: 'no_requests',
           autoActionable: false,
+          libraryId,
         }));
       }
 
@@ -215,6 +222,7 @@ class AdminIntelligenceEngine {
         insightKey: 'library_changed',
         autoActionable: true,
         autoActionName: 'clear-cache',
+        libraryId,
       }));
     }
 
@@ -247,7 +255,17 @@ class AdminIntelligenceEngine {
     });
 
     // ── Update insights array (cap at maxInsights) ──────────
-    this.#insights = filteredInsights.slice(0, this.#maxInsights);
+    if (libraryId) {
+      // Per-library: append to existing insights (global + previous libraries)
+      this.#insights = this.#insights.concat(filteredInsights);
+      // Re-sort mixed array by severity
+      this.#insights.sort((a, b) => (SEVERITY_ORDER[a.severity] ?? 99) - (SEVERITY_ORDER[b.severity] ?? 99));
+      // Cap at max
+      this.#insights = this.#insights.slice(0, this.#maxInsights);
+    } else {
+      // Global: replace all insights (fresh start for this cycle)
+      this.#insights = filteredInsights.slice(0, this.#maxInsights);
+    }
 
     // ── Auto-remediation ────────────────────────────────────
     if (this.#autoRemediation) {
@@ -310,10 +328,14 @@ class AdminIntelligenceEngine {
   /**
    * Returns current insights sorted by severity (critical first).
    * @param {number} [limit=10]
+   * @param {string|null|undefined} [libraryId=undefined] — filter by libraryId. undefined/null = all insights.
    * @returns {Array<object>}
    */
-  getInsights(limit = 10) {
+  getInsights(limit = 10, libraryId = undefined) {
     if (!this.enabled) return [];
+    if (libraryId !== undefined && libraryId !== null) {
+      return this.#insights.filter(i => i.libraryId === libraryId).slice(0, limit);
+    }
     return this.#insights.slice(0, limit);
   }
 
@@ -341,6 +363,21 @@ class AdminIntelligenceEngine {
   }
 
   /**
+   * Runs per-library analysis for all configured libraries.
+   * Only active when MULTI_LIBRARY is enabled with at least one library.
+   * Called after the global analyze() in each periodic cycle.
+   */
+  analyzeAllLibraries() {
+    if (!this.enabled) return;
+    if (!config.MULTI_LIBRARY?.enabled) return;
+    const libraries = config.MULTI_LIBRARY.libraries || [];
+    if (libraries.length === 0) return;
+    for (const lib of libraries) {
+      if (lib.id) this.analyze(lib.id);
+    }
+  }
+
+  /**
    * Starts periodic analysis timer.
    */
   startAnalysis() {
@@ -348,9 +385,11 @@ class AdminIntelligenceEngine {
 
     // Run first analysis immediately
     this.analyze();
+    this.analyzeAllLibraries();
 
     this.#timer = setInterval(() => {
       this.analyze();
+      this.analyzeAllLibraries();
     }, this.#intervalMs);
 
     if (this.#timer.unref) this.#timer.unref();
@@ -428,7 +467,7 @@ class AdminIntelligenceEngine {
   // Private Helpers
   // ═══════════════════════════════════════════════════════════
 
-  #makeInsight({ type, severity, title, message, suggestedAction, insightKey, autoActionable, autoActionName }) {
+  #makeInsight({ type, severity, title, message, suggestedAction, insightKey, autoActionable, autoActionName, libraryId }) {
     return {
       id: `ins_${Date.now()}_${++_insightSeq}`,
       type,
@@ -439,7 +478,8 @@ class AdminIntelligenceEngine {
       autoActionable: autoActionable || false,
       autoActionName: autoActionName || null,
       createdAt: Date.now(),
-      insightKey,
+      insightKey: libraryId ? `${insightKey}:${libraryId}` : insightKey,
+      libraryId: libraryId || null,
     };
   }
 

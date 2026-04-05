@@ -581,4 +581,15 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     const data = await res.json();
     assert.ok(typeof data === 'object', 'should return JSON object');
   });
+
+  // T-IH49: GET /api/admin/intelligence?library_id=nonexistent — returns 200 with insights array
+  it('T-IH49: GET /api/admin/intelligence?library_id=nonexistent — returns 200', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/intelligence?library_id=nonexistent`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('insights' in data, 'should contain insights field');
+    assert.ok(Array.isArray(data.insights), 'insights should be an array');
+  });
 });

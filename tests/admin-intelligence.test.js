@@ -157,4 +157,60 @@ describe('AdminIntelligenceEngine (Phase 53)', () => {
     assert.strictEqual(adminIntelligence.counts().analysisCount, countAfterStop);
   });
 
+  // T-AI15: analyze('lib-test') generates insights with libraryId field
+  it('T-AI15: analyze(libraryId) generates insights with libraryId field set', () => {
+    featureFlags.setOverride('ADMIN_INTELLIGENCE', true);
+    adminIntelligence.analyze('lib-test');
+    const insights = adminIntelligence.getInsights(100);
+    assert.ok(insights.length >= 1, 'should generate at least 1 per-library insight');
+    for (const insight of insights) {
+      assert.strictEqual(insight.libraryId, 'lib-test', 'every insight should have libraryId: "lib-test"');
+      assert.ok(insight.insightKey.endsWith(':lib-test'), `insightKey "${insight.insightKey}" should be suffixed with :lib-test`);
+    }
+  });
+
+  // T-AI16: analyze() without parameter generates insights with libraryId: null
+  it('T-AI16: analyze() without parameter generates insights with libraryId: null — backward compatible', () => {
+    featureFlags.setOverride('ADMIN_INTELLIGENCE', true);
+    adminIntelligence.analyze();
+    const insights = adminIntelligence.getInsights(100);
+    assert.ok(insights.length >= 1, 'should generate at least 1 global insight');
+    for (const insight of insights) {
+      assert.strictEqual(insight.libraryId, null, 'global insight should have libraryId: null');
+      assert.ok(!insight.insightKey.includes(':'), `global insightKey "${insight.insightKey}" should not have library suffix`);
+    }
+  });
+
+  // T-AI17: getInsights(10, 'lib-test') returns only matching insights
+  it('T-AI17: getInsights(limit, libraryId) filters by libraryId', () => {
+    featureFlags.setOverride('ADMIN_INTELLIGENCE', true);
+    // Generate global insights
+    adminIntelligence.analyze();
+    // Generate per-library insights
+    adminIntelligence.analyze('lib-test');
+    // All insights (mixed)
+    const all = adminIntelligence.getInsights(100);
+    assert.ok(all.length >= 2, 'should have global + per-library insights');
+    // Filtered — only per-library
+    const filtered = adminIntelligence.getInsights(100, 'lib-test');
+    assert.ok(filtered.length >= 1, 'should have at least 1 filtered insight');
+    for (const insight of filtered) {
+      assert.strictEqual(insight.libraryId, 'lib-test');
+    }
+    // Filtered should be subset of all
+    assert.ok(filtered.length <= all.length, 'filtered should be <= all');
+  });
+
+  // T-AI18: getInsights(10) without libraryId returns all insights (global + per-library)
+  it('T-AI18: getInsights(limit) without libraryId returns all insights — backward compatible', () => {
+    featureFlags.setOverride('ADMIN_INTELLIGENCE', true);
+    adminIntelligence.analyze();
+    adminIntelligence.analyze('lib-a');
+    const all = adminIntelligence.getInsights(100);
+    const hasGlobal = all.some(i => i.libraryId === null);
+    const hasPerLib = all.some(i => i.libraryId === 'lib-a');
+    assert.ok(hasGlobal, 'should contain global insights (libraryId: null)');
+    assert.ok(hasPerLib, 'should contain per-library insights (libraryId: "lib-a")');
+  });
+
 });
