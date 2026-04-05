@@ -216,15 +216,41 @@ export async function validateBody(req, res) {
     ? parsed.session_id
     : null;
 
-  // ── 8. Attach to request ───────────────────────────────────
+  // ── 8. Validate library_id (optional — Phase 60) ───────────
+  let library_id = null;
+  if (parsed.library_id !== undefined && parsed.library_id !== null) {
+    if (typeof parsed.library_id !== 'string' || parsed.library_id.length === 0 || parsed.library_id.length > 50) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        error: 'library_id must be a non-empty string (max 50 chars)',
+        code:  'VALIDATION_ERROR',
+      }));
+      return;
+    }
+    if (config.MULTI_LIBRARY?.enabled === true) {
+      const validLib = (config.MULTI_LIBRARY.libraries || []).some(l => l.id === parsed.library_id);
+      if (!validLib) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          error: 'unknown library_id',
+          code:  'VALIDATION_ERROR',
+        }));
+        return;
+      }
+    }
+    library_id = parsed.library_id;
+  }
+
+  // ── 9. Attach to request ───────────────────────────────────
   req._validatedBody = {
     message:      message.trim(),
     topic_filter: topic_filter,
     history:      history,
     session_id:   session_id,
+    library_id:   library_id,
   };
 
-  // ── 9. Response mode validation (Phase 25) ─────────────────
+  // ── 10. Response mode validation (Phase 25) ────────────────
   const responseMode = parsed.response_mode ?? null;
   if (responseMode !== null) {
     const allowedModes = config.RESPONSE?.allowedModes ?? ['stream'];
@@ -239,7 +265,7 @@ export async function validateBody(req, res) {
     }
   }
 
-  // ── 10. Tier-based mode restriction (Phase 26) ─────────────
+  // ── 11. Tier-based mode restriction (Phase 26) ─────────────
   if (config.TIERS?.enabled === true && responseMode !== null) {
     const { buildPermissionContext } = await import('../services/permissionContext.js');
     const permCtx = buildPermissionContext(req);

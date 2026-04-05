@@ -30,7 +30,8 @@ function withTimeout(promise, ms, ErrorClass) {
 }
 
 // ── search ─────────────────────────────────────────────────────
-async function _search(queryVector, topK = 5, topicFilter = null) {
+async function _search(queryVector, topK = 5, topicFilter = null, collection = null) {
+  const targetCollection = collection || QDRANT_COLLECTION;
   const params = {
     vector: queryVector,
     limit:  topK,
@@ -53,7 +54,7 @@ async function _search(queryVector, topK = 5, topicFilter = null) {
 
   try {
     const result = await withTimeout(
-      client.search(QDRANT_COLLECTION, params),
+      client.search(targetCollection, params),
       8000,
       QdrantTimeoutError,
     );
@@ -65,15 +66,16 @@ async function _search(queryVector, topK = 5, topicFilter = null) {
   }
 }
 
-export async function search(queryVector, topK = 5, topicFilter = null) {
-  return qdrantCB.execute(() => _search(queryVector, topK, topicFilter));
+export async function search(queryVector, topK = 5, topicFilter = null, collection = null) {
+  return qdrantCB.execute(() => _search(queryVector, topK, topicFilter, collection));
 }
 
 // ── scroll ─────────────────────────────────────────────────────
-export async function scroll(withPayload = true, limit = 10000) {
+export async function scroll(withPayload = true, limit = 10000, collection = null) {
+  const targetCollection = collection || QDRANT_COLLECTION;
   try {
     const result = await withTimeout(
-      client.scroll(QDRANT_COLLECTION, {
+      client.scroll(targetCollection, {
         limit,
         with_payload: withPayload,
         with_vectors: false,
@@ -90,10 +92,11 @@ export async function scroll(withPayload = true, limit = 10000) {
 }
 
 // ── getCollectionInfo ──────────────────────────────────────────
-async function _getCollectionInfo() {
+async function _getCollectionInfo(collection = null) {
+  const targetCollection = collection || QDRANT_COLLECTION;
   try {
     const result = await withTimeout(
-      client.getCollection(QDRANT_COLLECTION),
+      client.getCollection(targetCollection),
       3000,
       QdrantTimeoutError,
     );
@@ -105,14 +108,15 @@ async function _getCollectionInfo() {
   }
 }
 
-export async function getCollectionInfo() {
-  return qdrantCB.execute(() => _getCollectionInfo());
+export async function getCollectionInfo(collection = null) {
+  return qdrantCB.execute(() => _getCollectionInfo(collection));
 }
 
 // ── scrollPoints (Phase 36) ────────────────────────────────────
 // Paginated scroll through Qdrant collection points.
 // Returns { points: Array, next_page_offset: string|null }.
-export async function scrollPoints({ offset = null, limit = 100, withPayload = true } = {}) {
+export async function scrollPoints({ offset = null, limit = 100, withPayload = true, collection = null } = {}) {
+  const targetCollection = collection || QDRANT_COLLECTION;
   try {
     const params = {
       limit,
@@ -123,7 +127,7 @@ export async function scrollPoints({ offset = null, limit = 100, withPayload = t
       params.offset = offset;
     }
     const result = await withTimeout(
-      client.scroll(QDRANT_COLLECTION, params),
+      client.scroll(targetCollection, params),
       10000,
       QdrantTimeoutError,
     );

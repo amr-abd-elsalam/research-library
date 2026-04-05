@@ -66,10 +66,32 @@ class LibraryIndex {
   async refresh(libraryId = null) {
     if (!this.#enabled) return;
 
+    // Phase 60: when no libraryId and MULTI_LIBRARY enabled → loop over all configured libraries
+    if (!libraryId && config.MULTI_LIBRARY?.enabled === true) {
+      const libs = config.MULTI_LIBRARY.libraries || [];
+      if (libs.length > 0) {
+        for (const lib of libs) {
+          try {
+            await this.refresh(lib.id);
+          } catch (err) {
+            logger.warn('libraryIndex', `multi-library refresh failed for ${lib.id}`, { error: err.message });
+          }
+        }
+        return;
+      }
+    }
+
+    // Phase 60: resolve collection name for multi-library
+    let qdrantCollection = null;
+    if (libraryId && config.MULTI_LIBRARY?.enabled === true) {
+      const lib = (config.MULTI_LIBRARY.libraries || []).find(l => l.id === libraryId);
+      qdrantCollection = lib?.qdrantCollection || null;
+    }
+
     // Get total points from collection info
     let totalPoints = 0;
     try {
-      const info = await getCollectionInfo();
+      const info = await getCollectionInfo(qdrantCollection);
       totalPoints = info?.points_count ?? info?.vectors_count ?? 0;
     } catch (err) {
       logger.warn('libraryIndex', 'failed to get collection info', { error: err.message });
@@ -85,7 +107,7 @@ class LibraryIndex {
     try {
       while (scanned < SCAN_LIMIT) {
         const batchLimit = Math.min(100, SCAN_LIMIT - scanned);
-        const result = await scrollPoints({ offset, limit: batchLimit, withPayload: true });
+        const result = await scrollPoints({ offset, limit: batchLimit, withPayload: true, collection: qdrantCollection });
         const points = result.points;
 
         if (!points || points.length === 0) break;

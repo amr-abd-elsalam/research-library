@@ -113,4 +113,42 @@ describe('LibraryIndex', () => {
     assert.strictEqual(result.length, 0, 'should be empty when MULTI_LIBRARY disabled');
   });
 
+  // ── Phase 60: Multi-library activation tests ────────────────
+
+  // T-LI14: refresh() when disabled → early return (no qdrant calls)
+  it('T-LI14: refresh when disabled returns without error', async () => {
+    // LIBRARY_INDEX.enabled is false by default → refresh should return immediately
+    await assert.doesNotReject(async () => {
+      await libraryIndex.refresh();
+    });
+    // No index should be built
+    assert.strictEqual(libraryIndex.getIndex(), null);
+  });
+
+  // T-LI15: refresh(libraryId) when disabled → early return
+  it('T-LI15: refresh with libraryId when disabled returns without error', async () => {
+    await assert.doesNotReject(async () => {
+      await libraryIndex.refresh('test-lib');
+    });
+    assert.strictEqual(libraryIndex.getIndex('test-lib'), null);
+  });
+
+  // T-LI16: getIndex with various libraryId when MULTI_LIBRARY disabled → always null
+  it('T-LI16: getIndex with various libraryId values when disabled → null', () => {
+    assert.strictEqual(libraryIndex.getIndex('lib-a'), null);
+    assert.strictEqual(libraryIndex.getIndex('lib-b'), null);
+    assert.strictEqual(libraryIndex.getIndex(''), null);
+  });
+
+  // T-LI17: getAllIndices returns array (type safety check)
+  it('T-LI17: getAllIndices always returns array with correct shape', () => {
+    const result = libraryIndex.getAllIndices();
+    assert.ok(Array.isArray(result), 'should be array');
+    // Each entry should be [string, object] pair
+    for (const entry of result) {
+      assert.ok(Array.isArray(entry), 'each entry should be an array');
+      assert.strictEqual(entry.length, 2, 'each entry should be [id, index]');
+    }
+  });
+
 });

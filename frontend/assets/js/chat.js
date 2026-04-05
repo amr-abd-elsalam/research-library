@@ -381,6 +381,8 @@ const ChatModule = (() => {
       if (modeSelect && modeSelect.style.display !== 'none' && modeSelect.value) {
         chatBody.response_mode = modeSelect.value;
       }
+      var selectedLib = _getSelectedLibrary();
+      if (selectedLib) chatBody.library_id = selectedLib;
 
       const res = await fetch(CLIENT_CONFIG.API.chat, {
         method:  'POST',
@@ -1039,9 +1041,58 @@ const ChatModule = (() => {
     btnDown.addEventListener('click', function() { handleFeedback('negative'); });
   }
 
+  /* ══════════════════════════════════════════════════════════
+     LIBRARY SELECTOR (Phase 60)
+  ══════════════════════════════════════════════════════════ */
+
+  function _getSelectedLibrary() {
+    var wrapper = document.getElementById('library-selector-wrapper');
+    var selector = document.getElementById('library-selector');
+    if (!wrapper || !selector || wrapper.style.display === 'none') return undefined;
+    return selector.value || undefined;
+  }
+
+  function _initLibrarySelector() {
+    var wrapper = document.getElementById('library-selector-wrapper');
+    var selector = document.getElementById('library-selector');
+    if (!wrapper || !selector) return;
+
+    var libraries = CLIENT_CONFIG.libraries;
+    if (!libraries || !libraries.enabled || !libraries.libraries || libraries.libraries.length <= 1) {
+      wrapper.style.display = 'none';
+      return;
+    }
+
+    // Populate options
+    selector.innerHTML = '';
+    var defaultLib = libraries.defaultLibrary || libraries.libraries[0]?.id;
+    for (var i = 0; i < libraries.libraries.length; i++) {
+      var lib = libraries.libraries[i];
+      var option = document.createElement('option');
+      option.value = lib.id;
+      option.textContent = lib.name || lib.id;
+      if (lib.id === defaultLib) option.selected = true;
+      selector.appendChild(option);
+    }
+
+    // Restore from sessionStorage
+    var saved = sessionStorage.getItem('ai8v_selected_library');
+    if (saved && libraries.libraries.some(function(l) { return l.id === saved; })) {
+      selector.value = saved;
+    }
+
+    // Save selection
+    selector.addEventListener('change', function() {
+      sessionStorage.setItem('ai8v_selected_library', selector.value);
+    });
+
+    wrapper.style.display = '';
+  }
+
   // Called from bootstrap after permissions are loaded
   function onPermissionsReady() {
     _initResponseModeSelector();
+    _initLibrarySelector();
   }
 
   return Object.freeze({

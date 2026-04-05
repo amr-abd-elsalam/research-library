@@ -123,6 +123,7 @@ async function loadConfig() {
       ADMIN_ACTIONS:   Object.freeze(data.ADMIN_ACTIONS   || { enabled: true }),
       FEATURE_FLAGS:   Object.freeze(data.FEATURE_FLAGS   || { persistOverrides: false }),
       dynamicSuggestions: Array.isArray(data.dynamicSuggestions) ? Object.freeze(data.dynamicSuggestions) : null,
+      libraries: data.libraries ? Object.freeze(data.libraries) : Object.freeze({ enabled: false, libraries: [] }),
     });
 
     // ── Phase 59: Store dynamic suggestions from server ───────────

@@ -24,6 +24,7 @@ import { handleAdminAction } from './handlers/adminActionsHandler.js';
 import { handleAdminIntelligence } from './handlers/adminIntelligenceHandler.js';
 import { handleSuggestionAnalytics } from './handlers/suggestionsHandler.js';
 import { handleAdminNotifications } from './handlers/adminNotificationsHandler.js';
+import { handleLibraries } from './handlers/librariesHandler.js';
 import { bootstrap } from './bootstrap.js';
 import { eventBus } from './services/eventBus.js';
 
@@ -68,6 +69,12 @@ export async function router(req, res) {
     const statusCode = payload.ready ? 200 : 503;
     res.writeHead(statusCode, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(payload));
+    return;
+  }
+
+  // GET /api/libraries (Phase 60 — public, no auth, no rate limit)
+  if (method === 'GET' && matchRoute(url, '/api/libraries')) {
+    await handleLibraries(req, res);
     return;
   }
 

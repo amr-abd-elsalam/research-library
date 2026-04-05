@@ -96,8 +96,21 @@ class DynamicWelcomeSuggestions {
     // ── Source 2: Library topic-based questions ────────────────
     if (suggestions.length < maxSuggestions) {
       try {
-        const topicNames = libraryIndex.getTopicNames();
-        for (const topic of topicNames) {
+        // Phase 60: aggregate topics from all libraries when MULTI_LIBRARY enabled
+        const allTopics = new Set();
+        const indices = libraryIndex.getAllIndices();
+        if (indices.length > 0) {
+          for (const [, idx] of indices) {
+            if (idx && idx.topics) {
+              for (const topic of Object.keys(idx.topics)) allTopics.add(topic);
+            }
+          }
+        }
+        // Also include default index topics
+        const defaultTopicNames = libraryIndex.getTopicNames();
+        for (const t of defaultTopicNames) allTopics.add(t);
+
+        for (const topic of allTopics) {
           const q = `ما أهم المواضيع في قسم ${topic}؟`;
           if (!seen.has(q)) {
             suggestions.push(q);
@@ -111,21 +124,36 @@ class DynamicWelcomeSuggestions {
     // ── Source 3: File name-based suggestions ─────────────────
     if (suggestions.length < maxSuggestions) {
       try {
-        const index = libraryIndex.getIndex();
-        if (index && Array.isArray(index.files) && index.files.length > 0) {
-          for (const file of index.files) {
-            const name = typeof file === 'string'
-              ? file.replace(/\.(pdf|docx|md|txt)$/i, '')
-              : '';
-            if (name && name.length > 1) {
-              const q = `ملخص عن ${name}`;
-              if (!seen.has(q)) {
-                suggestions.push(q);
-                seen.add(q);
-              }
+        // Phase 60: aggregate files from all libraries when MULTI_LIBRARY enabled
+        const allFiles = [];
+        const indices = libraryIndex.getAllIndices();
+        if (indices.length > 0) {
+          for (const [, idx] of indices) {
+            if (idx && Array.isArray(idx.files)) {
+              for (const f of idx.files) allFiles.push(f);
             }
-            if (suggestions.length >= maxSuggestions) break;
           }
+        }
+        // Also include default index files
+        const defaultIndex = libraryIndex.getIndex();
+        if (defaultIndex && Array.isArray(defaultIndex.files)) {
+          for (const f of defaultIndex.files) {
+            if (!allFiles.includes(f)) allFiles.push(f);
+          }
+        }
+
+        for (const file of allFiles) {
+          const name = typeof file === 'string'
+            ? file.replace(/\.(pdf|docx|md|txt)$/i, '')
+            : '';
+          if (name && name.length > 1) {
+            const q = `ملخص عن ${name}`;
+            if (!seen.has(q)) {
+              suggestions.push(q);
+              seen.add(q);
+            }
+          }
+          if (suggestions.length >= maxSuggestions) break;
         }
       } catch { /* ignore — library index may not be ready */ }
     }

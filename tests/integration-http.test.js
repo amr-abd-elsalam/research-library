@@ -478,3 +478,65 @@ describe('Integration HTTP — Whoami & Misc', () => {
     assert.ok(Array.isArray(data.topClicked), 'topClicked should be an array');
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// Block 9: Libraries Endpoint (Phase 60)
+// ═══════════════════════════════════════════════════════════════
+describe('Integration HTTP — Libraries (Phase 60)', () => {
+  let ts;
+
+  before(async () => { ts = await createTestServer(); });
+  after(async () => { await ts.close(); });
+
+  // T-IH41: GET /api/libraries returns { enabled: false, libraries: [] } when MULTI_LIBRARY disabled
+  it('T-IH41: GET /api/libraries — returns disabled response when MULTI_LIBRARY off', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/libraries`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.enabled, false, 'enabled should be false');
+    assert.ok(Array.isArray(data.libraries), 'libraries should be an array');
+    assert.strictEqual(data.libraries.length, 0, 'libraries should be empty');
+  });
+
+  // T-IH42: GET /api/libraries returns proper JSON content-type
+  it('T-IH42: GET /api/libraries — Content-Type is application/json', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/libraries`);
+    assert.strictEqual(res.status, 200);
+    const ct = res.headers.get('content-type');
+    assert.ok(ct && ct.includes('application/json'), `Content-Type should include application/json, got ${ct}`);
+  });
+
+  // T-IH43: POST /api/chat with library_id field (string) — accepted (no rejection)
+  it('T-IH43: POST /api/chat with library_id string — passes validation', async () => {
+    // This will reach chat handler which will fail (no Qdrant) but validation should pass
+    const res = await postJSON(`${ts.baseUrl}/api/chat`, {
+      message: 'test question',
+      library_id: 'some-library',
+    });
+    // Should NOT be 400 (validation error) — should be 200 (SSE stream) or 500 (qdrant fail)
+    // When MULTI_LIBRARY is disabled, library_id is accepted but ignored
+    assert.notStrictEqual(res.status, 400, 'should not reject library_id string field');
+    assert.notStrictEqual(res.status, 415, 'should not be content-type error');
+  });
+
+  // T-IH44: POST /api/chat with invalid library_id (number) — returns 400
+  it('T-IH44: POST /api/chat with library_id as number — returns 400', async () => {
+    const res = await postJSON(`${ts.baseUrl}/api/chat`, {
+      message: 'test question',
+      library_id: 123,
+    });
+    assert.strictEqual(res.status, 400, 'should reject non-string library_id');
+    const data = await res.json();
+    assert.strictEqual(data.code, 'VALIDATION_ERROR');
+  });
+
+  // T-IH45: GET /api/config — response contains libraries field (Phase 60)
+  it('T-IH45: GET /api/config — response contains libraries field', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('libraries' in data, 'response should contain libraries field');
+    assert.ok('enabled' in data.libraries, 'libraries should have enabled field');
+    assert.ok(Array.isArray(data.libraries.libraries), 'libraries.libraries should be an array');
+  });
+});

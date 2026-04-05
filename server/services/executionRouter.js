@@ -78,7 +78,7 @@ class ExecutionRouter {
     }
 
     // ── 3. Cache lookup ─────────────────────────────────────
-    const cacheKey = `chat:${topicFilter ?? 'all'}:${message.trim().toLowerCase()}`;
+    const cacheKey = `chat:${context.libraryId || 'default'}:${topicFilter ?? 'all'}:${message.trim().toLowerCase()}`;
     const cached   = cache.get(cacheKey);
 
     if (cached) {

@@ -130,7 +130,7 @@ export async function handleChat(req, res) {
 }
 
 async function _handleChat(req, res) {
-  const { message, topic_filter: rawFilter, history, session_id } = req._validatedBody;
+  const { message, topic_filter: rawFilter, history, session_id, library_id } = req._validatedBody;
 
   // ── 1. Topic validation (stays — config-dependent, cheap) ──
   const topic_filter = validateTopicFilter(rawFilter);
@@ -149,6 +149,7 @@ async function _handleChat(req, res) {
     history,
     sessionId: session_id,
     permissionContext,
+    libraryId: library_id || null,
   });
 
   // ── 4. Execute based on route action ──────────────────────
@@ -233,6 +234,7 @@ async function _handleChat(req, res) {
       const ctx   = new PipelineContext({
         message, topicFilter: topic_filter, history, sessionId: session_id, req, res,
         responseMode,
+        libraryId: library_id || null,
       });
       const trace = new EventTrace();
 

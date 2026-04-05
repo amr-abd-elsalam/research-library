@@ -117,6 +117,19 @@ function buildPayload() {
     // Phase 59: dynamic welcome suggestions from library content + click analytics
     dynamicSuggestions: dynamicSuggestionsValue,
 
+    // Phase 60: multi-library info (does NOT expose qdrantCollection — security)
+    libraries: config.MULTI_LIBRARY?.enabled === true
+      ? {
+          enabled: true,
+          defaultLibrary: config.MULTI_LIBRARY.defaultLibrary || ((config.MULTI_LIBRARY.libraries || [])[0]?.id ?? null),
+          libraries: (config.MULTI_LIBRARY.libraries || []).map(lib => ({
+            id:          lib.id,
+            name:        lib.name || lib.id,
+            domainLabel: lib.domainLabel || null,
+          })),
+        }
+      : { enabled: false, libraries: [] },
+
     // TIERS: moved to GET /api/whoami (Phase 27 — per-request, not static config)
   });
   return cachedPayload;

@@ -58,4 +58,12 @@ describe('matchRoute()', () => {
     assert.strictEqual(matchRoute('/api/config', '/api/config'), true);
   });
 
+  // T-R10: /api/libraries exact match and non-match (Phase 60)
+  it('T-R10: /api/libraries matches exactly, /api/library does not', () => {
+    assert.strictEqual(matchRoute('/api/libraries', '/api/libraries'), true);
+    assert.strictEqual(matchRoute('/api/library', '/api/libraries'), false);
+    assert.strictEqual(matchRoute('/api/libraries/', '/api/libraries'), true);
+    assert.strictEqual(matchRoute('/api/libraries?v=1', '/api/libraries'), true);
+  });
+
 });

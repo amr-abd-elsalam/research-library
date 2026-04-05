@@ -33,7 +33,7 @@ const SNIPPET_MAX_CHARS   = 150;
 // ═══════════════════════════════════════════════════════════════
 
 class PipelineContext {
-  constructor({ message, topicFilter, history, sessionId, req, res, responseMode }) {
+  constructor({ message, topicFilter, history, sessionId, req, res, responseMode, libraryId }) {
     // ── Input (set once in constructor — don't overwrite) ──
     this.message       = message;
     this.topicFilter   = topicFilter;
@@ -43,6 +43,7 @@ class PipelineContext {
     this.res           = res;
     this.startTime     = Date.now();
     this._responseMode = responseMode || 'stream';
+    this.libraryId     = libraryId || null;
 
     // ── Mutable state (set by stages progressively) ───────
     this.transcript       = null;
@@ -316,6 +317,14 @@ async function stageEmbed(ctx, _trace) {
   return ctx;
 }
 
+// ── Collection resolution helper (Phase 60) ────────────────────
+function resolveCollection(libraryId) {
+  if (!libraryId) return null;
+  if (!config.MULTI_LIBRARY?.enabled) return null;
+  const lib = (config.MULTI_LIBRARY.libraries || []).find(l => l.id === libraryId);
+  return lib?.qdrantCollection || null;
+}
+
 // ── Stage 5: Search ────────────────────────────────────────────
 async function stageSearch(ctx, _trace) {
   let topK = getTopK(ctx.queryRoute.type);
@@ -325,7 +334,8 @@ async function stageSearch(ctx, _trace) {
     topK = Math.max(3, topK + ctx._adaptiveConfig.topKAdjustment);
   }
 
-  ctx.hits   = await search(ctx.queryVector, topK, ctx.topicFilter);
+  const collection = resolveCollection(ctx.libraryId);
+  ctx.hits   = await search(ctx.queryVector, topK, ctx.topicFilter, collection);
 
   // Compute average score (same logic as previous chat.js)
   if (!ctx.hits.length) {
@@ -673,7 +683,7 @@ if (config.PIPELINE?.enableHooks !== false) {
       },
 
       // ── Cache entry (for cache listener) ───────────────────
-      _cacheKey: `chat:${_ctx.topicFilter ?? 'all'}:${_ctx.message.trim().toLowerCase()}`,
+      _cacheKey: `chat:${_ctx.libraryId || 'default'}:${_ctx.topicFilter ?? 'all'}:${_ctx.message.trim().toLowerCase()}`,
       _cacheEntry: (!_ctx.aborted && _ctx.fullText) ? {
         text: _ctx.fullText, sources: _ctx.sources, score: _ctx.avgScore,
       } : null,
