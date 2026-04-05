@@ -148,4 +148,35 @@ describe('EventBus', () => {
     assert.strictEqual(bus.size, 1, 'size should stay 1 after double unsubscribe');
   });
 
+  // T-EB13: removeAllListeners(event) — removes listeners for specific event only
+  it('T-EB13: removeAllListeners(event) removes specific event listeners only', () => {
+    const bus = new EventBus();
+    bus.on('alpha', () => {});
+    bus.on('alpha', () => {});
+    bus.on('beta', () => {});
+    assert.strictEqual(bus.size, 3);
+
+    bus.removeAllListeners('alpha');
+    assert.strictEqual(bus.size, 1, 'only beta listener should remain');
+
+    const counts = bus.listenerCounts();
+    assert.strictEqual(counts.alpha, undefined, 'alpha should have no listeners');
+    assert.strictEqual(counts.beta, 1, 'beta should still have 1 listener');
+  });
+
+  // T-EB14: removeAllListeners() without args — clears ALL listeners
+  it('T-EB14: removeAllListeners() without args clears all listeners', () => {
+    const bus = new EventBus();
+    bus.on('alpha', () => {});
+    bus.on('beta', () => {});
+    bus.on('gamma', () => {});
+    assert.strictEqual(bus.size, 3);
+
+    bus.removeAllListeners();
+    assert.strictEqual(bus.size, 0, 'all listeners should be removed');
+
+    const counts = bus.listenerCounts();
+    assert.deepStrictEqual(counts, {}, 'listenerCounts should be empty object');
+  });
+
 });

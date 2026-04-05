@@ -78,6 +78,20 @@ class EventBus {
     }
     return counts;
   }
+
+  /**
+   * Removes all listeners for a specific event, or all listeners entirely.
+   * Useful for test isolation when sharing singleton EventBus across test files.
+   * @param {string} [event] — if provided, removes listeners for this event only.
+   *                           If omitted, removes ALL listeners for ALL events.
+   */
+  removeAllListeners(event) {
+    if (event) {
+      this.#listeners.delete(event);
+    } else {
+      this.#listeners.clear();
+    }
+  }
 }
 
 // ── Singleton instance ─────────────────────────────────────────
