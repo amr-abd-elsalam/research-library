@@ -5,14 +5,20 @@
 // Uses the real router + middleware chain but WITHOUT full bootstrap.
 // Handlers that need external services (Qdrant, Gemini) will fail
 // with errors — that's expected. We're testing middleware behavior.
+//
+// IMPORTANT: Uses dynamic import for router to ensure
+// process.env.ADMIN_TOKEN is set BEFORE auth.js reads it
+// (auth.js reads env vars at module load time as top-level consts).
 // ═══════════════════════════════════════════════════════════════
 
-// ── Set env vars BEFORE any import (auth.js reads at module load) ──
+import http from 'node:http';
+
+// ── Set env vars BEFORE router import (auth.js reads at module load) ──
 process.env.ADMIN_TOKEN = 'test-admin-token-phase56';
 // ACCESS_MODE defaults to 'public' — no PIN/token needed for requireAccess
 
-import http from 'node:http';
-import { router } from '../../server/router.js';
+// ── Dynamic import to ensure env vars are set first ──
+const { router } = await import('../../server/router.js');
 
 /**
  * Creates a test HTTP server on a random port.

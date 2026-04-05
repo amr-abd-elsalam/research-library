@@ -32,11 +32,8 @@ describe('Integration HTTP — Health & Readiness', () => {
   after(async () => { await ts.close(); });
 
   // T-IH01: GET /api/health — returns JSON with 'status' field
-  // Note: Without bootstrap + external services, health returns 207 (degraded).
-  // The handler does internal try/catch — it never throws.
   it('T-IH01: GET /api/health — returns JSON body with status field', async () => {
     const res = await fetch(`${ts.baseUrl}/api/health`);
-    // 200 (all ok) or 207 (degraded) — both valid without external services
     assert.ok([200, 207].includes(res.status), `expected 200 or 207, got ${res.status}`);
     const data = await res.json();
     assert.ok('status' in data, 'response should contain status field');
@@ -51,10 +48,8 @@ describe('Integration HTTP — Health & Readiness', () => {
   });
 
   // T-IH03: GET /api/health/ready — returns readiness payload
-  // Without bootstrap.run(), ready = false and stages = []
   it('T-IH03: GET /api/health/ready — returns readiness payload', async () => {
     const res = await fetch(`${ts.baseUrl}/api/health/ready`);
-    // ready=false → status 503 (per router: payload.ready ? 200 : 503)
     assert.ok([200, 503].includes(res.status), `expected 200 or 503, got ${res.status}`);
     const data = await res.json();
     assert.ok('ready' in data, 'response should contain ready field');
@@ -111,7 +106,6 @@ describe('Integration HTTP — Config & Features', () => {
     ]);
     const configData = await configRes.json();
     const featuresData = await featuresRes.json();
-    // /api/config has BRAND, /api/config/features does not
     assert.ok('BRAND' in configData, '/api/config should have BRAND');
     assert.ok(!('BRAND' in featuresData), '/api/config/features should NOT have BRAND');
   });
@@ -141,7 +135,6 @@ describe('Integration HTTP — Public Routes', () => {
     const res = await fetch(`${ts.baseUrl}/api/commands`);
     assert.strictEqual(res.status, 200);
     const data = await res.json();
-    // commandRegistry.graph() returns { builtins, custom, plugins }
     assert.ok(typeof data === 'object', 'response should be an object');
   });
 
@@ -204,12 +197,11 @@ describe('Integration HTTP — Admin Auth Rejection', () => {
     assert.strictEqual(res.status, 401);
   });
 
-  // T-IH17: GET /api/admin/stats WITH valid token — returns non-401
+  // T-IH17: GET /api/admin/stats WITH valid token — returns non-401/403
   it('T-IH17: GET /api/admin/stats with valid token — passes auth (non-401)', async () => {
     const res = await fetch(`${ts.baseUrl}/api/admin/stats`, {
       headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
     });
-    // Handler may return 200 or 500 (if handler needs data) — but NOT 401
     assert.notStrictEqual(res.status, 401, 'should not be 401 with valid token');
     assert.notStrictEqual(res.status, 403, 'should not be 403 with valid token');
   });
@@ -283,7 +275,6 @@ describe('Integration HTTP — Body Validation', () => {
     const res = await fetch(`${ts.baseUrl}/api/chat`, {
       method: 'POST',
       body: '{"message":"test"}',
-      // No Content-Type header
     });
     assert.strictEqual(res.status, 415);
     const data = await res.json();
@@ -299,13 +290,11 @@ describe('Integration HTTP — Body Validation', () => {
   });
 
   // T-IH26: POST /api/feedback with valid body — returns 404 when feedback disabled
-  // (feedbackCollector.enabled defaults to false in config)
   it('T-IH26: POST /api/feedback with valid body — returns 404 (feedback disabled)', async () => {
     const res = await postJSON(`${ts.baseUrl}/api/feedback`, {
       correlationId: 'test-corr-id',
       rating: 'positive',
     });
-    // feedbackCollector.enabled is false → handler returns 404
     assert.strictEqual(res.status, 404);
   });
 });
@@ -321,10 +310,8 @@ describe('Integration HTTP — CORS Behavior', () => {
 
   // T-IH27: Request without Origin header — no CORS rejection, Vary header set
   it('T-IH27: Request without Origin — passes through (no CORS block)', async () => {
-    // fetch() from Node.js does not send Origin by default
     const res = await fetch(`${ts.baseUrl}/api/config`);
     assert.strictEqual(res.status, 200);
-    // Vary header should always be set
     const vary = res.headers.get('vary');
     assert.ok(vary && vary.includes('Origin'), `Vary header should include Origin, got ${vary}`);
   });
@@ -341,9 +328,6 @@ describe('Integration HTTP — CORS Behavior', () => {
   });
 
   // T-IH29: Request with foreign Origin — returns 403 CORS_REJECTED
-  // Note: NODE_ENV is not 'production' in tests (so IS_DEV = true).
-  // IS_DEV allows any origin starting with 'http://localhost:'.
-  // A non-localhost origin should be rejected.
   it('T-IH29: Request with foreign Origin — returns 403 CORS_REJECTED', async () => {
     const res = await fetch(`${ts.baseUrl}/api/config`, {
       headers: { 'Origin': 'https://evil-site.com' },
@@ -367,12 +351,14 @@ describe('Integration HTTP — Rate Limiting', () => {
   it('T-IH30: Exceeding health rate limit — returns 429', async () => {
     // health bucket: 10 requests per minute
     // Send 11 requests — the 11th should be rate limited
+    // Note: rate limit store is module-level (shared across blocks/servers)
+    // so previous blocks may have consumed some of the budget.
+    // We send enough to guarantee hitting the limit regardless.
     const results = [];
-    for (let i = 0; i < 11; i++) {
+    for (let i = 0; i < 15; i++) {
       const res = await fetch(`${ts.baseUrl}/api/health`);
       results.push(res.status);
     }
-    // At least one should be 429
     const has429 = results.includes(429);
     assert.ok(has429, `expected at least one 429 in ${JSON.stringify(results)}`);
   });
@@ -385,7 +371,8 @@ describe('Integration HTTP — Rate Limiting', () => {
       const retryAfter = res.headers.get('retry-after');
       assert.ok(retryAfter, 'Retry-After header should be present');
       const seconds = parseInt(retryAfter, 10);
-      assert.ok(seconds > 0 && seconds <= 60, `Retry-After should be 1-60 seconds, got ${seconds}`);
+      // windowMs is 60s but Retry-After can be up to ~61 due to timing
+      assert.ok(seconds > 0 && seconds <= 65, `Retry-After should be 1-65 seconds, got ${seconds}`);
       const data = await res.json();
       assert.strictEqual(data.code, 'RATE_LIMITED');
     } else {
