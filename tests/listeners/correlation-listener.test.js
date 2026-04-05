@@ -124,4 +124,19 @@ describe('CorrelationListener', () => {
     const sizeAfter = correlationIndex.counts().size;
     assert.strictEqual(sizeAfter, sizeBefore + 2, 'size should increase by 2');
   });
+
+  // T-CoL06: pipeline:complete with _libraryId — entry contains libraryId (Phase 61)
+  it('T-CoL06: pipeline:complete with _libraryId — entry contains libraryId', () => {
+    eventBus.emit('pipeline:complete', {
+      correlationId: 'corr-lib-06',
+      message: 'library question',
+      fullText: 'library answer',
+      sessionId: 'sess-lib-06',
+      _libraryId: 'lib-main',
+    });
+
+    const entry = correlationIndex.get('corr-lib-06');
+    assert.ok(entry, 'entry should exist');
+    assert.strictEqual(entry.libraryId, 'lib-main', 'libraryId should be stored from _libraryId');
+  });
 });

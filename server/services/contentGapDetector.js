@@ -91,6 +91,7 @@ class ContentGapDetector {
       sessionId: data.sessionId || null,
       avgScore:  typeof data.avgScore === 'number' ? data.avgScore : null,
       timestamp: Date.now(),
+      libraryId: data.libraryId || null,
     };
 
     // Ring buffer — evict oldest when full
@@ -112,8 +113,47 @@ class ContentGapDetector {
    * @param {number} [limit=20]
    * @returns {Array<{ keywords: string[], count: number, samples: string[], lastSeen: number }>}
    */
-  getGaps(limit = 20) {
+  getGaps(limit = 20, libraryId = null) {
     if (!this.enabled) return [];
+
+    // When libraryId is provided, rebuild clusters from filtered entries
+    if (libraryId) {
+      const filteredEntries = this.#entries.filter(e => e.libraryId === libraryId);
+      if (filteredEntries.length === 0) return [];
+      // Build temporary clusters from filtered entries
+      const tempClusters = new Map();
+      let tempSeq = 0;
+      for (const entry of filteredEntries) {
+        const keywords = this.#extractKeywords(entry.message);
+        if (keywords.size === 0) continue;
+        let bestKey = null, bestScore = 0;
+        for (const [key, cluster] of tempClusters) {
+          const score = this.#overlapScore(keywords, cluster.keywords);
+          if (score > bestScore) { bestScore = score; bestKey = key; }
+        }
+        if (bestScore >= this.#clusterThreshold && bestKey !== null) {
+          const cluster = tempClusters.get(bestKey);
+          cluster.count++;
+          cluster.lastSeen = entry.timestamp;
+          for (const kw of keywords) cluster.keywords.add(kw);
+          if (cluster.samples.length < 5 && !cluster.samples.includes(entry.message)) {
+            cluster.samples.push(entry.message);
+          }
+        } else {
+          tempClusters.set(`tmp_${++tempSeq}`, {
+            keywords: new Set(keywords), count: 1, samples: [entry.message], lastSeen: entry.timestamp,
+          });
+        }
+      }
+      const gaps = [];
+      for (const [, cluster] of tempClusters) {
+        if (cluster.count >= this.#minFrequencyToShow) {
+          gaps.push({ keywords: [...cluster.keywords], count: cluster.count, samples: cluster.samples.slice(0, 3), lastSeen: cluster.lastSeen });
+        }
+      }
+      gaps.sort((a, b) => b.count - a.count || b.lastSeen - a.lastSeen);
+      return gaps.slice(0, limit);
+    }
 
     const gaps = [];
     for (const [, cluster] of this.#clusters) {
@@ -164,6 +204,7 @@ class ContentGapDetector {
         sessionId: raw.sessionId || null,
         avgScore:  typeof raw.avgScore === 'number' ? raw.avgScore : null,
         timestamp: raw.timestamp || Date.now(),
+        libraryId: raw.libraryId || null,
       };
 
       this.#entries.push(entry);

@@ -23,6 +23,7 @@ export function register() {
         reason:    'low_confidence',
         sessionId: data.sessionId || null,
         avgScore:  data.avgScore,
+        libraryId: data._libraryId || null,
       });
       return;
     }
@@ -35,6 +36,7 @@ export function register() {
         reason:    'low_score',
         sessionId: data.sessionId || null,
         avgScore:  data.avgScore,
+        libraryId: data._libraryId || null,
       });
     }
   });
@@ -52,6 +54,7 @@ export function register() {
       reason:    'negative_feedback',
       sessionId: data.sessionId || corr.sessionId || null,
       avgScore:  corr.avgScore ?? null,
+      libraryId: corr.libraryId || null,
     });
   });
 }

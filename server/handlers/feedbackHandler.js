@@ -23,11 +23,16 @@ export async function handleSubmitFeedback(req, res) {
   const body = req._validatedBody;
   const { correlationId, rating, comment, session_id } = body;
 
+  // Phase 61: lookup libraryId from correlation entry
+  const corrEntry = correlationIndex.get(correlationId);
+  const libraryId = corrEntry?.libraryId || null;
+
   const success = await feedbackCollector.submit({
     correlationId,
     sessionId: session_id,
     rating,
     comment,
+    libraryId,
   });
 
   if (!success) {
@@ -48,17 +53,19 @@ export async function handleSubmitFeedback(req, res) {
  * Returns feedback summary + recent entries for the admin dashboard.
  */
 export async function handleAdminFeedback(req, res) {
-  // Parse query string for limit
+  // Parse query string for limit and library_id filter
   let limit = 50;
+  let filterLibrary = null;
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
     const paramLimit = parseInt(url.searchParams.get('limit'), 10);
     if (!isNaN(paramLimit) && paramLimit > 0) {
       limit = Math.min(paramLimit, 200);
     }
+    filterLibrary = url.searchParams.get('library_id') || null;
   } catch { /* use default */ }
 
-  const entries = feedbackCollector.recent(limit);
+  const entries = feedbackCollector.recent(limit, filterLibrary);
   const enriched = entries.map(entry => {
     const corr = correlationIndex.get(entry.correlationId);
     return {
@@ -71,7 +78,7 @@ export async function handleAdminFeedback(req, res) {
   });
 
   const payload = {
-    counts: feedbackCollector.counts(),
+    counts: feedbackCollector.counts(filterLibrary),
     recent: enriched,
   };
 

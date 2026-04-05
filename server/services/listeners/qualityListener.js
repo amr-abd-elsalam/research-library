@@ -21,6 +21,7 @@ export function register() {
       avgScore:      data.avgScore,
       aborted:       data.aborted,
       rewriteMethod: data._rewriteMethod,
+      libraryId:     data._libraryId || null,
     });
   });
 

@@ -107,4 +107,26 @@ describe('QualityListener', () => {
       eventBus.emit('pipeline:complete', null);
     });
   });
+
+  // T-QL06: pipeline:complete with _libraryId — quality scorer receives libraryId (Phase 61)
+  it('T-QL06: pipeline:complete with _libraryId — scorer receives libraryId', () => {
+    eventBus.emit('pipeline:complete', {
+      sessionId: 'ql-lib-06',
+      avgScore: 0.8,
+      aborted: false,
+      _rewriteMethod: null,
+      _libraryId: 'lib-quality',
+    });
+    eventBus.emit('pipeline:complete', {
+      sessionId: 'ql-lib-06',
+      avgScore: 0.7,
+      aborted: false,
+      _rewriteMethod: null,
+      _libraryId: 'lib-quality',
+    });
+
+    const scores = sessionQualityScorer.getAllScores(50, 'lib-quality');
+    assert.ok(scores.length >= 1, 'should have score for lib-quality');
+    assert.strictEqual(scores[0].sessionId, 'ql-lib-06');
+  });
 });

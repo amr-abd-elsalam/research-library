@@ -33,12 +33,14 @@ export async function handleExport(req, res) {
 
   // Parse query params
   let requestedTypes = ['feedback']; // default
+  let filterLibrary = null;
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
     const typeParam = url.searchParams.get('type');
     if (typeParam) {
       requestedTypes = typeParam.split(',').map(t => t.trim()).filter(Boolean);
     }
+    filterLibrary = url.searchParams.get('library_id') || null;
   } catch { /* use default */ }
 
   // Filter to allowed types only
@@ -61,7 +63,7 @@ export async function handleExport(req, res) {
   // ── Export feedback ──────────────────────────────────────────
   if (validTypes.includes('feedback')) {
     try {
-      result.feedback = feedbackCollector.recent(maxRows);
+      result.feedback = feedbackCollector.recent(maxRows, filterLibrary);
     } catch (err) {
       logger.warn('exportHandler', 'feedback export failed', { error: err.message });
       result.feedback = [];

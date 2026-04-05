@@ -722,6 +722,9 @@ if (config.PIPELINE?.enableHooks !== false) {
 
       // ── Prompt enrichment flag (Phase 37) ────────────────────
       _promptEnriched: _ctx._promptEnriched ?? false,
+
+      // ── Library ID (Phase 61) ────────────────────────────────
+      _libraryId: _ctx.libraryId || null,
     });
   });
 }

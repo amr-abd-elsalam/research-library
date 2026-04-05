@@ -29,9 +29,10 @@ export async function handleContentGaps(req, res) {
     const url   = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     const raw   = parseInt(url.searchParams.get('limit'), 10);
     const limit = Number.isFinite(raw) && raw > 0 ? Math.min(raw, 50) : 20;
+    const filterLibrary = url.searchParams.get('library_id') || null;
 
     const counts = contentGapDetector.counts();
-    const gaps   = contentGapDetector.getGaps(limit);
+    const gaps   = contentGapDetector.getGaps(limit, filterLibrary);
 
     // ── Admin alert calculation (Phase 39) ───────────────────
     const snapshot      = metrics.snapshot();

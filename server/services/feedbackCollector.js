@@ -66,7 +66,7 @@ class FeedbackCollector {
    * @param {{ correlationId: string, sessionId?: string, rating: string, comment?: string }} params
    * @returns {boolean} true if submitted, false if invalid or disabled
    */
-  async submit({ correlationId, sessionId, rating, comment }) {
+  async submit({ correlationId, sessionId, rating, comment, libraryId }) {
     if (!this.enabled) return false;
 
     // Validate required fields
@@ -86,6 +86,7 @@ class FeedbackCollector {
       rating,
       comment: sanitizedComment,
       timestamp: new Date().toISOString(),
+      libraryId: libraryId || null,
     };
 
     // Update counters
@@ -119,8 +120,12 @@ class FeedbackCollector {
    * @param {number} [limit=20]
    * @returns {Array<object>}
    */
-  recent(limit = 20) {
-    return this.#buffer.slice(-limit);
+  recent(limit = 20, libraryId = null) {
+    if (!libraryId) {
+      return this.#buffer.slice(-limit);
+    }
+    const filtered = this.#buffer.filter(e => e.libraryId === libraryId);
+    return filtered.slice(-limit);
   }
 
   /**
@@ -137,12 +142,29 @@ class FeedbackCollector {
    * Summary for inspect endpoint.
    * @returns {{ enabled: boolean, totalPositive: number, totalNegative: number, recentCount: number }}
    */
-  counts() {
+  counts(libraryId = null) {
+    if (!libraryId) {
+      return {
+        enabled:       this.enabled,
+        totalPositive: this.#positiveCount,
+        totalNegative: this.#negativeCount,
+        recentCount:   this.#buffer.length,
+      };
+    }
+    // Per-library filtered counts
+    let pos = 0, neg = 0, count = 0;
+    for (const entry of this.#buffer) {
+      if (entry.libraryId === libraryId) {
+        count++;
+        if (entry.rating === 'positive') pos++;
+        else if (entry.rating === 'negative') neg++;
+      }
+    }
     return {
       enabled:       this.enabled,
-      totalPositive: this.#positiveCount,
-      totalNegative: this.#negativeCount,
-      recentCount:   this.#buffer.length,
+      totalPositive: pos,
+      totalNegative: neg,
+      recentCount:   count,
     };
   }
 }

@@ -53,14 +53,16 @@ class LibraryHealthScorer {
    * Computes the unified health score on-demand.
    * @returns {{ score: number, level: string, breakdown: object, totalRequests: number, actionItems: Array } | null}
    */
-  compute() {
+  compute(libraryId = null) {
     if (!this.enabled) return null;
 
-    // Cache check (Phase 43)
-    const now = Date.now();
-    const ttl = config.ADMIN_ACTIONS?.healthScoreCacheTtlMs ?? 30000;
-    if (this.#cachedResult && (now - this.#lastComputeAt) < ttl) {
-      return this.#cachedResult;
+    // Cache check (Phase 43) — global only (per-library not cached)
+    if (!libraryId) {
+      const now = Date.now();
+      const ttl = config.ADMIN_ACTIONS?.healthScoreCacheTtlMs ?? 30000;
+      if (this.#cachedResult && (now - this.#lastComputeAt) < ttl) {
+        return this.#cachedResult;
+      }
     }
 
     const snapshot = metrics.snapshot();
@@ -84,7 +86,7 @@ class LibraryHealthScorer {
     // ── Component 1: qualityAvg ─────────────────────────────
     let qualityAvgComponent = 0.5; // fallback
     if (sessionQualityScorer.enabled) {
-      const allScores = sessionQualityScorer.getAllScores(200);
+      const allScores = sessionQualityScorer.getAllScores(200, libraryId);
       if (allScores.length > 0) {
         const sum = allScores.reduce((acc, s) => acc + s.score, 0);
         qualityAvgComponent = sum / allScores.length;
@@ -92,7 +94,7 @@ class LibraryHealthScorer {
     }
 
     // ── Component 2: feedbackPositive ───────────────────────
-    const fbCounts = feedbackCollector.counts();
+    const fbCounts = feedbackCollector.counts(libraryId);
     const totalFeedback = fbCounts.totalPositive + fbCounts.totalNegative;
     const feedbackPositiveComponent = totalFeedback > 0
       ? fbCounts.totalPositive / totalFeedback
@@ -181,9 +183,11 @@ class LibraryHealthScorer {
       actionItems,
     };
 
-    // Cache result (Phase 43)
-    this.#cachedResult = result;
-    this.#lastComputeAt = Date.now();
+    // Cache result (Phase 43) — global only
+    if (!libraryId) {
+      this.#cachedResult = result;
+      this.#lastComputeAt = Date.now();
+    }
 
     return result;
   }

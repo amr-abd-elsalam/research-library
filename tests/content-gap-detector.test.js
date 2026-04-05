@@ -193,4 +193,44 @@ describe('ContentGapDetector', () => {
     assert.ok(c.clusterCount >= 1, `clusterCount should be >= 1 — got ${c.clusterCount}`);
   });
 
+  // T-CGD15: record() with libraryId — entry stores libraryId (Phase 61)
+  it('T-CGD15: record with libraryId stores it in entry', () => {
+    contentGapDetector.reset();
+    featureFlags.setOverride('CONTENT_GAPS', true);
+    contentGapDetector.record({ message: 'سؤال خاص بمكتبة معينة عن البرمجة والتصميم', reason: 'low_score', avgScore: 0.2, libraryId: 'lib-test-1' });
+    contentGapDetector.record({ message: 'سؤال خاص بمكتبة معينة عن البرمجة والتصميم', reason: 'low_score', avgScore: 0.2, libraryId: 'lib-test-1' });
+    const gaps = contentGapDetector.getGaps(10);
+    assert.ok(gaps.length > 0, 'should have gaps after recording twice');
+  });
+
+  // T-CGD16: getGaps(limit, libraryId) filters gaps by libraryId (Phase 61)
+  it('T-CGD16: getGaps with libraryId filters gaps', () => {
+    contentGapDetector.reset();
+    featureFlags.setOverride('CONTENT_GAPS', true);
+    // Record entries for two different libraries
+    contentGapDetector.record({ message: 'سؤال مكتبة أولى عن الطبخ والوصفات الشرقية', reason: 'low_score', avgScore: 0.1, libraryId: 'lib-A' });
+    contentGapDetector.record({ message: 'سؤال مكتبة أولى عن الطبخ والوصفات الشرقية', reason: 'low_score', avgScore: 0.1, libraryId: 'lib-A' });
+    contentGapDetector.record({ message: 'سؤال مكتبة ثانية عن الفلك والكواكب والفضاء', reason: 'low_score', avgScore: 0.1, libraryId: 'lib-B' });
+    contentGapDetector.record({ message: 'سؤال مكتبة ثانية عن الفلك والكواكب والفضاء', reason: 'low_score', avgScore: 0.1, libraryId: 'lib-B' });
+
+    const gapsA = contentGapDetector.getGaps(10, 'lib-A');
+    const gapsB = contentGapDetector.getGaps(10, 'lib-B');
+    const gapsAll = contentGapDetector.getGaps(10);
+
+    assert.ok(gapsA.length >= 1, 'lib-A should have gaps');
+    assert.ok(gapsB.length >= 1, 'lib-B should have gaps');
+    assert.ok(gapsAll.length >= gapsA.length, 'global gaps should be >= lib-A gaps');
+  });
+
+  // T-CGD17: getGaps(limit) without libraryId returns all gaps (backward compatible) (Phase 61)
+  it('T-CGD17: getGaps without libraryId returns all gaps', () => {
+    contentGapDetector.reset();
+    featureFlags.setOverride('CONTENT_GAPS', true);
+    contentGapDetector.record({ message: 'سؤال عام عن الجغرافيا والتضاريس والمناخ', reason: 'low_score', avgScore: 0.1, libraryId: 'lib-X' });
+    contentGapDetector.record({ message: 'سؤال عام عن الجغرافيا والتضاريس والمناخ', reason: 'low_score', avgScore: 0.1 });
+
+    const gapsAll = contentGapDetector.getGaps(10);
+    assert.ok(gapsAll.length >= 1, 'global getGaps should include all entries regardless of libraryId');
+  });
+
 });

@@ -215,4 +215,52 @@ describe('FeedbackCollector', () => {
     assert.strictEqual(r2, false, 'should fail after disabling');
   });
 
+  // T-FC18: submit() with libraryId stores correctly — counts() without filter includes entry (Phase 61)
+  it('T-FC18: submit with libraryId — counts without filter returns global', async () => {
+    featureFlags.setOverride('FEEDBACK', true);
+    await feedbackCollector.submit({ correlationId: 'fc18', rating: 'positive', libraryId: 'lib-A' });
+    const c = feedbackCollector.counts();
+    assert.strictEqual(c.totalPositive, 1, 'global counts should include entry');
+    const entries = feedbackCollector.recent();
+    assert.strictEqual(entries[0].libraryId, 'lib-A');
+  });
+
+  // T-FC19: counts(libraryId) filters correctly (Phase 61)
+  it('T-FC19: counts with libraryId filters correctly', async () => {
+    featureFlags.setOverride('FEEDBACK', true);
+    await feedbackCollector.submit({ correlationId: 'fc19a', rating: 'positive', libraryId: 'lib-A' });
+    await feedbackCollector.submit({ correlationId: 'fc19b', rating: 'negative', libraryId: 'lib-B' });
+    await feedbackCollector.submit({ correlationId: 'fc19c', rating: 'positive', libraryId: 'lib-A' });
+
+    const cA = feedbackCollector.counts('lib-A');
+    assert.strictEqual(cA.totalPositive, 2);
+    assert.strictEqual(cA.totalNegative, 0);
+    assert.strictEqual(cA.recentCount, 2);
+
+    const cB = feedbackCollector.counts('lib-B');
+    assert.strictEqual(cB.totalPositive, 0);
+    assert.strictEqual(cB.totalNegative, 1);
+    assert.strictEqual(cB.recentCount, 1);
+  });
+
+  // T-FC20: counts() without libraryId returns global counts (backward compatible) (Phase 61)
+  it('T-FC20: counts without libraryId returns global', async () => {
+    featureFlags.setOverride('FEEDBACK', true);
+    await feedbackCollector.submit({ correlationId: 'fc20a', rating: 'positive', libraryId: 'lib-X' });
+    await feedbackCollector.submit({ correlationId: 'fc20b', rating: 'negative' });
+
+    const c = feedbackCollector.counts();
+    assert.strictEqual(c.totalPositive, 1);
+    assert.strictEqual(c.totalNegative, 1);
+    assert.strictEqual(c.recentCount, 2);
+  });
+
+  // T-FC21: submit() without libraryId defaults libraryId to null (Phase 61)
+  it('T-FC21: submit without libraryId defaults to null', async () => {
+    featureFlags.setOverride('FEEDBACK', true);
+    await feedbackCollector.submit({ correlationId: 'fc21', rating: 'positive' });
+    const entries = feedbackCollector.recent();
+    assert.strictEqual(entries[0].libraryId, null);
+  });
+
 });

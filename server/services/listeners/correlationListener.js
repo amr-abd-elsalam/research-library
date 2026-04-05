@@ -28,6 +28,7 @@ export function register() {
       cacheKey:     data._cacheKey || null,
       aborted:      data.aborted || false,
       responseMode: data._responseMode || 'stream',
+      libraryId:    data._libraryId || null,
     });
   });
 
@@ -47,6 +48,7 @@ export function register() {
       aborted:      false,
       responseMode: null,
       cacheHit:     true,
+      libraryId:    data._libraryId || null,
     });
   });
 }

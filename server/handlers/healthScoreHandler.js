@@ -18,7 +18,14 @@ export async function handleHealthScore(_req, res) {
       return;
     }
 
-    const result = libraryHealthScorer.compute();
+    // Phase 61: optional per-library health score
+    let filterLibrary = null;
+    try {
+      const url = new URL(_req.url, `http://${_req.headers.host || 'localhost'}`);
+      filterLibrary = url.searchParams.get('library_id') || null;
+    } catch { /* ignore */ }
+
+    const result = libraryHealthScorer.compute(filterLibrary);
 
     if (result === null) {
       res.writeHead(404, { 'Content-Type': 'application/json' });

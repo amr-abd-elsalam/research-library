@@ -540,3 +540,45 @@ describe('Integration HTTP — Libraries (Phase 60)', () => {
     assert.ok(Array.isArray(data.libraries.libraries), 'libraries.libraries should be an array');
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// Block 10: Per-Library Analytics (Phase 61)
+// ═══════════════════════════════════════════════════════════════
+describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
+  let ts;
+
+  before(async () => { ts = await createTestServer(); });
+  after(async () => { await ts.close(); });
+
+  // T-IH46: GET /api/admin/gaps?library_id=nonexistent — returns 200
+  it('T-IH46: GET /api/admin/gaps?library_id=nonexistent — returns 200', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/gaps?library_id=nonexistent`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('gaps' in data, 'should contain gaps field');
+  });
+
+  // T-IH47: GET /api/admin/feedback?library_id=nonexistent — returns 200
+  it('T-IH47: GET /api/admin/feedback?library_id=nonexistent — returns 200', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/feedback?library_id=nonexistent`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('counts' in data, 'should contain counts');
+    assert.ok('recent' in data, 'should contain recent');
+  });
+
+  // T-IH48: GET /api/admin/health-score?library_id=nonexistent — returns 200 or 404 (feature disabled)
+  it('T-IH48: GET /api/admin/health-score?library_id=nonexistent — returns valid response', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/health-score?library_id=nonexistent`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    // Health score is disabled by default → 404, OR enabled → 200 with score
+    assert.ok([200, 404].includes(res.status), `expected 200 or 404, got ${res.status}`);
+    const data = await res.json();
+    assert.ok(typeof data === 'object', 'should return JSON object');
+  });
+});

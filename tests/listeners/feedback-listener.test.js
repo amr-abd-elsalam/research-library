@@ -84,4 +84,20 @@ describe('FeedbackListener', () => {
     assert.ok(!feedbackCounter || Object.keys(feedbackCounter).length === 0,
       'no feedback metric should be recorded without rating');
   });
+
+  // T-FL05: feedback:submitted with libraryId — no crash, metric still recorded (Phase 61)
+  it('T-FL05: feedback:submitted with libraryId — metric recorded normally', () => {
+    eventBus.emit('feedback:submitted', {
+      correlationId: 'corr-lib-05',
+      sessionId: 'sess-lib-05',
+      rating: 'positive',
+      libraryId: 'lib-test',
+    });
+
+    const snap = metrics.snapshot();
+    const feedbackCounter = snap.counters['feedback_total'];
+    assert.ok(feedbackCounter, 'feedback_total counter should exist');
+    const posKey = '[["rating","positive"]]';
+    assert.ok(feedbackCounter[posKey] >= 1, 'positive count should be >= 1');
+  });
 });

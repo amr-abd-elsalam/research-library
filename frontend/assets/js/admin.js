@@ -197,7 +197,10 @@
   }
 
   async function fetchFeedback() {
-    return adminFetch('/api/admin/feedback', { limit: 50 });
+    var params = { limit: 50 };
+    var libFilter = getAdminLibraryFilter();
+    if (libFilter) params.library_id = libFilter;
+    return adminFetch('/api/admin/feedback', params);
   }
 
   async function fetchConfig() {
@@ -267,6 +270,61 @@
       container.appendChild(ph);
     };
     img.src = brand.logo || '';
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  LIBRARY FILTER (Phase 61)
+  // ══════════════════════════════════════════════════════════
+  var _adminLibraryFilter = '';
+
+  function initAdminLibraryFilter(configData) {
+    var wrapper = $('admin-library-filter');
+    var selector = $('admin-library-select');
+    if (!wrapper || !selector) return;
+
+    var libs = configData && configData.libraries;
+    if (!libs || !libs.enabled || !libs.libraries || libs.libraries.length <= 1) {
+      wrapper.style.display = 'none';
+      return;
+    }
+
+    selector.innerHTML = '<option value="">\u0643\u0644 \u0627\u0644\u0645\u0643\u062A\u0628\u0627\u062A</option>';
+    for (var i = 0; i < libs.libraries.length; i++) {
+      var lib = libs.libraries[i];
+      var option = document.createElement('option');
+      option.value = lib.id;
+      option.textContent = lib.name || lib.id;
+      selector.appendChild(option);
+    }
+
+    var saved = sessionStorage.getItem('ai8v_admin_library_filter');
+    if (saved) { selector.value = saved; _adminLibraryFilter = saved; }
+
+    selector.addEventListener('change', function () {
+      _adminLibraryFilter = selector.value;
+      sessionStorage.setItem('ai8v_admin_library_filter', _adminLibraryFilter);
+      reloadFilteredSections();
+    });
+
+    wrapper.style.display = '';
+  }
+
+  function getAdminLibraryFilter() {
+    return _adminLibraryFilter || '';
+  }
+
+  function appendLibraryParam(url) {
+    var lib = getAdminLibraryFilter();
+    if (!lib) return url;
+    var sep = url.indexOf('?') === -1 ? '?' : '&';
+    return url + sep + 'library_id=' + encodeURIComponent(lib);
+  }
+
+  function reloadFilteredSections() {
+    _loadedTabs = {};
+    var activeTabBtn = document.querySelector('.ai8v-tab-btn.active');
+    var activeTab = activeTabBtn ? activeTabBtn.getAttribute('data-tab') : 'overview';
+    loadTabContent(activeTab);
   }
 
   // ══════════════════════════════════════════════════════════
@@ -2080,7 +2138,11 @@
     container.innerHTML = '<p class="admin-empty-msg">\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u062D\u0645\u064A\u0644...</p>';
 
     try {
-      var data = await adminFetch('/api/admin/gaps', { limit: 20 });
+      var fetchUrl = '/api/admin/gaps';
+      var fetchParams = { limit: 20 };
+      var libFilter = getAdminLibraryFilter();
+      if (libFilter) fetchParams.library_id = libFilter;
+      var data = await adminFetch(fetchUrl, fetchParams);
       if (!data) {
         container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623 \u0641\u064A \u062A\u062D\u0645\u064A\u0644 \u0641\u062C\u0648\u0627\u062A \u0627\u0644\u0645\u062D\u062A\u0648\u0649</p>';
         return;
@@ -2662,7 +2724,10 @@
     if (!circle) return;
 
     try {
-      var data = await adminFetch('/api/admin/health-score');
+      var hsParams = {};
+      var libFilterHS = getAdminLibraryFilter();
+      if (libFilterHS) hsParams.library_id = libFilterHS;
+      var data = await adminFetch('/api/admin/health-score', Object.keys(hsParams).length > 0 ? hsParams : undefined);
       if (!data) {
         // Feature disabled or auth error
         circle.textContent = '--';
@@ -3300,6 +3365,9 @@
     if (configData && configData.BRAND) {
       applyBrand(configData.BRAND);
     }
+
+    // Phase 61: initialize library filter from config
+    initAdminLibraryFilter(configData);
 
     initAuth();
   });

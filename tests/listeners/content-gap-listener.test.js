@@ -120,4 +120,19 @@ describe('ContentGapListener', () => {
       eventBus.emit('pipeline:complete', null);
     });
   });
+
+  // T-CG07: pipeline:complete with _libraryId — gap entry receives libraryId (Phase 61)
+  it('T-CG07: pipeline:complete with _libraryId — gap records libraryId', () => {
+    eventBus.emit('pipeline:complete', {
+      aborted: true,
+      abortReason: 'low_confidence',
+      message: 'سؤال خاص بمكتبة محددة عن الهندسة الوراثية',
+      sessionId: 'cg-lib-07',
+      avgScore: 0.1,
+      _libraryId: 'lib-genetics',
+    });
+
+    const counts = contentGapDetector.counts();
+    assert.ok(counts.totalEntries >= 1, 'should have gap entry with libraryId');
+  });
 });

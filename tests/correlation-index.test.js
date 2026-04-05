@@ -190,4 +190,31 @@ describe('CorrelationIndex', () => {
     assert.strictEqual(result.timestamp, 0, 'timestamp: 0 should be stored as 0, not Date.now()');
   });
 
+  // T-CI14: record() with libraryId — get() returns libraryId in response (Phase 61)
+  it('T-CI14: record with libraryId — get returns libraryId', () => {
+    correlationIndex.record('corr-lib-01', {
+      message: 'library test',
+      sessionId: 'sess-lib',
+      libraryId: 'lib-main',
+      timestamp: Date.now(),
+    });
+    const result = correlationIndex.get('corr-lib-01');
+    assert.notStrictEqual(result, null);
+    assert.strictEqual(result.libraryId, 'lib-main');
+  });
+
+  // T-CI15: record() without libraryId — get() returns null libraryId (backward compatible) (Phase 61)
+  it('T-CI15: record without libraryId — get returns undefined or null libraryId', () => {
+    correlationIndex.record('corr-no-lib', {
+      message: 'no library test',
+      sessionId: 'sess-no-lib',
+      timestamp: Date.now(),
+    });
+    const result = correlationIndex.get('corr-no-lib');
+    assert.notStrictEqual(result, null);
+    // libraryId should be undefined (not in entry) or null — both acceptable
+    assert.ok(result.libraryId === undefined || result.libraryId === null,
+      `libraryId should be undefined or null, got ${result.libraryId}`);
+  });
+
 });

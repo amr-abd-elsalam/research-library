@@ -51,7 +51,7 @@ class SessionQualityScorer {
    * @param {string} sessionId
    * @param {{ avgScore: number, aborted: boolean, rewriteMethod: string|null }} data
    */
-  recordQuery(sessionId, { avgScore, aborted, rewriteMethod }) {
+  recordQuery(sessionId, { avgScore, aborted, rewriteMethod, libraryId }) {
     if (!this.enabled || !sessionId) return;
 
     const state = this.#getOrCreate(sessionId);
@@ -67,6 +67,11 @@ class SessionQualityScorer {
       if (rewriteMethod === 'local_context') {
         state.localRewriteCount++;
       }
+    }
+
+    // Phase 61: store libraryId (last seen wins)
+    if (libraryId) {
+      state.libraryId = libraryId;
     }
 
     state.lastUpdated = Date.now();
@@ -138,12 +143,13 @@ class SessionQualityScorer {
    * @param {number} [limit=50]
    * @returns {Array<{ sessionId: string, score: number, totalQueries: number, abortedCount: number, positiveFeedback: number, negativeFeedback: number, lastUpdated: number }>}
    */
-  getAllScores(limit = 50) {
+  getAllScores(limit = 50, libraryId = null) {
     if (!this.enabled) return [];
 
     const results = [];
     for (const [sessionId, state] of this.#sessions) {
       if (state.totalQueries < this.#minTurns) continue;
+      if (libraryId && state.libraryId !== libraryId) continue;
 
       const score = this.getScore(sessionId);
       if (score === null) continue;
@@ -206,6 +212,7 @@ class SessionQualityScorer {
         positiveFeedback: 0,
         negativeFeedback: 0,
         lastUpdated:      Date.now(),
+        libraryId:        null,
       };
       this.#sessions.set(sessionId, state);
     }

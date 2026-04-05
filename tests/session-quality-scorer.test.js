@@ -159,4 +159,33 @@ describe('SessionQualityScorer', () => {
     assert.strictEqual(sessionQualityScorer.counts().trackedSessions, 0, 'no sessions tracked when disabled');
   });
 
+  // T-SQ13: getAllScores(limit, libraryId) filters by libraryId (Phase 61)
+  it('T-SQ13: getAllScores with libraryId filters by libraryId', () => {
+    featureFlags.setOverride('QUALITY', true);
+    sessionQualityScorer.recordQuery('sess-libA-1', { avgScore: 0.7, aborted: false, rewriteMethod: null, libraryId: 'lib-A' });
+    sessionQualityScorer.recordQuery('sess-libA-1', { avgScore: 0.8, aborted: false, rewriteMethod: null, libraryId: 'lib-A' });
+    sessionQualityScorer.recordQuery('sess-libB-1', { avgScore: 0.6, aborted: false, rewriteMethod: null, libraryId: 'lib-B' });
+    sessionQualityScorer.recordQuery('sess-libB-1', { avgScore: 0.5, aborted: false, rewriteMethod: null, libraryId: 'lib-B' });
+
+    const scoresA = sessionQualityScorer.getAllScores(50, 'lib-A');
+    assert.strictEqual(scoresA.length, 1, 'should have 1 session for lib-A');
+    assert.strictEqual(scoresA[0].sessionId, 'sess-libA-1');
+
+    const scoresB = sessionQualityScorer.getAllScores(50, 'lib-B');
+    assert.strictEqual(scoresB.length, 1, 'should have 1 session for lib-B');
+    assert.strictEqual(scoresB[0].sessionId, 'sess-libB-1');
+  });
+
+  // T-SQ14: getAllScores(limit) without libraryId returns all (backward compatible) (Phase 61)
+  it('T-SQ14: getAllScores without libraryId returns all scores', () => {
+    featureFlags.setOverride('QUALITY', true);
+    sessionQualityScorer.recordQuery('sess-all-1', { avgScore: 0.7, aborted: false, rewriteMethod: null, libraryId: 'lib-X' });
+    sessionQualityScorer.recordQuery('sess-all-1', { avgScore: 0.8, aborted: false, rewriteMethod: null, libraryId: 'lib-X' });
+    sessionQualityScorer.recordQuery('sess-all-2', { avgScore: 0.5, aborted: false, rewriteMethod: null });
+    sessionQualityScorer.recordQuery('sess-all-2', { avgScore: 0.6, aborted: false, rewriteMethod: null });
+
+    const all = sessionQualityScorer.getAllScores(50);
+    assert.strictEqual(all.length, 2, 'should have 2 sessions in global');
+  });
+
 });

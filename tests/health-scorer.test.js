@@ -102,4 +102,25 @@ describe('LibraryHealthScorer', () => {
     assert.strictEqual(disabled, null);
   });
 
+  // T-HS11: compute(libraryId) returns valid score object (Phase 61)
+  it('T-HS11: compute with libraryId returns valid score', () => {
+    featureFlags.setOverride('HEALTH_SCORE', true);
+    const result = libraryHealthScorer.compute('lib-test');
+    assert.notStrictEqual(result, null);
+    assert.strictEqual(typeof result.score, 'number');
+    assert.ok(result.score >= 0 && result.score <= 100);
+  });
+
+  // T-HS12: compute() without libraryId returns global score (backward compatible) (Phase 61)
+  it('T-HS12: compute without libraryId returns global score', () => {
+    featureFlags.setOverride('HEALTH_SCORE', true);
+    const global = libraryHealthScorer.compute();
+    const perLib = libraryHealthScorer.compute('nonexistent-lib');
+    assert.notStrictEqual(global, null);
+    assert.notStrictEqual(perLib, null);
+    // Both should be valid score objects
+    assert.strictEqual(typeof global.score, 'number');
+    assert.strictEqual(typeof perLib.score, 'number');
+  });
+
 });
