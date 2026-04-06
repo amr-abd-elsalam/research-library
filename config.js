@@ -710,6 +710,26 @@ const config = {
     minDiverseFiles:  2,        // أقل عدد ملفات مختلفة في النتائج (best-effort — لو المكتبة صغيرة ما يتحققش)
   },
 
+  // ═══════════════════════════════════════════════════════════
+  // 34. تحليل تعقيد الاستعلام (QUERY_COMPLEXITY)
+  //    — يحلل مدى تعقيد السؤال ويكيّف الـ pipeline تبعاً لذلك
+  //    — أسئلة بسيطة تحتاج hits أقل + بدون prompt instructions إضافية
+  //    — أسئلة مقارنة/تحليلية تحتاج hits أكتر + prompt instructions مخصصة
+  //    — معطّل افتراضياً — فعّله من هنا أو عبر feature flags
+  //    — لا يحتاج أي dependency خارجية (in-memory regex فقط)
+  // ═══════════════════════════════════════════════════════════
+  QUERY_COMPLEXITY: {
+    enabled:        false,    // true = تفعيل تحليل تعقيد الاستعلام | false = كل الأسئلة تُعامل كـ factual (zero overhead)
+    includeInTrace: true,     // true = تسجيل complexity type + score في الـ trace | false = لا تسجيل
+    strategies: {
+      factual:     { maxTopK: 5,  promptSuffix: '' },
+      comparative: { maxTopK: 8,  promptSuffix: 'قدّم المقارنة بشكل منظم مع إبراز أوجه التشابه والاختلاف.' },
+      analytical:  { maxTopK: 10, promptSuffix: 'حلّل الموضوع بعمق مع تقديم الأدلة من المحتوى.' },
+      multi_part:  { maxTopK: 10, promptSuffix: 'أجب على كل جزء من السؤال بشكل منفصل ومنظم.' },
+      exploratory: { maxTopK: 8,  promptSuffix: 'قدّم نظرة شاملة ومتكاملة حول الموضوع.' },
+    },
+  },
+
 };
 
 export default deepFreeze(config);

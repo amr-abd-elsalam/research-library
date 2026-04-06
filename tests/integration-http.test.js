@@ -600,4 +600,12 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     const data = await res.json();
     assert.strictEqual(typeof data.RETRIEVAL, 'boolean');
   });
+
+  // T-IH51: GET /api/config/features — response includes QUERY_COMPLEXITY field (Phase 64)
+  it('T-IH51: GET /api/config/features includes QUERY_COMPLEXITY field', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.QUERY_COMPLEXITY, 'boolean');
+  });
 });

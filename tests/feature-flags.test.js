@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { featureFlags } from '../server/services/featureFlags.js';
 
 // ── Cleanup helper — clear all overrides after each test ────────
-const SECTIONS = ['FEEDBACK', 'SUGGESTIONS', 'CONTENT_GAPS', 'QUALITY', 'HEALTH_SCORE', 'ADMIN_INTELLIGENCE', 'RETRIEVAL'];
+const SECTIONS = ['FEEDBACK', 'SUGGESTIONS', 'CONTENT_GAPS', 'QUALITY', 'HEALTH_SCORE', 'ADMIN_INTELLIGENCE', 'RETRIEVAL', 'QUERY_COMPLEXITY'];
 
 describe('FeatureFlags', () => {
 
@@ -90,10 +90,10 @@ describe('FeatureFlags', () => {
     assert.strictEqual(overrides.SUGGESTIONS, undefined); // not overridden
   });
 
-  // T-FF10: getStatus — returns all 7 sections
-  it('T-FF10: getStatus returns all 7 sections', () => {
+  // T-FF10: getStatus — returns all 8 sections
+  it('T-FF10: getStatus returns all 8 sections', () => {
     const status = featureFlags.getStatus();
-    assert.strictEqual(status.length, 7);
+    assert.strictEqual(status.length, 8);
     const sectionNames = status.map(s => s.section);
     assert.ok(sectionNames.includes('SUGGESTIONS'));
     assert.ok(sectionNames.includes('CONTENT_GAPS'));
@@ -102,6 +102,7 @@ describe('FeatureFlags', () => {
     assert.ok(sectionNames.includes('HEALTH_SCORE'));
     assert.ok(sectionNames.includes('ADMIN_INTELLIGENCE'));
     assert.ok(sectionNames.includes('RETRIEVAL'));
+    assert.ok(sectionNames.includes('QUERY_COMPLEXITY'));
   });
 
   // T-FF11: getStatus — effective reflects override
@@ -120,7 +121,7 @@ describe('FeatureFlags', () => {
     const c = featureFlags.counts();
     assert.strictEqual(typeof c.totalOverrides, 'number');
     assert.ok(c.totalOverrides >= 1);
-    assert.strictEqual(c.sections, 7);
+    assert.strictEqual(c.sections, 8);
     assert.strictEqual(typeof c.persisted, 'boolean');
   });
 

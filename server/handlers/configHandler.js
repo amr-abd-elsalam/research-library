@@ -141,12 +141,13 @@ export async function handleConfig(req, res) {
  */
 export async function handleConfigFeatures(_req, res) {
   const payload = {
-    FEEDBACK:     featureFlags.isEnabled('FEEDBACK'),
-    SUGGESTIONS:  featureFlags.isEnabled('SUGGESTIONS'),
-    CONTENT_GAPS: featureFlags.isEnabled('CONTENT_GAPS'),
-    QUALITY:      featureFlags.isEnabled('QUALITY'),
-    HEALTH_SCORE: featureFlags.isEnabled('HEALTH_SCORE'),
-    RETRIEVAL:    featureFlags.isEnabled('RETRIEVAL'),
+    FEEDBACK:         featureFlags.isEnabled('FEEDBACK'),
+    SUGGESTIONS:      featureFlags.isEnabled('SUGGESTIONS'),
+    CONTENT_GAPS:     featureFlags.isEnabled('CONTENT_GAPS'),
+    QUALITY:          featureFlags.isEnabled('QUALITY'),
+    HEALTH_SCORE:     featureFlags.isEnabled('HEALTH_SCORE'),
+    RETRIEVAL:        featureFlags.isEnabled('RETRIEVAL'),
+    QUERY_COMPLEXITY: featureFlags.isEnabled('QUERY_COMPLEXITY'),
   };
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(payload));

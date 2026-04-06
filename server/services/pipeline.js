@@ -21,6 +21,7 @@ import { conversationContext }                from './conversationContext.js';
 import { libraryIndex }                       from './libraryIndex.js';
 import { contentGapDetector }                 from './contentGapDetector.js';
 import { searchReranker }                     from './searchReranker.js';
+import { queryComplexityAnalyzer }            from './queryComplexityAnalyzer.js';
 
 // ── Singleton ContextManager (same as previous chat.js) ────────
 const contextManager = new ContextManager();
@@ -123,6 +124,28 @@ async function stageTranscriptInit(ctx, _trace) {
 // ── Stage 2: Route Query ───────────────────────────────────────
 async function stageRouteQuery(ctx, _trace) {
   ctx.queryRoute = routeQuery(ctx.message);
+  return ctx;
+}
+
+// ── Stage 2.5: Complexity Analysis (Phase 64) ─────────────────
+async function stageComplexityAnalysis(ctx, _trace) {
+  if (!queryComplexityAnalyzer.enabled) {
+    ctx._complexity = { type: 'factual', score: 1, indicators: [] };
+    ctx._complexitySkipped = true;
+    return ctx;
+  }
+
+  ctx._complexity = queryComplexityAnalyzer.analyze(ctx.message);
+  const strategy = queryComplexityAnalyzer.getStrategy(ctx._complexity);
+
+  if (strategy.topK) {
+    ctx._complexityTopK = strategy.topK;
+  }
+  if (strategy.promptSuffix) {
+    ctx._complexityPromptSuffix = strategy.promptSuffix;
+  }
+
+  ctx._complexitySkipped = false;
   return ctx;
 }
 
@@ -330,8 +353,12 @@ function resolveCollection(libraryId) {
 async function stageSearch(ctx, _trace) {
   let topK = getTopK(ctx.queryRoute.type);
 
-  // Adaptive topK adjustment (Phase 22)
-  if (ctx._adaptiveConfig?.topKAdjustment) {
+  // Phase 64: Complexity-based topK (highest priority)
+  if (ctx._complexityTopK) {
+    topK = ctx._complexityTopK;
+  }
+  // Adaptive topK adjustment (Phase 22) — only if no complexity topK
+  else if (ctx._adaptiveConfig?.topKAdjustment) {
     topK = Math.max(3, topK + ctx._adaptiveConfig.topKAdjustment);
   }
 
@@ -391,6 +418,11 @@ async function stageBuildContext(ctx, _trace) {
   if (ctx._responseMode === 'concise') {
     const maxSentences = config.RESPONSE?.conciseMaxSentences ?? 3;
     ctx.systemPrompt += `\n\nتعليمات إضافية: أجب بإيجاز شديد في ${maxSentences} جمل كحد أقصى. ركّز على المعلومة الأساسية فقط بدون مقدمات أو تكرار.`;
+  }
+
+  // Phase 64: Complexity-aware prompt suffix
+  if (ctx._complexityPromptSuffix) {
+    ctx.systemPrompt += `\n\nتعليمات إضافية: ${ctx._complexityPromptSuffix}`;
   }
 
   const window = contextManager.buildWindow({
@@ -547,6 +579,19 @@ function buildStageRecord(stageName, ctx, _elapsed) {
         detail: { type: ctx.queryRoute.type, isFollowUp: ctx.queryRoute.isFollowUp },
       };
 
+    case 'stageComplexityAnalysis':
+      if (ctx._complexitySkipped) {
+        return { status: 'skip', detail: { reason: 'disabled' } };
+      }
+      return {
+        status: 'ok',
+        detail: {
+          type: ctx._complexity?.type ?? 'factual',
+          score: ctx._complexity?.score ?? 1,
+          indicators: ctx._complexity?.indicators ?? [],
+        },
+      };
+
     case 'stageRewriteQuery':
       if (ctx._rewriteSkipped) {
         return { status: 'skip', detail: null };
@@ -619,6 +664,7 @@ function buildStageRecord(stageName, ctx, _elapsed) {
 const chatPipeline = new PipelineRunner([
   stageTranscriptInit,
   stageRouteQuery,
+  stageComplexityAnalysis,  // Phase 64 — query complexity analysis
   stageRewriteQuery,
   stageEmbed,
   stageSearch,
@@ -757,6 +803,10 @@ if (config.PIPELINE?.enableHooks !== false) {
       // ── Re-rank applied flag (Phase 63) ───────────────────
       _rerankApplied: !_ctx._rerankSkipped,
 
+      // ── Complexity analysis (Phase 64) ────────────────────
+      _complexityType: _ctx._complexity?.type ?? null,
+      _complexityScore: _ctx._complexity?.score ?? 0,
+
       // ── Prompt enrichment flag (Phase 37) ────────────────────
       _promptEnriched: _ctx._promptEnriched ?? false,
 
@@ -770,4 +820,4 @@ if (config.PIPELINE?.enableHooks !== false) {
 // Exports
 // ═══════════════════════════════════════════════════════════════
 
-export { PipelineContext, PipelineRunner, chatPipeline, writeChunk, buildContext, buildSources, attemptLocalRewrite, buildDynamicSystemPrompt, stageRerank };
+export { PipelineContext, PipelineRunner, chatPipeline, writeChunk, buildContext, buildSources, attemptLocalRewrite, buildDynamicSystemPrompt, stageRerank, stageComplexityAnalysis };
