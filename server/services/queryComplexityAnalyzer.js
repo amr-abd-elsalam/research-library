@@ -13,13 +13,13 @@ import { featureFlags } from './featureFlags.js';
 
 // ── Complexity detection patterns ──────────────────────────────
 
-const COMPARATIVE_PATTERN = /\b(الفرق|فرق|مقارنة|قارن|أيهما|ايهما|أفضل|افضل|مقابل|ضد|أم\b|بين\s+.+?\s+و|versus|compare|differ|vs)\b/i;
+const COMPARATIVE_PATTERN = /(?:^|[\s,.،؛:!؟?])(الفرق|فرق|مقارنة|قارن|أيهما|ايهما|أفضل|افضل|مقابل|ضد|بين\s+.+?\s+و|versus|compare|differ|vs)(?:[\s,.،؛:!؟?]|$)/i;
 
-const ANALYTICAL_PATTERN = /\b(لماذا|ليش|ليه|كيف يمكن|ما أثر|ما تأثير|ما سبب|ما أسباب|حلل|تحليل|تفسير|فسّر|فسر|why|how can|analyze|impact|cause|reason)\b/i;
+const ANALYTICAL_PATTERN = /(?:^|[\s,.،؛:!؟?])(لماذا|ليش|ليه|كيف يمكن|ما أثر|ما تأثير|ما سبب|ما أسباب|حلل|تحليل|تفسير|فسّر|فسر|why|how can|analyze|impact|cause|reason)(?:[\s,.،؛:!؟?]|$)/i;
 
-const MULTI_PART_PATTERN = /\b(أولاً|أولا|ثانياً|ثانيا|ثالثاً|ثالثا|أيضاً|أيضا|بالإضافة|وكذلك|علاوة|firstly|secondly|also|additionally|moreover)\b/i;
+const MULTI_PART_PATTERN = /(?:^|[\s,.،؛:!؟?])(أولاً|أولا|ثانياً|ثانيا|ثالثاً|ثالثا|أيضاً|أيضا|بالإضافة|وكذلك|علاوة|firstly|secondly|also|additionally|moreover)(?:[\s,.،؛:!؟?]|$)/i;
 
-const EXPLORATORY_PATTERN = /\b(ما هو|ما هي|ماذا يعني|اشرح|وضّح|وضح|عرّف|عرف|شرح شامل|نظرة عامة|ملخص شامل|overview|explain|define|describe|elaborate)\b/i;
+const EXPLORATORY_PATTERN = /(?:^|[\s,.،؛:!؟?])(ما هو|ما هي|ماذا يعني|اشرح|وضّح|وضح|عرّف|عرف|شرح شامل|نظرة عامة|ملخص شامل|overview|explain|define|describe|elaborate)(?:[\s,.،؛:!؟?]|$)/i;
 
 class QueryComplexityAnalyzer {
 
