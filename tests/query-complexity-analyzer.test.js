@@ -88,7 +88,7 @@ describe('QueryComplexityAnalyzer', () => {
   // T-QCA09: enabled + exploratory question with "اشرح" + long message
   it('T-QCA09: detects exploratory question with اشرح and long message', () => {
     featureFlags.setOverride('QUERY_COMPLEXITY', true);
-    const result = analyzer.analyze('اشرح لي بالتفصيل كيف يعمل نظام الذكاء الاصطناعي في تحليل البيانات الضخمة');
+    const result = analyzer.analyze('اشرح لي بالتفصيل ما هي المنصة وكيف تعمل وما المميزات التي تقدمها للمستخدم');
     assert.strictEqual(result.type, 'exploratory');
     assert.ok(result.indicators.includes('exploratory'));
   });
