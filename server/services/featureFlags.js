@@ -40,6 +40,7 @@ class FeatureFlags {
     FEEDBACK:           () => config.FEEDBACK?.enabled === true,
     QUALITY:            () => config.QUALITY?.enabled === true,
     HEALTH_SCORE:       () => config.HEALTH_SCORE?.enabled === true,
+    RETRIEVAL:          () => config.RETRIEVAL?.rerankEnabled === true,
   };
 
   /**

@@ -20,6 +20,7 @@ import config                                 from '../../config.js';
 import { conversationContext }                from './conversationContext.js';
 import { libraryIndex }                       from './libraryIndex.js';
 import { contentGapDetector }                 from './contentGapDetector.js';
+import { searchReranker }                     from './searchReranker.js';
 
 // ── Singleton ContextManager (same as previous chat.js) ────────
 const contextManager = new ContextManager();
@@ -348,6 +349,26 @@ async function stageSearch(ctx, _trace) {
   return ctx;
 }
 
+// ── Stage 5.5: Re-rank (Phase 63) ─────────────────────────────
+async function stageRerank(ctx, _trace) {
+  if (!searchReranker.enabled) {
+    ctx._rerankSkipped = true;
+    return ctx;
+  }
+
+  const originalOrder = ctx.hits.map(h => h.payload?.file_name || '');
+  ctx.hits = searchReranker.rerank(ctx.hits, ctx.effectiveMessage);
+
+  // Recompute avgScore after re-ranking (order may have changed)
+  if (ctx.hits.length > 0) {
+    ctx.avgScore = ctx.hits.reduce((s, h) => s + h.score, 0) / ctx.hits.length;
+  }
+
+  ctx._rerankSkipped = false;
+  ctx._rerankOriginalOrder = originalOrder;
+  return ctx;
+}
+
 // ── Stage 6: Confidence Check ──────────────────────────────────
 async function stageConfidenceCheck(ctx, _trace) {
   if (ctx.avgScore < LOW_SCORE_THRESHOLD || ctx.hits.length === 0) {
@@ -552,6 +573,18 @@ function buildStageRecord(stageName, ctx, _elapsed) {
         },
       };
 
+    case 'stageRerank':
+      if (ctx._rerankSkipped) {
+        return { status: 'skip', detail: { reason: 'disabled' } };
+      }
+      return {
+        status: 'ok',
+        detail: {
+          hitCount: ctx.hits?.length ?? 0,
+          avgScoreAfterRerank: ctx.avgScore,
+        },
+      };
+
     case 'stageConfidenceCheck':
       return {
         status: ctx.aborted ? 'aborted' : 'ok',
@@ -589,6 +622,7 @@ const chatPipeline = new PipelineRunner([
   stageRewriteQuery,
   stageEmbed,
   stageSearch,
+  stageRerank,              // Phase 63 — keyword overlap + source diversity
   stageConfidenceCheck,
   stageBuildContext,
   stageStream,
@@ -720,6 +754,9 @@ if (config.PIPELINE?.enableHooks !== false) {
       // ── Rewrite result detail (Phase 32) ───────────────────
       _rewriteResult: _ctx._rewriteResult ?? null,
 
+      // ── Re-rank applied flag (Phase 63) ───────────────────
+      _rerankApplied: !_ctx._rerankSkipped,
+
       // ── Prompt enrichment flag (Phase 37) ────────────────────
       _promptEnriched: _ctx._promptEnriched ?? false,
 
@@ -733,4 +770,4 @@ if (config.PIPELINE?.enableHooks !== false) {
 // Exports
 // ═══════════════════════════════════════════════════════════════
 
-export { PipelineContext, PipelineRunner, chatPipeline, writeChunk, buildContext, buildSources, attemptLocalRewrite, buildDynamicSystemPrompt };
+export { PipelineContext, PipelineRunner, chatPipeline, writeChunk, buildContext, buildSources, attemptLocalRewrite, buildDynamicSystemPrompt, stageRerank };

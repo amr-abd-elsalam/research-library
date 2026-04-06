@@ -36,6 +36,7 @@ import { libraryHealthScorer }   from '../services/libraryHealthScorer.js';
 import { featureFlags }          from '../services/featureFlags.js';
 import { adminIntelligence }     from '../services/adminIntelligence.js';
 import { dynamicWelcomeSuggestions } from '../services/dynamicWelcomeSuggestions.js';
+import { searchReranker }            from '../services/searchReranker.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -178,6 +179,9 @@ export async function handleInspect(_req, res) {
 
       // ── Dynamic welcome suggestions (Phase 59) ────────────
       dynamicWelcomeSuggestions: dynamicWelcomeSuggestions.counts(),
+
+      // ── Search re-ranker (Phase 63) ───────────────────────
+      searchReranker: searchReranker.counts(),
 
       // ── Permission Tiers (Phase 26) ────────────────────────
       tiers: {

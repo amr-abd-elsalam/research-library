@@ -146,6 +146,7 @@ export async function handleConfigFeatures(_req, res) {
     CONTENT_GAPS: featureFlags.isEnabled('CONTENT_GAPS'),
     QUALITY:      featureFlags.isEnabled('QUALITY'),
     HEALTH_SCORE: featureFlags.isEnabled('HEALTH_SCORE'),
+    RETRIEVAL:    featureFlags.isEnabled('RETRIEVAL'),
   };
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(payload));

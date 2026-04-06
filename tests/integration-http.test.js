@@ -592,4 +592,12 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.ok('insights' in data, 'should contain insights field');
     assert.ok(Array.isArray(data.insights), 'insights should be an array');
   });
+
+  // T-IH50: GET /api/config/features — response includes RETRIEVAL field (Phase 63)
+  it('T-IH50: GET /api/config/features includes RETRIEVAL field', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.RETRIEVAL, 'boolean');
+  });
 });

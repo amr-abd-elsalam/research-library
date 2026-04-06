@@ -695,6 +695,21 @@ const config = {
     ],
   },
 
+  // ═══════════════════════════════════════════════════════════
+  // 33. Search Re-ranking (RETRIEVAL)
+  //    — تحسين جودة نتائج البحث بعد Qdrant
+  //    — يضيف keyword overlap scoring و source diversity enforcement
+  //    — معطّل افتراضياً — فعّله من هنا أو عبر feature flags
+  //    — لا يحتاج أي dependency خارجية
+  // ═══════════════════════════════════════════════════════════
+  RETRIEVAL: {
+    rerankEnabled:    false,    // true = تفعيل re-ranking لنتائج البحث | false = استخدام ترتيب Qdrant كما هو (zero overhead)
+    diversityWeight:  0.3,      // 0-1: وزن تنوع المصادر في حساب الـ score (يؤثر على vector weight allocation)
+    keywordWeight:    0.3,      // 0-1: وزن تطابق الكلمات المفتاحية في حساب الـ combined score (0 = بدون keyword scoring)
+    maxPerFile:       3,        // أقصى عدد نتائج من نفس الملف (الباقي يتأخر لآخر القائمة — لا يُحذف)
+    minDiverseFiles:  2,        // أقل عدد ملفات مختلفة في النتائج (best-effort — لو المكتبة صغيرة ما يتحققش)
+  },
+
 };
 
 export default deepFreeze(config);
