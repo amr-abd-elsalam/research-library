@@ -139,4 +139,40 @@ describe('CorrelationListener', () => {
     assert.ok(entry, 'entry should exist');
     assert.strictEqual(entry.libraryId, 'lib-main', 'libraryId should be stored from _libraryId');
   });
+
+  // T-CoL07: pipeline:complete with _requestId — entry contains requestId (Phase 66)
+  it('T-CoL07: pipeline:complete with _requestId — entry contains requestId', () => {
+    eventBus.emit('pipeline:complete', {
+      correlationId: 'corr-rid-07',
+      message: 'request id question',
+      fullText: 'request id answer',
+      sessionId: 'sess-rid-07',
+      avgScore: 0.88,
+      queryType: 'factual',
+      aborted: false,
+      _libraryId: null,
+      _requestId: 'test-http-rid-123',
+    });
+
+    const entry = correlationIndex.get('corr-rid-07');
+    assert.ok(entry, 'entry should exist');
+    assert.strictEqual(entry.requestId, 'test-http-rid-123', 'requestId should be stored from _requestId');
+  });
+
+  // T-CoL08: pipeline:cacheHit with _requestId — entry contains requestId (Phase 66)
+  it('T-CoL08: pipeline:cacheHit with _requestId — entry contains requestId', () => {
+    eventBus.emit('pipeline:cacheHit', {
+      correlationId: 'corr-rid-08',
+      message: 'cached rid question',
+      fullText: 'cached rid answer',
+      sessionId: 'sess-rid-08',
+      avgScore: 0.92,
+      topicFilter: null,
+      _requestId: 'test-cache-rid-456',
+    });
+
+    const entry = correlationIndex.get('corr-rid-08');
+    assert.ok(entry, 'entry should exist');
+    assert.strictEqual(entry.requestId, 'test-cache-rid-456', 'requestId should be stored from _requestId in cache hit');
+  });
 });

@@ -24,7 +24,7 @@ async function streamCachedResponse(res, cached, req, message, topic_filter, ses
   const startTime = Date.now();
 
   // Generate synthetic correlationId for cache hits (Phase 36)
-  const syntheticTrace = new EventTrace();
+  const syntheticTrace = new EventTrace({ requestId: req._requestId || null });
   const correlationId  = syntheticTrace.correlationId;
 
   res.writeHead(200, {
@@ -59,6 +59,7 @@ async function streamCachedResponse(res, cached, req, message, topic_filter, ses
     sessionId:   session_id,
     topicFilter: topic_filter,
     correlationId,
+    _requestId:  req._requestId || null,
     _analytics: {
       event_type:       'chat',
       req,
@@ -235,8 +236,9 @@ async function _handleChat(req, res) {
         message, topicFilter: topic_filter, history, sessionId: session_id, req, res,
         responseMode,
         libraryId: library_id || null,
+        requestId: req._requestId || null,
       });
-      const trace = new EventTrace();
+      const trace = new EventTrace({ requestId: req._requestId || null });
 
       // Pass intent classification to pipeline (Phase 21 — for stage gating + observability)
       if (queryIntent) ctx._queryIntent = queryIntent;

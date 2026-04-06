@@ -12,16 +12,24 @@ class EventTrace {
   #correlationId;
   #parentId;
   #childSpans;
+  #requestId;
 
   /**
-   * @param {string|null} [parentId=null] — parent trace correlationId (for nested spans)
+   * @param {string|null|object} [parentIdOrOptions=null] — parent trace correlationId (string),
+   *   or options object { parentId?, requestId? } for richer initialization (Phase 66).
+   *   Backward compatible: new EventTrace(), new EventTrace('parentId'), new EventTrace({ requestId })
    */
-  constructor(parentId = null) {
+  constructor(parentIdOrOptions = null) {
+    const isOptions = parentIdOrOptions !== null && typeof parentIdOrOptions === 'object';
+    const parentId  = isOptions ? (parentIdOrOptions.parentId ?? null)  : parentIdOrOptions;
+    const requestId = isOptions ? (parentIdOrOptions.requestId ?? null) : null;
+
     this.#stages        = [];
     this.#startTime     = Date.now();
     this.#correlationId = crypto.randomUUID().slice(0, 8);
     this.#parentId      = parentId;
     this.#childSpans    = [];
+    this.#requestId     = requestId;
   }
 
   /** @returns {string} 8-char hex correlation ID */
@@ -29,6 +37,9 @@ class EventTrace {
 
   /** @returns {string|null} parent trace's correlationId, or null if root */
   get parentId() { return this.#parentId; }
+
+  /** @returns {string|null} HTTP request ID (X-Request-Id), or null if not set */
+  get requestId() { return this.#requestId; }
 
   /**
    * Record a stage execution.
@@ -67,6 +78,7 @@ class EventTrace {
     const result = {
       correlationId: this.#correlationId,
       parentId:      this.#parentId,
+      requestId:     this.#requestId,
       totalMs:       Date.now() - this.#startTime,
       stages:        this.#stages.map(s => ({ ...s })),
     };

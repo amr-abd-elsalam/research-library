@@ -138,4 +138,40 @@ describe('EventTrace', () => {
     assert.strictEqual(trace.toCompact(), '');
   });
 
+  // T-ET13: constructor accepts requestId option (Phase 66)
+  it('T-ET13: constructor accepts requestId option', () => {
+    const trace = new EventTrace({ requestId: 'test-rid-abc' });
+    assert.strictEqual(trace.requestId, 'test-rid-abc');
+    assert.strictEqual(trace.parentId, null, 'parentId should default to null');
+  });
+
+  // T-ET14: toJSON includes requestId (Phase 66)
+  it('T-ET14: toJSON includes requestId', () => {
+    const trace = new EventTrace({ requestId: 'test-rid-def' });
+    const json = trace.toJSON();
+    assert.strictEqual(json.requestId, 'test-rid-def');
+  });
+
+  // T-ET15: constructor without args — requestId defaults to null (Phase 66 backward compat)
+  it('T-ET15: constructor without args — requestId defaults to null', () => {
+    const trace = new EventTrace();
+    assert.strictEqual(trace.requestId, null);
+    const json = trace.toJSON();
+    assert.strictEqual(json.requestId, null);
+  });
+
+  // T-ET16: constructor with string parentId — backward compatible (Phase 66)
+  it('T-ET16: constructor with string parentId — backward compatible', () => {
+    const trace = new EventTrace('parent-abc');
+    assert.strictEqual(trace.parentId, 'parent-abc');
+    assert.strictEqual(trace.requestId, null, 'requestId should be null when using positional parentId');
+  });
+
+  // T-ET17: constructor with options object including both parentId and requestId (Phase 66)
+  it('T-ET17: constructor with options { parentId, requestId }', () => {
+    const trace = new EventTrace({ parentId: 'parent-xyz', requestId: 'rid-xyz' });
+    assert.strictEqual(trace.parentId, 'parent-xyz');
+    assert.strictEqual(trace.requestId, 'rid-xyz');
+  });
+
 });

@@ -29,6 +29,7 @@ export function register() {
       aborted:      data.aborted || false,
       responseMode: data._responseMode || 'stream',
       libraryId:    data._libraryId || null,
+      requestId:    data._requestId || null,
     });
   });
 
@@ -49,6 +50,7 @@ export function register() {
       responseMode: null,
       cacheHit:     true,
       libraryId:    data._libraryId || null,
+      requestId:    data._requestId || null,
     });
   });
 }

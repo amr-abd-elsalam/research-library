@@ -35,7 +35,7 @@ const SNIPPET_MAX_CHARS   = 150;
 // ═══════════════════════════════════════════════════════════════
 
 class PipelineContext {
-  constructor({ message, topicFilter, history, sessionId, req, res, responseMode, libraryId }) {
+  constructor({ message, topicFilter, history, sessionId, req, res, responseMode, libraryId, requestId }) {
     // ── Input (set once in constructor — don't overwrite) ──
     this.message       = message;
     this.topicFilter   = topicFilter;
@@ -46,6 +46,7 @@ class PipelineContext {
     this.startTime     = Date.now();
     this._responseMode = responseMode || 'stream';
     this.libraryId     = libraryId || null;
+    this.requestId     = requestId || null;
 
     // ── Mutable state (set by stages progressively) ───────
     this.transcript       = null;
@@ -785,6 +786,7 @@ if (config.PIPELINE?.enableHooks !== false) {
         estimated_cost:    costEstimate.total_cost,
         rewritten_query:   _ctx.effectiveMessage !== _ctx.message ? _ctx.effectiveMessage : undefined,
         follow_up:         _ctx.queryRoute?.isFollowUp || false,
+        request_id:        _ctx.requestId || null,
       },
       _traceCompact: trace.toCompact(),
 
@@ -812,6 +814,9 @@ if (config.PIPELINE?.enableHooks !== false) {
 
       // ── Library ID (Phase 61) ────────────────────────────────
       _libraryId: _ctx.libraryId || null,
+
+      // ── Request ID (Phase 66) ────────────────────────────────
+      _requestId: _ctx.requestId || null,
     });
   });
 }

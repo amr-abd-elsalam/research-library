@@ -217,4 +217,30 @@ describe('CorrelationIndex', () => {
       `libraryId should be undefined or null, got ${result.libraryId}`);
   });
 
+  // T-CI16: record with requestId — get returns requestId (Phase 66)
+  it('T-CI16: record with requestId — get returns requestId', () => {
+    correlationIndex.record('corr-rid-01', {
+      message: 'requestId test',
+      sessionId: 'sess-rid',
+      requestId: 'req-rid-001',
+      timestamp: Date.now(),
+    });
+    const result = correlationIndex.get('corr-rid-01');
+    assert.notStrictEqual(result, null);
+    assert.strictEqual(result.requestId, 'req-rid-001');
+  });
+
+  // T-CI17: record without requestId — get returns undefined (not in entry) (Phase 66)
+  it('T-CI17: record without requestId — get returns undefined or null', () => {
+    correlationIndex.record('corr-no-rid', {
+      message: 'no requestId test',
+      sessionId: 'sess-no-rid',
+      timestamp: Date.now(),
+    });
+    const result = correlationIndex.get('corr-no-rid');
+    assert.notStrictEqual(result, null);
+    assert.ok(result.requestId === undefined || result.requestId === null,
+      `requestId should be undefined or null, got ${result.requestId}`);
+  });
+
 });

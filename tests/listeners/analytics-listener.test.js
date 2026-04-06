@@ -87,4 +87,22 @@ describe('AnalyticsListener', () => {
       eventBus.emit('pipeline:complete', null);
     });
   });
+
+  // T-AL07: pipeline:complete with _analytics containing request_id — no crash (Phase 66)
+  it('T-AL07: pipeline:complete with _analytics.request_id — does not throw', () => {
+    assert.doesNotThrow(() => {
+      eventBus.emit('pipeline:complete', {
+        _analytics: {
+          event_type: 'chat',
+          message_length: 15,
+          latency_ms: 350,
+          score: 0.78,
+          request_id: 'test-rid-analytics-07',
+        },
+        message: 'request id analytics test',
+        correlationId: 'test-corr-al07',
+        _requestId: 'test-rid-analytics-07',
+      });
+    });
+  });
 });

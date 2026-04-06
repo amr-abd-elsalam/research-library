@@ -83,6 +83,17 @@ describe('Integration HTTP — Health & Readiness', () => {
     // periodicHealthCheck.enabled is false by default — external should be absent
     assert.strictEqual(data.external, undefined, 'external field should be absent when periodicHealthCheck disabled');
   });
+
+  // T-IH55: X-Request-Id header is UUID v4 format (Phase 66)
+  it('T-IH55: X-Request-Id header is UUID v4 format', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/health`);
+    assert.ok([200, 207, 429].includes(res.status), `expected 200/207/429, got ${res.status}`);
+    const requestId = res.headers.get('x-request-id');
+    assert.ok(requestId, 'X-Request-Id header must be present');
+    // UUID v4 format: 8-4-4-4-12 hex chars
+    assert.ok(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId),
+      `X-Request-Id should be UUID v4 format, got ${requestId}`);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════
