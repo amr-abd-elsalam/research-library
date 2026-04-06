@@ -13,11 +13,13 @@ const LEVELS = { debug: 0, info: 1, warn: 2, error: 3 };
 
 class Logger {
   #level;
+  #includeRequestId;
   #listeners = [];
 
   constructor() {
     const configLevel = config.LOGGING?.level ?? 'info';
     this.#level = LEVELS[configLevel] ?? LEVELS.info;
+    this.#includeRequestId = config.LOGGING?.includeRequestId !== false;
   }
 
   // ── Level check ──────────────────────────────────────────────
@@ -27,14 +29,30 @@ class Logger {
 
   // ── Core emit ────────────────────────────────────────────────
   #emit(level, module, message, detail = null, correlationId = null) {
+    // ── Phase 67: Extract _requestId/_sessionId from detail ──
+    let cleanDetail = detail;
+    let requestId = null;
+    let sessionId = null;
+
+    if (this.#includeRequestId && detail && typeof detail === 'object') {
+      if (detail._requestId !== undefined || detail._sessionId !== undefined) {
+        requestId = detail._requestId || null;
+        sessionId = detail._sessionId || null;
+        const { _requestId, _sessionId, ...rest } = detail;
+        cleanDetail = Object.keys(rest).length > 0 ? rest : null;
+      }
+    }
+
     const entry = {
       timestamp: new Date().toISOString(),
       level,
       module,
       message,
     };
-    if (detail !== null && detail !== undefined) entry.detail = detail;
+    if (cleanDetail !== null && cleanDetail !== undefined) entry.detail = cleanDetail;
     if (correlationId) entry.correlationId = correlationId;
+    entry.requestId = requestId;
+    entry.sessionId = sessionId;
 
     // Console output (only if level meets threshold)
     if (this.#shouldLog(level)) {

@@ -424,6 +424,7 @@ const config = {
     level:          'info',    // 'debug' | 'info' | 'warn' | 'error' — الحد الأدنى لمستوى الطباعة في الـ console
     operationalLog: true,      // true = تسجيل الأحداث التشغيلية في ring buffer (routing, cache, hooks, errors)
     maxEntries:     500,       // أقصى عدد entries في الـ operational log (in-memory ring buffer — الأقدم يتحذف أولاً)
+    includeRequestId: true,    // Phase 67: تضمين requestId/sessionId في log entries (true = استخراج من detail._requestId/_sessionId)
   },
 
   // ═══════════════════════════════════════════════════════════

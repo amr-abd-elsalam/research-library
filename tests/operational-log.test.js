@@ -102,4 +102,32 @@ describe('OperationalLog', () => {
     assert.strictEqual(entries.length, 0);
   });
 
+  // T-OL09: record with requestId — entry has requestId field (Phase 67)
+  it('T-OL09: record with requestId — entry has requestId field', () => {
+    operationalLog.record('test:event', 'src', { key: 'val' }, null, 'req-id-1');
+    const entries = operationalLog.recent(1);
+    assert.strictEqual(entries.length, 1);
+    assert.strictEqual(entries[0].requestId, 'req-id-1');
+  });
+
+  // T-OL10: record without requestId — entry requestId defaults to null (Phase 67)
+  it('T-OL10: record without requestId — entry requestId defaults to null', () => {
+    operationalLog.record('test:event', 'src', { key: 'val' });
+    const entries = operationalLog.recent(1);
+    assert.strictEqual(entries.length, 1);
+    assert.strictEqual(entries[0].requestId, null);
+  });
+
+  // T-OL11: multiple records with different requestIds (Phase 67)
+  it('T-OL11: multiple records with different requestIds', () => {
+    operationalLog.record('event-a', 'mod', null, null, 'req-AAA');
+    operationalLog.record('event-b', 'mod', null, null, 'req-BBB');
+    const entries = operationalLog.recent(2);
+    // newest first
+    assert.strictEqual(entries[0].event, 'event-b');
+    assert.strictEqual(entries[0].requestId, 'req-BBB');
+    assert.strictEqual(entries[1].event, 'event-a');
+    assert.strictEqual(entries[1].requestId, 'req-AAA');
+  });
+
 });

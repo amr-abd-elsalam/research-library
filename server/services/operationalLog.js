@@ -29,8 +29,9 @@ class OperationalLog {
    * @param {string} module — source module
    * @param {object|null} [detail=null] — optional structured detail
    * @param {string|null} [correlationId=null] — optional request correlation ID
+   * @param {string|null} [requestId=null] — optional HTTP request ID (Phase 67)
    */
-  record(event, module, detail = null, correlationId = null) {
+  record(event, module, detail = null, correlationId = null, requestId = null) {
     if (!this.#enabled) return;
 
     const entry = {
@@ -40,6 +41,7 @@ class OperationalLog {
     };
     if (detail !== null && detail !== undefined) entry.detail = detail;
     if (correlationId) entry.correlationId = correlationId;
+    entry.requestId = requestId || null;
 
     this.#entries.push(entry);
 

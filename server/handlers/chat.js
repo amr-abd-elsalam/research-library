@@ -104,7 +104,7 @@ function handlePipelineError(err, res, ctx, trace, startTime) {
   } else {
     // No partial content — send error
     if (!res.headersSent) {
-      logger.error('chat', 'pipeline error', { error: err.message, category: classification.category }, trace?.correlationId);
+      logger.error('chat', 'pipeline error', { error: err.message, category: classification.category, _requestId: ctx.req?._requestId || null, _sessionId: ctx.sessionId || null }, trace?.correlationId);
     }
     writeChunk(res, { error: true, message: classification.userMessage, code: classification.code });
   }
@@ -175,7 +175,7 @@ async function _handleChat(req, res) {
           startTime,
         });
       } catch (err) {
-        logger.error('chat', `${route.action} error`, { error: err.message });
+        logger.error('chat', `${route.action} error`, { error: err.message, _requestId: req._requestId || null, _sessionId: session_id || null });
         if (!res.writableEnded) {
           writeChunk(res, { error: true, message: 'حدث خطأ في تنفيذ الأمر', code: 'COMMAND_ERROR' });
           res.end();

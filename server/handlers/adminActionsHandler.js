@@ -113,7 +113,7 @@ export async function handleAdminAction(req, res) {
         libraryHealthScorer.invalidateCache();
         const durationMs = Date.now() - t0;
         const result = { success: true, message: 'Library refreshed' };
-        logger.info('adminActions', 'Library index refreshed via admin action');
+        logger.info('adminActions', 'Library index refreshed via admin action', { _requestId: req._requestId || null });
         emitAction(action, {}, result, durationMs);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(result));
@@ -121,7 +121,7 @@ export async function handleAdminAction(req, res) {
         recordCooldown(action);
         const durationMs = Date.now() - t0;
         const result = { success: false, error: err.message };
-        logger.warn('adminActions', 'Library refresh failed', { error: err.message });
+        logger.warn('adminActions', 'Library refresh failed', { error: err.message, _requestId: req._requestId || null });
         emitAction(action, {}, result, durationMs);
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
@@ -139,7 +139,7 @@ export async function handleAdminAction(req, res) {
       libraryHealthScorer.invalidateCache();
       const durationMs = Date.now() - t0;
       const result = { success: true, cleared: count };
-      logger.info('adminActions', `Cache cleared via admin action (${count} entries)`);
+      logger.info('adminActions', `Cache cleared via admin action (${count} entries)`, { _requestId: req._requestId || null });
       emitAction(action, {}, result, durationMs);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(result));
@@ -153,7 +153,7 @@ export async function handleAdminAction(req, res) {
       libraryHealthScorer.invalidateCache();
       const durationMs = Date.now() - t0;
       const result = { success: true, message: 'Metrics counters reset' };
-      logger.info('adminActions', 'Metrics reset via admin action');
+      logger.info('adminActions', 'Metrics reset via admin action', { _requestId: req._requestId || null });
       emitAction(action, {}, result, durationMs);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(result));
@@ -187,7 +187,7 @@ export async function handleAdminAction(req, res) {
         libraryHealthScorer.invalidateCache();
         const durationMs = Date.now() - t0;
         const result = { success: true, message: 'Gap analysis refreshed', entriesProcessed };
-        logger.info('adminActions', `Gap analysis refreshed via admin action (${entriesProcessed} entries)`);
+        logger.info('adminActions', `Gap analysis refreshed via admin action (${entriesProcessed} entries)`, { _requestId: req._requestId || null });
         emitAction(action, {}, result, durationMs);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(result));
@@ -195,7 +195,7 @@ export async function handleAdminAction(req, res) {
         recordCooldown(action);
         const durationMs = Date.now() - t0;
         const result = { success: false, error: err.message };
-        logger.warn('adminActions', 'Gap reanalysis failed', { error: err.message });
+        logger.warn('adminActions', 'Gap reanalysis failed', { error: err.message, _requestId: req._requestId || null });
         emitAction(action, {}, result, durationMs);
         res.writeHead(500, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({
@@ -251,7 +251,7 @@ export async function handleAdminAction(req, res) {
       libraryHealthScorer.invalidateCache();
       const durationMs = Date.now() - t0;
       const result = { success: true, feature, enabled, message: `${feature} set to ${enabled}` };
-      logger.info('adminActions', `Feature toggled via admin action: ${feature} → ${enabled}`);
+      logger.info('adminActions', `Feature toggled via admin action: ${feature} → ${enabled}`, { _requestId: req._requestId || null });
       emitAction(action, { feature, enabled }, result, durationMs);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(result));

@@ -61,14 +61,15 @@ class BootstrapManager {
     const startedAt = new Date();
     const stages    = [];
 
-    // ── Wire Logger → OperationalLog (Phase 16) ──────────────
+    // ── Wire Logger → OperationalLog (Phase 16, updated Phase 67) ──
     logger.addListener((entry) => {
       if (entry.level === 'warn' || entry.level === 'error') {
         operationalLog.record(
           `log:${entry.level}`,
           entry.module,
           { message: entry.message, ...(entry.detail && typeof entry.detail === 'object' ? entry.detail : {}) },
-          entry.correlationId || null
+          entry.correlationId || null,
+          entry.requestId || null
         );
       }
     });

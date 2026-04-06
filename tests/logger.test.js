@@ -114,4 +114,60 @@ describe('Logger', () => {
     assert.strictEqual(calls3[0].message, 'broadcast');
   });
 
+  // T-LOG09: log with _requestId in detail — entry has requestId field (Phase 67)
+  it('T-LOG09: log with _requestId in detail — entry has requestId field', () => {
+    const entries = [];
+    logger.addListener((entry) => entries.push(entry));
+    logger.info('mod', 'msg', { _requestId: 'req-123', key: 'val' });
+    assert.strictEqual(entries.length, 1);
+    assert.strictEqual(entries[0].requestId, 'req-123');
+  });
+
+  // T-LOG10: log without _requestId — entry requestId defaults to null (Phase 67)
+  it('T-LOG10: log without _requestId — entry requestId defaults to null', () => {
+    const entries = [];
+    logger.addListener((entry) => entries.push(entry));
+    logger.info('mod', 'msg', { key: 'val' });
+    assert.strictEqual(entries.length, 1);
+    assert.strictEqual(entries[0].requestId, null);
+  });
+
+  // T-LOG11: log with _sessionId in detail — entry has sessionId field (Phase 67)
+  it('T-LOG11: log with _sessionId in detail — entry has sessionId field', () => {
+    const entries = [];
+    logger.addListener((entry) => entries.push(entry));
+    logger.info('mod', 'msg', { _sessionId: 'sess-1' });
+    assert.strictEqual(entries.length, 1);
+    assert.strictEqual(entries[0].sessionId, 'sess-1');
+  });
+
+  // T-LOG12: all levels support _requestId extraction (Phase 67)
+  it('T-LOG12: all levels support _requestId extraction', () => {
+    const entries = [];
+    logger.addListener((entry) => entries.push(entry));
+    logger.debug('m', 'd', { _requestId: 'r-debug' });
+    logger.info('m', 'i', { _requestId: 'r-info' });
+    logger.warn('m', 'w', { _requestId: 'r-warn' });
+    logger.error('m', 'e', { _requestId: 'r-error' });
+    assert.strictEqual(entries.length, 4);
+    assert.strictEqual(entries[0].requestId, 'r-debug');
+    assert.strictEqual(entries[1].requestId, 'r-info');
+    assert.strictEqual(entries[2].requestId, 'r-warn');
+    assert.strictEqual(entries[3].requestId, 'r-error');
+  });
+
+  // T-LOG13: _requestId and _sessionId stripped from detail in entry (Phase 67)
+  it('T-LOG13: _requestId and _sessionId stripped from detail in entry', () => {
+    const entries = [];
+    logger.addListener((entry) => entries.push(entry));
+    logger.info('mod', 'msg', { _requestId: 'r1', _sessionId: 's1', error: 'test' });
+    assert.strictEqual(entries.length, 1);
+    const e = entries[0];
+    assert.strictEqual(e.requestId, 'r1');
+    assert.strictEqual(e.sessionId, 's1');
+    assert.deepStrictEqual(e.detail, { error: 'test' });
+    assert.strictEqual(e.detail._requestId, undefined, '_requestId should be stripped from detail');
+    assert.strictEqual(e.detail._sessionId, undefined, '_sessionId should be stripped from detail');
+  });
+
 });

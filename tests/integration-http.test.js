@@ -645,4 +645,35 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     const data = await res.json();
     assert.strictEqual(typeof data.ADMIN_INTELLIGENCE, 'boolean');
   });
+
+  // T-IH56: GET /api/admin/log — entries have requestId field (Phase 67)
+  it('T-IH56: GET /api/admin/log — entries have requestId field in schema', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/log`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('entries' in data, 'response should contain entries');
+    assert.ok(Array.isArray(data.entries), 'entries should be an array');
+    assert.ok('total' in data, 'response should contain total');
+    assert.ok('limit' in data, 'response should contain limit');
+    // If there are any entries, verify requestId field exists (string or null)
+    if (data.entries.length > 0) {
+      const entry = data.entries[0];
+      assert.ok('requestId' in entry, 'entry should have requestId field');
+      const validType = entry.requestId === null || typeof entry.requestId === 'string';
+      assert.ok(validType, `requestId should be string or null, got ${typeof entry.requestId}`);
+    }
+  });
+
+  // T-IH57: GET /api/admin/log — admin/log endpoint returns proper structure (Phase 67)
+  it('T-IH57: GET /api/admin/log — limit parameter works', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/log?limit=5`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok(Array.isArray(data.entries), 'entries should be an array');
+    assert.strictEqual(data.limit, 5, 'limit should reflect query parameter');
+  });
 });
