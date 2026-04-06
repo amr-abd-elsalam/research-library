@@ -730,6 +730,25 @@ const config = {
     },
   },
 
+  // ═══════════════════════════════════════════════════════════
+  // 35. المراقبة والتتبع (OBSERVABILITY)
+  //    — تحكم في تتبع الطلبات وفحص الخدمات الخارجية
+  //    — X-Request-Id header مفعّل افتراضياً
+  //    — الفحص الدوري للخدمات الخارجية معطّل افتراضياً
+  //    — لا تحتاج تعديل عادةً
+  // ═══════════════════════════════════════════════════════════
+  OBSERVABILITY: {
+    // X-Request-Id header — يُضاف لكل HTTP response
+    requestIdEnabled: true,    // true = إضافة X-Request-Id header لكل response | false = بدون
+
+    // فحص دوري للخدمات الخارجية (Qdrant + Gemini)
+    // يظهر في /api/health response لما مفعّل
+    periodicHealthCheck: {
+      enabled:    false,       // true = فحص الخدمات الخارجية عند كل health check | false = معطّل (السلوك الحالي بالظبط)
+      cacheTtlMs: 30000,       // مدة تخزين نتيجة الفحص مؤقتاً (مللي ثانية). 30000 = 30 ثانية
+    },
+  },
+
 };
 
 export default deepFreeze(config);

@@ -1,3 +1,4 @@
+import { randomUUID }     from 'node:crypto';
 import { applyCors }      from './middleware/cors.js';
 import { applyRateLimit } from './middleware/rateLimit.js';
 import { validateBody }   from './middleware/validate.js';
@@ -27,6 +28,7 @@ import { handleAdminNotifications } from './handlers/adminNotificationsHandler.j
 import { handleLibraries } from './handlers/librariesHandler.js';
 import { bootstrap } from './bootstrap.js';
 import { eventBus } from './services/eventBus.js';
+import config from '../config.js';
 
 // ── URL matcher (strips query string + trailing slash) ─────────
 function matchRoute(reqUrl, routePath) {
@@ -52,6 +54,13 @@ export async function router(req, res) {
   // ── Apply CORS on every request ────────────────────────────────
   applyCors(req, res);
   if (res.writableEnded) return;
+
+  // ── Request ID (Phase 65) ──────────────────────────────────────
+  if (config.OBSERVABILITY?.requestIdEnabled !== false) {
+    const requestId = randomUUID();
+    req._requestId = requestId;
+    res.setHeader('X-Request-Id', requestId);
+  }
 
   // ── Routes ─────────────────────────────────────────────────────
 

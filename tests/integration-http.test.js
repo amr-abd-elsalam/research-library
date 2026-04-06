@@ -65,6 +65,24 @@ describe('Integration HTTP — Health & Readiness', () => {
     assert.ok('brand' in data, 'response should contain brand field');
     assert.ok('timestamp' in data, 'response should contain timestamp field');
   });
+
+  // T-IH52: responses include X-Request-Id header (Phase 65)
+  it('T-IH52: responses include X-Request-Id header', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/health`);
+    assert.ok([200, 207].includes(res.status));
+    const requestId = res.headers.get('x-request-id');
+    assert.ok(requestId, 'X-Request-Id header should be present');
+    assert.ok(requestId.length >= 32, 'X-Request-Id should be UUID-like');
+  });
+
+  // T-IH54: health endpoint does not include external field when periodicHealthCheck disabled (Phase 65)
+  it('T-IH54: health endpoint does not include external field when periodicHealthCheck disabled', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/health`);
+    assert.ok([200, 207].includes(res.status));
+    const data = await res.json();
+    // periodicHealthCheck.enabled is false by default — external should be absent
+    assert.strictEqual(data.external, undefined, 'external field should be absent when periodicHealthCheck disabled');
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -607,5 +625,13 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(res.status, 200);
     const data = await res.json();
     assert.strictEqual(typeof data.QUERY_COMPLEXITY, 'boolean');
+  });
+
+  // T-IH53: GET /api/config/features includes ADMIN_INTELLIGENCE boolean (Phase 65)
+  it('T-IH53: GET /api/config/features includes ADMIN_INTELLIGENCE boolean', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.ADMIN_INTELLIGENCE, 'boolean');
   });
 });

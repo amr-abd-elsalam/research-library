@@ -26,7 +26,7 @@ function createMockRes() {
 }
 
 // ── Cleanup ───────────────────────────────────────────────────
-const SECTIONS = ['FEEDBACK', 'SUGGESTIONS', 'CONTENT_GAPS', 'QUALITY', 'HEALTH_SCORE'];
+const SECTIONS = ['ADMIN_INTELLIGENCE', 'FEEDBACK', 'SUGGESTIONS', 'CONTENT_GAPS', 'QUALITY', 'HEALTH_SCORE', 'RETRIEVAL', 'QUERY_COMPLEXITY'];
 
 describe('handleConfigFeatures()', () => {
 
@@ -42,16 +42,20 @@ describe('handleConfigFeatures()', () => {
     assert.strictEqual(res.headers['Content-Type'], 'application/json');
   });
 
-  // T-CF02: returns all 5 feature sections
-  it('T-CF02: returns all 5 feature sections', async () => {
+  // T-CF02: returns all 8 feature sections
+  it('T-CF02: returns all 8 feature sections', async () => {
     const res = createMockRes();
     await handleConfigFeatures({}, res);
     const data = res.json;
+    assert.ok('ADMIN_INTELLIGENCE' in data);
     assert.ok('FEEDBACK' in data);
     assert.ok('SUGGESTIONS' in data);
     assert.ok('CONTENT_GAPS' in data);
     assert.ok('QUALITY' in data);
     assert.ok('HEALTH_SCORE' in data);
+    assert.ok('RETRIEVAL' in data);
+    assert.ok('QUERY_COMPLEXITY' in data);
+    assert.strictEqual(Object.keys(data).length, 8, 'should have exactly 8 feature fields');
   });
 
   // T-CF03: all values are booleans
@@ -69,12 +73,15 @@ describe('handleConfigFeatures()', () => {
     const res = createMockRes();
     await handleConfigFeatures({}, res);
     const data = res.json;
-    // All 5 sections are false by default in config.js
+    // All 8 sections are false by default in config.js
+    assert.strictEqual(data.ADMIN_INTELLIGENCE, false);
     assert.strictEqual(data.FEEDBACK, false);
     assert.strictEqual(data.SUGGESTIONS, false);
     assert.strictEqual(data.CONTENT_GAPS, false);
     assert.strictEqual(data.QUALITY, false);
     assert.strictEqual(data.HEALTH_SCORE, false);
+    assert.strictEqual(data.RETRIEVAL, false);
+    assert.strictEqual(data.QUERY_COMPLEXITY, false);
   });
 
   // T-CF05: reflects runtime override

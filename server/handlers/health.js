@@ -45,9 +45,33 @@ async function checkGemini() {
   }
 }
 
+// ── Cached External Health Probes (Phase 65) ───────────────────
+let _externalHealthCache = null;
+let _externalHealthCacheTs = 0;
+
+async function checkExternalHealthCached() {
+  const cfg = config.OBSERVABILITY?.periodicHealthCheck;
+  if (!cfg || cfg.enabled !== true) return null;
+
+  const ttl = cfg.cacheTtlMs ?? 30000;
+  const now = Date.now();
+  if (_externalHealthCache && (now - _externalHealthCacheTs) < ttl) {
+    return _externalHealthCache;
+  }
+
+  const [qdrantResult, geminiResult] = await Promise.all([checkQdrant(), checkGemini()]);
+  _externalHealthCache = { qdrant: qdrantResult, gemini: geminiResult, checkedAt: new Date().toISOString() };
+  _externalHealthCacheTs = now;
+  return _externalHealthCache;
+}
+
 // ── handler ────────────────────────────────────────────────────
 export async function handleHealth(req, res) {
-  const [qdrant, gemini] = await Promise.all([checkQdrant(), checkGemini()]);
+  // Phase 65: when periodicHealthCheck enabled — use cached probes, otherwise real-time
+  const cached = await checkExternalHealthCached();
+  const [qdrant, gemini] = cached
+    ? [cached.qdrant, cached.gemini]
+    : await Promise.all([checkQdrant(), checkGemini()]);
 
   const allOk  = qdrant.status === true && gemini.status === true;
   const status = allOk ? 'ok' : 'degraded';
@@ -69,6 +93,7 @@ export async function handleHealth(req, res) {
     circuits:  allCircuitStats(),
     brand:     config.BRAND.name,
     timestamp: new Date().toISOString(),
+    ...(cached ? { external: cached } : {}),
   });
 
   res.writeHead(allOk ? 200 : 207, { 'Content-Type': 'application/json' });

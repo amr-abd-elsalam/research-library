@@ -187,6 +187,12 @@ export async function handleInspect(_req, res) {
       // ── Query complexity analyzer (Phase 64) ──────────────
       queryComplexityAnalyzer: queryComplexityAnalyzer.counts(),
 
+      // ── Observability (Phase 65) ──────────────────────────
+      observability: {
+        requestIdEnabled: config.OBSERVABILITY?.requestIdEnabled !== false,
+        periodicHealthCheck: config.OBSERVABILITY?.periodicHealthCheck?.enabled === true,
+      },
+
       // ── Permission Tiers (Phase 26) ────────────────────────
       tiers: {
         enabled:      config.TIERS?.enabled === true,
