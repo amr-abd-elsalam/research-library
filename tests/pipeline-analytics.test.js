@@ -96,4 +96,18 @@ describe('PipelineAnalytics', () => {
     assert.strictEqual(c.lastComputedAt, null);
   });
 
+  // T-PA11: _recordCompletion() with grounding-related data — no throw when disabled (Phase 70)
+  it('T-PA11: _recordCompletion with grounding data does not throw when disabled', () => {
+    assert.doesNotThrow(() => {
+      pipelineAnalytics._recordCompletion({ totalMs: 100, avgScore: 0.8, _groundingScore: 0.7 });
+    });
+  });
+
+  // T-PA12: counts() — recommendationCount stays 0 when disabled even with grounding data (Phase 70)
+  it('T-PA12: recommendationCount stays 0 when disabled even with grounding data', () => {
+    pipelineAnalytics._recordCompletion({ totalMs: 100, avgScore: 0.8, _groundingScore: 0.2 });
+    const c = pipelineAnalytics.counts();
+    assert.strictEqual(c.recommendationCount, 0, 'should be 0 when adaptiveEnabled is false');
+  });
+
 });

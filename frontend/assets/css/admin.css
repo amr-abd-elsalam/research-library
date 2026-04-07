@@ -2711,6 +2711,64 @@ img { max-width: 100%; display: block; }
 }
 
 /* ══════════════════════════════════════════════════════════
+   28b. GROUNDING ANALYTICS (Phase 70)
+══════════════════════════════════════════════════════════ */
+.grounding-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.grounding-stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  text-align: center;
+  transition: border-color var(--speed) var(--ease);
+}
+
+.grounding-stat-card:hover {
+  border-color: var(--border-accent);
+}
+
+.grounding-stat-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--accent-light);
+  font-family: var(--font-en);
+}
+
+.grounding-stat-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.grounding-gauge {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-family: var(--font-en);
+}
+
+.grounding-gauge--good {
+  color: var(--status-ok);
+}
+
+.grounding-gauge--medium {
+  color: var(--status-warn);
+}
+
+.grounding-gauge--poor {
+  color: var(--status-error);
+}
+
+@media (max-width: 640px) {
+  .grounding-stats { grid-template-columns: 1fr; }
+}
+
+/* ══════════════════════════════════════════════════════════
    29. INTELLIGENCE SECTION (Phase 53)
 ══════════════════════════════════════════════════════════ */
 .intelligence-meta {

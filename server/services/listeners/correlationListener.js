@@ -18,18 +18,19 @@ export function register() {
     if (!data.correlationId) return;
 
     correlationIndex.record(data.correlationId, {
-      message:      data.message,
-      fullText:     (data.fullText || '').slice(0, 500),
-      sessionId:    data.sessionId || null,
-      queryType:    data.queryType || null,
-      avgScore:     data.avgScore ?? 0,
-      topicFilter:  data.topicFilter || null,
-      timestamp:    Date.now(),
-      cacheKey:     data._cacheKey || null,
-      aborted:      data.aborted || false,
-      responseMode: data._responseMode || 'stream',
-      libraryId:    data._libraryId || null,
-      requestId:    data._requestId || null,
+      message:        data.message,
+      fullText:       (data.fullText || '').slice(0, 500),
+      sessionId:      data.sessionId || null,
+      queryType:      data.queryType || null,
+      avgScore:       data.avgScore ?? 0,
+      topicFilter:    data.topicFilter || null,
+      timestamp:      Date.now(),
+      cacheKey:       data._cacheKey || null,
+      aborted:        data.aborted || false,
+      responseMode:   data._responseMode || 'stream',
+      libraryId:      data._libraryId || null,
+      requestId:      data._requestId || null,
+      groundingScore: data._groundingScore ?? null,
     });
   });
 
@@ -38,19 +39,20 @@ export function register() {
     if (!data.correlationId) return; // backward compat — old cache hits without ID
 
     correlationIndex.record(data.correlationId, {
-      message:      data.message,
-      fullText:     (data.fullText || '').slice(0, 500),
-      sessionId:    data.sessionId || null,
-      queryType:    null,
-      avgScore:     data.avgScore ?? 0,
-      topicFilter:  data.topicFilter || null,
-      timestamp:    Date.now(),
-      cacheKey:     null,
-      aborted:      false,
-      responseMode: null,
-      cacheHit:     true,
-      libraryId:    data._libraryId || null,
-      requestId:    data._requestId || null,
+      message:        data.message,
+      fullText:       (data.fullText || '').slice(0, 500),
+      sessionId:      data.sessionId || null,
+      queryType:      null,
+      avgScore:       data.avgScore ?? 0,
+      topicFilter:    data.topicFilter || null,
+      timestamp:      Date.now(),
+      cacheKey:       null,
+      aborted:        false,
+      responseMode:   null,
+      cacheHit:       true,
+      libraryId:      data._libraryId || null,
+      requestId:      data._requestId || null,
+      groundingScore: null,
     });
   });
 }

@@ -175,4 +175,37 @@ describe('CorrelationListener', () => {
     assert.ok(entry, 'entry should exist');
     assert.strictEqual(entry.requestId, 'test-cache-rid-456', 'requestId should be stored from _requestId in cache hit');
   });
+
+  // T-CoL09: pipeline:complete with _groundingScore — entry contains groundingScore (Phase 70)
+  it('T-CoL09: pipeline:complete with _groundingScore — entry contains groundingScore', () => {
+    eventBus.emit('pipeline:complete', {
+      correlationId: 'corr-gs-09',
+      message: 'grounding test question',
+      fullText: 'grounding test answer',
+      sessionId: 'sess-gs-09',
+      queryType: 'factual',
+      avgScore: 0.8,
+      aborted: false,
+      _groundingScore: 0.72,
+    });
+
+    const entry = correlationIndex.get('corr-gs-09');
+    assert.ok(entry, 'entry should exist');
+    assert.strictEqual(entry.groundingScore, 0.72, 'groundingScore should be stored from _groundingScore');
+  });
+
+  // T-CoL10: pipeline:cacheHit — entry contains groundingScore: null (Phase 70)
+  it('T-CoL10: pipeline:cacheHit — entry contains groundingScore null', () => {
+    eventBus.emit('pipeline:cacheHit', {
+      correlationId: 'corr-gs-10',
+      message: 'cached grounding question',
+      fullText: 'cached grounding answer',
+      sessionId: 'sess-gs-10',
+      avgScore: 0.9,
+    });
+
+    const entry = correlationIndex.get('corr-gs-10');
+    assert.ok(entry, 'entry should exist');
+    assert.strictEqual(entry.groundingScore, null, 'groundingScore should be null for cache hits');
+  });
 });

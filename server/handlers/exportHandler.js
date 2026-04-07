@@ -17,6 +17,7 @@ import { feedbackCollector } from '../services/feedbackCollector.js';
 import { gapPersister } from '../services/gapPersister.js';
 import { logger } from '../services/logger.js';
 import { operationalLog } from '../services/operationalLog.js';
+import { groundingAnalytics } from '../services/groundingAnalytics.js';
 
 /**
  * GET /api/admin/export?type=feedback,audit,gaps
@@ -99,6 +100,16 @@ export async function handleExport(req, res) {
     } catch (err) {
       logger.warn('exportHandler', 'logs export failed', { error: err.message });
       result.logs = [];
+    }
+  }
+
+  // ── Export grounding (Phase 70) ────────────────────────────
+  if (validTypes.includes('grounding')) {
+    try {
+      result.grounding = groundingAnalytics.getRecentScores(maxRows);
+    } catch (err) {
+      logger.warn('exportHandler', 'grounding export failed', { error: err.message });
+      result.grounding = [];
     }
   }
 

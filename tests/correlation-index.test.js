@@ -243,4 +243,30 @@ describe('CorrelationIndex', () => {
       `requestId should be undefined or null, got ${result.requestId}`);
   });
 
+  // T-CI18: record with groundingScore — get returns groundingScore (Phase 70)
+  it('T-CI18: record with groundingScore — get returns groundingScore', () => {
+    correlationIndex.record('corr-gs-01', {
+      message: 'grounding score test',
+      sessionId: 'sess-gs',
+      groundingScore: 0.82,
+      timestamp: Date.now(),
+    });
+    const result = correlationIndex.get('corr-gs-01');
+    assert.notStrictEqual(result, null);
+    assert.strictEqual(result.groundingScore, 0.82);
+  });
+
+  // T-CI19: record without groundingScore — get returns undefined (backward compatible) (Phase 70)
+  it('T-CI19: record without groundingScore — get returns undefined or null', () => {
+    correlationIndex.record('corr-no-gs', {
+      message: 'no grounding test',
+      sessionId: 'sess-no-gs',
+      timestamp: Date.now(),
+    });
+    const result = correlationIndex.get('corr-no-gs');
+    assert.notStrictEqual(result, null);
+    assert.ok(result.groundingScore === undefined || result.groundingScore === null,
+      `groundingScore should be undefined or null, got ${result.groundingScore}`);
+  });
+
 });

@@ -478,6 +478,30 @@ class PipelineAnalytics {
       }
     }
 
+    // 13. Low grounding rate warning (Phase 70)
+    const groundingCheckTotal = this.#sumCounter(counters.grounding_check_total);
+    const groundingLowTotal   = this.#sumCounter(counters.grounding_low_total);
+    if (groundingCheckTotal > 10 && (groundingLowTotal / groundingCheckTotal) > 0.30) {
+      recs.push({
+        type: 'quality', severity: 'warning',
+        title: 'معدل الإجابات غير المُؤسسة مرتفع',
+        message: `${((groundingLowTotal / groundingCheckTotal) * 100).toFixed(0)}% من الإجابات (${groundingLowTotal} من ${groundingCheckTotal}) لها درجة استناد منخفضة. يُنصح بمراجعة محتوى المكتبة وإضافة مصادر للمواضيع الأكثر استفساراً.`,
+        metric: 'grounding_low_total / grounding_check_total',
+        suggestedAction: 'راجع Response Quality في لوحة التحكم + أضف محتوى يغطي المواضيع ذات الاستناد المنخفض',
+      });
+    }
+
+    // 14. Grounding not enabled (Phase 70)
+    if (groundingCheckTotal === 0 && digest.totalRequests > 10) {
+      recs.push({
+        type: 'configuration', severity: 'info',
+        title: 'فحص دقة الإجابات معطّل',
+        message: 'فحص دقة الإجابات (Grounding) معطّل — فعّله من الإعدادات للحصول على تقييم آلي لجودة الإجابات.',
+        metric: 'grounding_check_total',
+        suggestedAction: 'GROUNDING.enabled: true في config.js أو عبر toggle-feature في لوحة التحكم',
+      });
+    }
+
     return recs;
   }
 

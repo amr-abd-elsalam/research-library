@@ -585,7 +585,7 @@ const config = {
   // ═══════════════════════════════════════════════════════════
   EXPORT: {
     enabled:        false,       // true = تفعيل API التصدير | false = معطّل (404)
-    allowedTypes:   ['feedback', 'audit', 'gaps', 'logs'],  // أنواع البيانات المسموح تصديرها (Phase 68: added 'logs')
+    allowedTypes:   ['feedback', 'audit', 'gaps', 'logs', 'grounding'],  // أنواع البيانات المسموح تصديرها (Phase 68: added 'logs', Phase 70: added 'grounding')
     maxExportRows:  10000,       // أقصى عدد صفوف لكل نوع بيانات في التصدير (حماية من exports كبيرة)
   },
 
@@ -763,6 +763,18 @@ const config = {
     warnUser:          true,      // true = إضافة تنبيه في الـ response لما الـ score منخفض | false = تسجيل بدون تنبيه
     includeInTrace:    true,      // true = تسجيل grounding score في الـ pipeline trace | false = لا تسجيل
     maxClaimsToCheck:  10,        // أقصى عدد claims يتم استخراجها من الإجابة للتحقق منها (1-20). أكثر = أدق بس أبطأ
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // 37. تحليلات دقة الإجابات (GROUNDING_ANALYTICS)
+  //    — يجمع إحصائيات عن مدى استناد الإجابات على محتوى المكتبة
+  //    — يظهر في لوحة تحكم الأدمن (Content tab)
+  //    — معطّل تلقائياً عندما GROUNDING معطّل
+  //    — in-memory فقط — البيانات تضيع عند restart
+  //    — zero overhead عند التعطيل
+  // ═══════════════════════════════════════════════════════════
+  GROUNDING_ANALYTICS: {
+    maxEntries: 200,    // أقصى عدد entries في الـ ring buffer (in-memory). الأقدم يتحذف أولاً
   },
 
 };

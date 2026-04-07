@@ -750,4 +750,43 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.ok('answerGroundingChecker' in data, 'inspect should contain answerGroundingChecker');
     assert.strictEqual(typeof data.answerGroundingChecker.enabled, 'boolean');
   });
+
+  // T-IH64: GET /api/admin/inspect includes groundingAnalytics field (Phase 70)
+  it('T-IH64: GET /api/admin/inspect includes groundingAnalytics', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('groundingAnalytics' in data, 'inspect should contain groundingAnalytics');
+    assert.strictEqual(typeof data.groundingAnalytics.enabled, 'boolean');
+    assert.strictEqual(typeof data.groundingAnalytics.totalChecked, 'number');
+    assert.strictEqual(typeof data.groundingAnalytics.avgScore, 'number');
+  });
+
+  // T-IH65: GET /api/admin/export?type=grounding — returns 200 or 404 when export disabled
+  it('T-IH65: GET /api/admin/export?type=grounding — returns valid response', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/export?type=grounding`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    if (res.status === 404) {
+      const data = await res.json();
+      assert.strictEqual(data.code, 'EXPORT_DISABLED');
+    } else {
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+      assert.ok('grounding' in data, 'response should contain grounding field');
+      assert.ok(Array.isArray(data.grounding), 'grounding should be an array');
+    }
+  });
+
+  // T-IH66: GET /api/admin/metrics — response parseable with metrics field (no regression)
+  it('T-IH66: GET /api/admin/metrics — response parseable', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/metrics`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('metrics' in data, 'should contain metrics field');
+  });
 });

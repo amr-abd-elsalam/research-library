@@ -39,6 +39,7 @@ import { dynamicWelcomeSuggestions } from '../services/dynamicWelcomeSuggestions
 import { searchReranker }            from '../services/searchReranker.js';
 import { queryComplexityAnalyzer }   from '../services/queryComplexityAnalyzer.js';
 import { answerGroundingChecker }    from '../services/answerGroundingChecker.js';
+import { groundingAnalytics }        from '../services/groundingAnalytics.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -191,6 +192,9 @@ export async function handleInspect(_req, res) {
 
       // ── Answer grounding checker (Phase 69) ───────────────
       answerGroundingChecker: answerGroundingChecker.counts(),
+
+      // ── Grounding analytics (Phase 70) ────────────────────
+      groundingAnalytics: groundingAnalytics.counts(),
 
       // ── Observability (Phase 65) ──────────────────────────
       observability: {

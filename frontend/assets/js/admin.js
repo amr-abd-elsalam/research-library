@@ -2719,7 +2719,55 @@
   async function loadContentTab() {
     loadLibraryOverview();
     loadContentGaps();
+    loadGroundingAnalytics();
     loadQualityOverview();
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  GROUNDING ANALYTICS (Phase 70)
+  // ══════════════════════════════════════════════════════════
+  async function loadGroundingAnalytics() {
+    var container = document.getElementById('admin-grounding-content');
+    if (!container) return;
+
+    container.innerHTML = '<p class="admin-empty-msg">\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u062D\u0645\u064A\u0644...</p>';
+
+    try {
+      var data = await adminFetch('/api/admin/inspect');
+      if (!data || !data.groundingAnalytics) {
+        container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623 \u0641\u064A \u062A\u062D\u0645\u064A\u0644 \u0628\u064A\u0627\u0646\u0627\u062A \u062C\u0648\u062F\u0629 \u0627\u0644\u0625\u062C\u0627\u0628\u0627\u062A</p>';
+        return;
+      }
+
+      var ga = data.groundingAnalytics;
+      var agc = data.answerGroundingChecker || {};
+
+      if (!agc.enabled) {
+        container.innerHTML = '<p class="admin-empty-msg">\u0641\u062D\u0635 \u062F\u0642\u0629 \u0627\u0644\u0625\u062C\u0627\u0628\u0627\u062A \u0645\u0639\u0637\u0651\u0644 \u2014 \u0641\u0639\u0651\u0644\u0647 \u0645\u0646 <code>GROUNDING.enabled: true</code></p>';
+        return;
+      }
+
+      if (ga.totalChecked === 0) {
+        container.innerHTML = '<p class="admin-empty-msg">\u0644\u0627 \u062A\u0648\u062C\u062F \u0628\u064A\u0627\u0646\u0627\u062A \u0628\u0639\u062F \u2014 \u0633\u062A\u0638\u0647\u0631 \u0627\u0644\u0625\u062D\u0635\u0627\u0626\u064A\u0627\u062A \u0628\u0639\u062F \u0625\u0631\u0633\u0627\u0644 \u0623\u0633\u0626\u0644\u0629</p>';
+        return;
+      }
+
+      var html = '';
+
+      // Stats cards
+      var avgPct = Math.round(ga.avgScore * 100);
+      var avgCls = avgPct >= 80 ? 'grounding-gauge--good' : avgPct >= 60 ? 'grounding-gauge--medium' : 'grounding-gauge--poor';
+
+      html += '<div class="grounding-stats">';
+      html += '<div class="grounding-stat-card"><div class="grounding-gauge ' + avgCls + '">' + avgPct + '%</div><div class="grounding-stat-label">\u0645\u0639\u062F\u0644 \u0627\u0644\u0627\u0633\u062A\u0646\u0627\u062F</div></div>';
+      html += '<div class="grounding-stat-card"><div class="grounding-stat-value">' + ga.totalChecked + '</div><div class="grounding-stat-label">\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0641\u062D\u0648\u0635\u0627\u062A</div></div>';
+      html += '</div>';
+
+      container.innerHTML = html;
+
+    } catch (err) {
+      container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623: ' + err.message + '</p>';
+    }
   }
 
   async function loadOperationsTab() {
