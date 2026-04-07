@@ -676,4 +676,59 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.ok(Array.isArray(data.entries), 'entries should be an array');
     assert.strictEqual(data.limit, 5, 'limit should reflect query parameter');
   });
+
+  // ── Log Filter & Export tests (Phase 68) ───────────────────
+
+  // T-IH58: GET /api/admin/log?requestId=nonexistent — returns 200 with filtered: true
+  it('T-IH58: GET /api/admin/log?requestId=nonexistent — returns filtered=true', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/log?requestId=nonexistent-id`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok(Array.isArray(data.entries), 'entries should be an array');
+    assert.strictEqual(data.filtered, true, 'filtered should be true when requestId param present');
+  });
+
+  // T-IH59: GET /api/admin/log?level=error — returns 200 with filtered: true
+  it('T-IH59: GET /api/admin/log?level=error — returns filtered=true', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/log?level=error`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok(Array.isArray(data.entries), 'entries should be an array');
+    assert.strictEqual(data.filtered, true, 'filtered should be true when level param present');
+  });
+
+  // T-IH60: GET /api/admin/log without filter params — filtered is false
+  it('T-IH60: GET /api/admin/log without filter params — filtered is false', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/log`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.filtered, false, 'filtered should be false when no filter params');
+    assert.ok(Array.isArray(data.entries), 'entries should be an array');
+    assert.ok('total' in data, 'should contain total field');
+    assert.ok('limit' in data, 'should contain limit field');
+  });
+
+  // T-IH61: GET /api/admin/export?type=logs — returns 200 with logs array
+  it('T-IH61: GET /api/admin/export?type=logs — returns 200 with logs', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/export?type=logs`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    // Export may be disabled by default (404) or enabled (200)
+    if (res.status === 404) {
+      // Export disabled — that's valid, just verify the error shape
+      const data = await res.json();
+      assert.strictEqual(data.code, 'EXPORT_DISABLED');
+    } else {
+      assert.strictEqual(res.status, 200);
+      const data = await res.json();
+      assert.ok('logs' in data, 'response should contain logs field');
+      assert.ok(Array.isArray(data.logs), 'logs should be an array');
+    }
+  });
 });

@@ -16,6 +16,7 @@ import config from '../../config.js';
 import { feedbackCollector } from '../services/feedbackCollector.js';
 import { gapPersister } from '../services/gapPersister.js';
 import { logger } from '../services/logger.js';
+import { operationalLog } from '../services/operationalLog.js';
 
 /**
  * GET /api/admin/export?type=feedback,audit,gaps
@@ -88,6 +89,16 @@ export async function handleExport(req, res) {
     } catch (err) {
       logger.warn('exportHandler', 'gaps export failed', { error: err.message });
       result.gaps = [];
+    }
+  }
+
+  // ── Export logs (Phase 68) ─────────────────────────────────
+  if (validTypes.includes('logs')) {
+    try {
+      result.logs = operationalLog.recent(maxRows);
+    } catch (err) {
+      logger.warn('exportHandler', 'logs export failed', { error: err.message });
+      result.logs = [];
     }
   }
 

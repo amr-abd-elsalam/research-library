@@ -130,4 +130,88 @@ describe('OperationalLog', () => {
     assert.strictEqual(entries[1].requestId, 'req-AAA');
   });
 
+  // ── filterBy() tests (Phase 68) ────────────────────────────
+
+  // T-OL12: filterBy({ requestId }) — returns only matching entries
+  it('T-OL12: filterBy requestId — returns matching entries only', () => {
+    operationalLog.record('log:info', 'chat', null, null, 'r1');
+    operationalLog.record('log:warn', 'router', null, null, 'r2');
+    operationalLog.record('log:error', 'chat', null, null, 'r1');
+
+    const results = operationalLog.filterBy({ requestId: 'r1' });
+    assert.strictEqual(results.length, 2, 'should return 2 entries with requestId r1');
+    // newest first
+    assert.strictEqual(results[0].event, 'log:error');
+    assert.strictEqual(results[1].event, 'log:info');
+    for (const entry of results) {
+      assert.strictEqual(entry.requestId, 'r1');
+    }
+  });
+
+  // T-OL13: filterBy({ level }) — returns entries matching event pattern
+  it('T-OL13: filterBy level error — returns log:error entries', () => {
+    operationalLog.record('log:error', 'chat', { msg: 'fail' });
+    operationalLog.record('log:warn', 'router');
+    operationalLog.record('routing', 'router');
+    operationalLog.record('log:info', 'chat');
+
+    const results = operationalLog.filterBy({ level: 'error' });
+    assert.strictEqual(results.length, 1, 'should return only log:error entry');
+    assert.strictEqual(results[0].event, 'log:error');
+  });
+
+  // T-OL14: filterBy({ module }) — returns entries matching module
+  it('T-OL14: filterBy module — exact match on module field', () => {
+    operationalLog.record('log:info', 'chat');
+    operationalLog.record('log:warn', 'router');
+    operationalLog.record('log:error', 'chat');
+
+    const results = operationalLog.filterBy({ module: 'chat' });
+    assert.strictEqual(results.length, 2, 'should return 2 entries from chat module');
+    for (const entry of results) {
+      assert.strictEqual(entry.module, 'chat');
+    }
+  });
+
+  // T-OL15: filterBy({ from, to }) — returns entries within time range
+  it('T-OL15: filterBy time range — returns entries within from/to', () => {
+    // Record 3 entries with known timestamps
+    operationalLog.record('event-old', 'mod');
+    const afterFirst = Date.now();
+
+    // Small delay to ensure timestamp difference
+    operationalLog.record('event-mid', 'mod');
+    const afterMid = Date.now();
+
+    operationalLog.record('event-new', 'mod');
+
+    // Filter for entries from afterFirst onwards
+    const results = operationalLog.filterBy({ from: afterFirst });
+    assert.ok(results.length >= 1, 'should return at least 1 entry after first timestamp');
+    // All returned entries should have timestamps >= afterFirst
+    for (const entry of results) {
+      assert.ok(new Date(entry.timestamp).getTime() >= afterFirst,
+        'entry timestamp should be >= from');
+    }
+  });
+
+  // T-OL16: filterBy({}) with empty criteria — returns all entries (respects limit)
+  it('T-OL16: filterBy empty criteria — returns all entries', () => {
+    operationalLog.record('a', 'mod1');
+    operationalLog.record('b', 'mod2');
+    operationalLog.record('c', 'mod3');
+
+    const all = operationalLog.filterBy({});
+    assert.strictEqual(all.length, 3, 'empty criteria should return all entries');
+    // newest first
+    assert.strictEqual(all[0].event, 'c');
+    assert.strictEqual(all[2].event, 'a');
+
+    // Limit respected
+    const limited = operationalLog.filterBy({}, 2);
+    assert.strictEqual(limited.length, 2, 'limit should be respected');
+    assert.strictEqual(limited[0].event, 'c');
+    assert.strictEqual(limited[1].event, 'b');
+  });
+
 });

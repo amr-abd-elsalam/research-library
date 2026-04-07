@@ -930,6 +930,7 @@
   //  OPERATIONAL LOG (Phase 16)
   // ══════════════════════════════════════════════════════════
   var _logData = null;
+  var _logServerFilter = {};
 
   function renderLog(data) {
     _logData = data;
@@ -952,6 +953,10 @@
     }
 
     var html = '';
+    // Show filtered badge if server-side filter active
+    if (data.filtered) {
+      html += '<div class="log-filter-active-badge">\u0641\u0644\u062A\u0631 \u0646\u0634\u0637 \u2014 ' + filtered.length + ' \u0646\u062A\u064A\u062C\u0629</div>';
+    }
     var max = Math.min(filtered.length, 100);
     for (var i = 0; i < max; i++) {
       var e = filtered[i];
@@ -965,14 +970,103 @@
         time = e.timestamp ? e.timestamp.slice(11, 19) : '';
       }
       var corrId = e.correlationId ? '<span class="admin-log-corr">' + e.correlationId + '</span>' : '';
+      var reqId = e.requestId ? '<span class="admin-log-reqid" title="' + e.requestId + '">' + e.requestId.slice(0, 12) + '\u2026</span>' : '';
       var detailStr = e.detail ? '<span class="admin-log-detail">' + JSON.stringify(e.detail) + '</span>' : '';
       html += '<div class="admin-log-row ' + cssClass + '">' +
         '<span class="admin-log-time">' + time + '</span>' +
         '<span class="admin-log-event">' + e.event + '</span>' +
         '<span class="admin-log-module">' + e.module + '</span>' +
-        corrId + detailStr + '</div>';
+        reqId + corrId + detailStr + '</div>';
     }
     container.innerHTML = html;
+
+    // Bind click-to-filter on requestId cells
+    var reqIdCells = container.querySelectorAll('.admin-log-reqid');
+    for (var ri = 0; ri < reqIdCells.length; ri++) {
+      reqIdCells[ri].addEventListener('click', function () {
+        var fullId = this.getAttribute('title');
+        if (!fullId) return;
+        var input = $('log-filter-requestid');
+        if (input) { input.value = fullId; applyLogServerFilter(); }
+      });
+    }
+  }
+
+  function renderLogFilterBar() {
+    // Insert the filter bar before the log entries container
+    var container = DOM.logEntries;
+    if (!container || !container.parentElement) return;
+    // Check if already rendered
+    if (container.parentElement.querySelector('.log-filter-bar')) return;
+
+    var bar = document.createElement('div');
+    bar.className = 'log-filter-bar';
+    bar.innerHTML =
+      '<div class="log-filter-row">' +
+        '<label class="log-filter-label">Request ID</label>' +
+        '<input type="text" id="log-filter-requestid" class="log-filter-input" placeholder="abc123..." dir="ltr">' +
+        '<label class="log-filter-label">\u0627\u0644\u0645\u0633\u062A\u0648\u0649</label>' +
+        '<select id="log-filter-level" class="log-filter-select">' +
+          '<option value="">\u0627\u0644\u0643\u0644</option>' +
+          '<option value="error">error</option>' +
+          '<option value="warn">warn</option>' +
+          '<option value="info">info</option>' +
+          '<option value="debug">debug</option>' +
+        '</select>' +
+        '<label class="log-filter-label">\u0627\u0644\u0645\u0635\u062F\u0631</label>' +
+        '<input type="text" id="log-filter-module" class="log-filter-input" placeholder="chat, router..." dir="ltr">' +
+        '<button type="button" id="log-filter-search" class="log-filter-btn">\u0628\u062D\u062B</button>' +
+        '<button type="button" id="log-filter-clear" class="log-filter-clear">\u0645\u0633\u062D \u0627\u0644\u0641\u0644\u062A\u0631</button>' +
+      '</div>';
+    container.parentElement.insertBefore(bar, container);
+
+    // Bind search button
+    var searchBtn = $('log-filter-search');
+    if (searchBtn) searchBtn.addEventListener('click', applyLogServerFilter);
+
+    // Bind clear button
+    var clearBtn = $('log-filter-clear');
+    if (clearBtn) clearBtn.addEventListener('click', clearLogServerFilter);
+
+    // Bind Enter key on inputs
+    var reqInput = $('log-filter-requestid');
+    var modInput = $('log-filter-module');
+    function onEnter(e) { if (e.key === 'Enter') { e.preventDefault(); applyLogServerFilter(); } }
+    if (reqInput) reqInput.addEventListener('keydown', onEnter);
+    if (modInput) modInput.addEventListener('keydown', onEnter);
+  }
+
+  function applyLogServerFilter() {
+    var params = { limit: 200 };
+    var reqId  = ($('log-filter-requestid') || {}).value;
+    var level  = ($('log-filter-level')     || {}).value;
+    var mod    = ($('log-filter-module')     || {}).value;
+
+    if (reqId && reqId.trim()) params.requestId = reqId.trim();
+    if (level)                 params.level     = level;
+    if (mod && mod.trim())     params.module    = mod.trim();
+
+    _logServerFilter = params;
+    showLogSkeleton();
+
+    adminFetch('/api/admin/log', params)
+      .then(function (data) { if (data) renderLog(data); })
+      .catch(function (err) {
+        if (DOM.logEntries) DOM.logEntries.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623: ' + err.message + '</p>';
+      });
+  }
+
+  function clearLogServerFilter() {
+    var reqInput = $('log-filter-requestid');
+    var lvlInput = $('log-filter-level');
+    var modInput = $('log-filter-module');
+    if (reqInput) reqInput.value = '';
+    if (lvlInput) lvlInput.value = '';
+    if (modInput) modInput.value = '';
+    _logServerFilter = {};
+
+    showLogSkeleton();
+    fetchLog().then(function (data) { if (data) renderLog(data); });
   }
 
   function showLogSkeleton() {
@@ -2667,6 +2761,7 @@
     }
 
     // Log
+    renderLogFilterBar();
     if (results[4].status === 'fulfilled' && results[4].value) {
       renderLog(results[4].value);
     }

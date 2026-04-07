@@ -585,7 +585,7 @@ const config = {
   // ═══════════════════════════════════════════════════════════
   EXPORT: {
     enabled:        false,       // true = تفعيل API التصدير | false = معطّل (404)
-    allowedTypes:   ['feedback', 'audit', 'gaps'],  // أنواع البيانات المسموح تصديرها
+    allowedTypes:   ['feedback', 'audit', 'gaps', 'logs'],  // أنواع البيانات المسموح تصديرها (Phase 68: added 'logs')
     maxExportRows:  10000,       // أقصى عدد صفوف لكل نوع بيانات في التصدير (حماية من exports كبيرة)
   },
 

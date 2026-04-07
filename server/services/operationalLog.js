@@ -102,6 +102,28 @@ class OperationalLog {
   }
 
   /**
+   * Filters entries by criteria. All criteria are optional — AND logic.
+   * Returns matching entries sorted newest-first (same order as recent()).
+   * @param {{ requestId?: string, level?: string, module?: string, from?: number, to?: number }} criteria
+   * @param {number} [limit=100]
+   * @returns {Array<object>}
+   */
+  filterBy(criteria = {}, limit = 100) {
+    const { requestId, level, module, from, to } = criteria;
+    let results = this.#entries;
+
+    if (requestId) results = results.filter(e => e.requestId === requestId);
+    if (level)     results = results.filter(e => e.event === `log:${level}` || (e.event && e.event.includes(level)));
+    if (module)    results = results.filter(e => e.module === module);
+    if (from)      results = results.filter(e => new Date(e.timestamp).getTime() >= from);
+    if (to)        results = results.filter(e => new Date(e.timestamp).getTime() <= to);
+
+    const safeLimit = Math.max(1, Math.min(limit, results.length));
+    const start = results.length - safeLimit;
+    return results.slice(start).reverse();
+  }
+
+  /**
    * Clears all entries. Intended for testing only.
    */
   reset() {

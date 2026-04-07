@@ -91,8 +91,9 @@ export async function handleInspect(_req, res) {
 
       // ── Operational log status ─────────────────────────────
       operationalLog: {
-        size:       operationalLog.size,
-        maxEntries: config.LOGGING?.maxEntries ?? 500,
+        size:             operationalLog.size,
+        maxEntries:       config.LOGGING?.maxEntries ?? 500,
+        filterableFields: ['requestId', 'level', 'module', 'from', 'to'],
       },
 
       // ── Bootstrap readiness ────────────────────────────────
