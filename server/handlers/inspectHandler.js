@@ -41,6 +41,7 @@ import { queryComplexityAnalyzer }   from '../services/queryComplexityAnalyzer.j
 import { answerGroundingChecker }    from '../services/answerGroundingChecker.js';
 import { groundingAnalytics }        from '../services/groundingAnalytics.js';
 import { citationMapper }            from '../services/citationMapper.js';
+import { llmProviderRegistry }       from '../services/llmProvider.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -202,6 +203,9 @@ export async function handleInspect(_req, res) {
 
       // ── Shared utility modules (Phase 72) ─────────────────────
       sharedUtilities: ['atomicWrite', 'arabicNlp'],
+
+      // ── LLM Provider (Phase 74) ──────────────────────────────
+      llmProvider: llmProviderRegistry.counts(),
 
       // ── Observability (Phase 65) ──────────────────────────────
       observability: {

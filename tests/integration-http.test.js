@@ -851,4 +851,28 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     const sectionNames = data.featureFlags.status.map(s => s.section);
     assert.ok(sectionNames.includes('SEMANTIC_MATCHING'), 'should include SEMANTIC_MATCHING in status');
   });
+
+  // T-IH73: GET /api/admin/inspect — response includes llmProvider object (Phase 74)
+  it('T-IH73: GET /api/admin/inspect — includes llmProvider with activeProvider and registered', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('llmProvider' in data, 'inspect should contain llmProvider');
+    assert.strictEqual(typeof data.llmProvider.activeProvider, 'string');
+    assert.strictEqual(typeof data.llmProvider.registeredCount, 'number');
+    assert.ok(Array.isArray(data.llmProvider.registered), 'registered should be an array');
+  });
+
+  // T-IH74: GET /api/admin/inspect — llmProvider.activeProvider is 'gemini' (Phase 74)
+  it('T-IH74: GET /api/admin/inspect — llmProvider.activeProvider is gemini', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.llmProvider.activeProvider, 'gemini');
+    assert.ok(data.llmProvider.registered.includes('gemini'), 'gemini should be in registered list');
+  });
 });

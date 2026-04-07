@@ -808,6 +808,28 @@ const config = {
     fallbackOnError: true,     // true = يرجع لـ token-only عند فشل embedding | false = يعمل propagate للـ error
   },
 
+  // ═══════════════════════════════════════════════════════════════
+  // 40. مزوّد نموذج اللغة (LLM_PROVIDER)
+  //    — يحدد أي LLM provider يُستخدم للـ embedding والـ generation
+  //    — القيم الافتراضية تطابق Gemini (السلوك الحالي بالظبط)
+  //    — غيّر الـ provider لتبديل بين Gemini / OpenAI / غيره
+  //    — يتطلب وجود provider مسجّل بنفس الاسم في الـ registry
+  // ═══════════════════════════════════════════════════════════════
+  LLM_PROVIDER: {
+    provider:        'gemini',           // اسم الـ provider المسجّل في الـ registry ('gemini' | 'openai' | ...)
+    embedding: {
+      model:         'gemini-embedding-001',  // اسم نموذج الـ embedding
+      dimensions:    3072,                     // أبعاد vector الـ embedding
+      timeoutMs:     8000,                     // مهلة استدعاء الـ embedding (مللي ثانية)
+    },
+    generation: {
+      model:         'gemini-2.5-flash',       // اسم نموذج التوليد
+      temperature:   0.2,                      // درجة الإبداع (0-1)
+      maxOutputTokens: 2048,                   // أقصى عدد tokens في الإجابة
+      timeoutMs:     35000,                    // مهلة استدعاء التوليد (مللي ثانية)
+    },
+  },
+
 };
 
 export default deepFreeze(config);

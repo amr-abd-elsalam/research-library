@@ -30,6 +30,8 @@ import { featureFlags } from './services/featureFlags.js';
 import { adminIntelligence } from './services/adminIntelligence.js';
 import { setConfigCacheInvalidator } from './services/listeners/configCacheListener.js';
 import { invalidateConfigCache } from './handlers/configHandler.js';
+import { llmProviderRegistry } from './services/llmProvider.js';
+import { GeminiProvider } from './services/providers/geminiProvider.js';
 
 // ── Timeout helper (for bootstrap-specific timeouts) ──────────
 function raceTimeout(promise, ms) {
@@ -112,6 +114,9 @@ class BootstrapManager {
       await featureFlags.ensureDir();
       await featureFlags.restore();
     }
+
+    // ── LLM Provider Registration (Phase 74) ─────────────────
+    llmProviderRegistry.register('gemini', () => new GeminiProvider());
 
     // ── Register EventBus listeners (Phase 13) ───────────────
     registerAllListeners();
