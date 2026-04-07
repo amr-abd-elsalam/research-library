@@ -197,10 +197,13 @@ export async function handleInspect(_req, res) {
       // ── Grounding analytics (Phase 70) ────────────────────
       groundingAnalytics: groundingAnalytics.counts(),
 
-      // ── Citation mapper (Phase 71) ────────────────────────
+      // ── Citation mapper (Phase 71) ────────────────────────────
       citationMapper: citationMapper.counts(),
 
-      // ── Observability (Phase 65) ──────────────────────────
+      // ── Shared utility modules (Phase 72) ─────────────────────
+      sharedUtilities: ['atomicWrite', 'arabicNlp'],
+
+      // ── Observability (Phase 65) ──────────────────────────────
       observability: {
         requestIdEnabled: config.OBSERVABILITY?.requestIdEnabled !== false,
         periodicHealthCheck: config.OBSERVABILITY?.periodicHealthCheck?.enabled === true,

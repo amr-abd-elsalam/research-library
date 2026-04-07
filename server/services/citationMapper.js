@@ -11,23 +11,7 @@
 
 import config from '../../config.js';
 import { featureFlags } from './featureFlags.js';
-
-// ── Arabic diacritics removal regex (same range as AnswerGroundingChecker) ──
-const DIACRITICS_RE = /[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06DC\u06DF-\u06E4\u06E7\u06E8\u06EA-\u06ED]/g;
-
-// ── Stop words (Arabic + English) ──────────────────────────────
-const STOP_WORDS = new Set([
-  'من', 'في', 'على', 'إلى', 'الى', 'عن', 'مع', 'هذا', 'هذه', 'ذلك', 'تلك',
-  'التي', 'الذي', 'اللذان', 'اللتان', 'الذين', 'اللاتي', 'اللواتي',
-  'أن', 'إن', 'ان', 'كان', 'كانت', 'يكون', 'تكون',
-  'هو', 'هي', 'هم', 'هن', 'أنت', 'أنا', 'نحن',
-  'لا', 'لم', 'لن', 'قد', 'ما', 'كل', 'بعض', 'أي',
-  'أو', 'و', 'ثم', 'بل', 'لكن',
-  'بين', 'حول', 'عند', 'بعد', 'قبل', 'خلال', 'منذ',
-  'the', 'a', 'an', 'is', 'are', 'was', 'were', 'be', 'been',
-  'of', 'in', 'to', 'for', 'on', 'with', 'at', 'by', 'from',
-  'and', 'or', 'but', 'not', 'this', 'that', 'it',
-]);
+import { tokenizeLight, splitSentences as nlpSplitSentences } from './arabicNlp.js';
 
 class CitationMapper {
 
@@ -122,26 +106,20 @@ class CitationMapper {
     }));
   }
 
-  /** Split text into sentences — same pattern as AnswerGroundingChecker */
+  /**
+   * Split text into sentences.
+   * Delegates to shared arabicNlp.splitSentences() — Phase 72.
+   */
   #splitSentences(text) {
-    return text
-      .split(/[.\n؟?!]+/)
-      .map(s => s.trim())
-      .filter(s => s.length >= 10);
+    return nlpSplitSentences(text);
   }
 
-  /** Arabic-aware tokenization */
+  /**
+   * Arabic-aware tokenization.
+   * Delegates to shared arabicNlp.tokenizeLight() — Phase 72.
+   */
   #tokenize(text) {
-    const cleaned = text
-      .replace(DIACRITICS_RE, '')
-      .toLowerCase()
-      .replace(/[^\p{L}\p{N}\s]/gu, ' ');
-
-    const tokens = cleaned
-      .split(/\s+/)
-      .filter(t => t.length >= 2 && !STOP_WORDS.has(t));
-
-    return new Set(tokens);
+    return tokenizeLight(text);
   }
 
   /** Summary for inspect endpoint. */

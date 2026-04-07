@@ -816,4 +816,17 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     const data = await res.json();
     assert.strictEqual(Object.keys(data).length, 10, `expected 10 feature keys, got ${Object.keys(data).length}`);
   });
+
+  // T-IH70: GET /api/admin/inspect — sharedUtilities includes 'arabicNlp' (Phase 72)
+  it('T-IH70: GET /api/admin/inspect — sharedUtilities includes arabicNlp', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('sharedUtilities' in data, 'inspect should contain sharedUtilities');
+    assert.ok(Array.isArray(data.sharedUtilities), 'sharedUtilities should be an array');
+    assert.ok(data.sharedUtilities.includes('atomicWrite'), 'should include atomicWrite');
+    assert.ok(data.sharedUtilities.includes('arabicNlp'), 'should include arabicNlp');
+  });
 });
