@@ -40,6 +40,7 @@ import { searchReranker }            from '../services/searchReranker.js';
 import { queryComplexityAnalyzer }   from '../services/queryComplexityAnalyzer.js';
 import { answerGroundingChecker }    from '../services/answerGroundingChecker.js';
 import { groundingAnalytics }        from '../services/groundingAnalytics.js';
+import { citationMapper }            from '../services/citationMapper.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -195,6 +196,9 @@ export async function handleInspect(_req, res) {
 
       // ── Grounding analytics (Phase 70) ────────────────────
       groundingAnalytics: groundingAnalytics.counts(),
+
+      // ── Citation mapper (Phase 71) ────────────────────────
+      citationMapper: citationMapper.counts(),
 
       // ── Observability (Phase 65) ──────────────────────────
       observability: {

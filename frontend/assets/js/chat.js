@@ -469,7 +469,7 @@ const ChatModule = (() => {
 
             if (refs && refs.chips && sources.length) {
               refs.chips.classList.remove('hidden');
-              SourcesModule.buildSourceChips(sources, refs.chips);
+              SourcesModule.buildSourceChips(sources, refs.chips, parsed.sourceRelevance);
             }
 
             AppModule.STATE.lastSources = sources;
@@ -481,6 +481,12 @@ const ChatModule = (() => {
             // Store correlationId on message element (Phase 33)
             if (parsed.correlationId && refs && refs.msgEl) {
               refs.msgEl.setAttribute('data-correlation-id', parsed.correlationId);
+            }
+
+            // Phase 71: Citation markers + quality badge
+            if (refs && parsed.citations && parsed.citations.length > 0 && window.getEffective('CITATION')) {
+              _renderCitationMarkers(refs.bubble, parsed.citations, sources);
+              _renderQualityBadge(refs.msgEl, parsed.groundingScore, parsed.citations.length);
             }
 
             // Feedback buttons (Phase 33, Phase 46: uses getEffective)
@@ -988,6 +994,72 @@ const ChatModule = (() => {
       messagesList.appendChild(container);
       AppModule.scrollToBottom();
     }
+  }
+
+  /* ══════════════════════════════════════════════════════════
+     CITATION MARKERS + QUALITY BADGE (Phase 71)
+  ══════════════════════════════════════════════════════════ */
+
+  function _renderCitationMarkers(bubble, citations, sources) {
+    if (!bubble || !citations || !citations.length) return;
+
+    // Get all text-bearing block elements inside the bubble (paragraphs, list items, headings)
+    var blocks = bubble.querySelectorAll('.md-paragraph, .md-list-item, .md-h3, .md-h4');
+    if (!blocks.length) return;
+
+    // Map sentenceIndex to sourceIndex — build a simple lookup
+    // Citations are ordered by sentenceIndex (re-sorted after maxCitations filter)
+    // We attach markers to the closest block element
+    var sentenceCounter = 0;
+    for (var bi = 0; bi < blocks.length; bi++) {
+      var block = blocks[bi];
+      // Count sentences in this block (rough — split on same delimiters)
+      var blockText = block.textContent || '';
+      var blockSentences = blockText.split(/[.\n؟?!]+/).filter(function(s) { return s.trim().length >= 10; });
+      var blockSentenceEnd = sentenceCounter + Math.max(blockSentences.length, 1);
+
+      // Find citations whose sentenceIndex falls in this block's range
+      for (var ci = 0; ci < citations.length; ci++) {
+        var cit = citations[ci];
+        if (cit.sentenceIndex >= sentenceCounter && cit.sentenceIndex < blockSentenceEnd) {
+          var marker = document.createElement('sup');
+          marker.className = 'citation-marker';
+          marker.textContent = '[' + (cit.sourceIndex + 1) + ']';
+          marker.setAttribute('data-source-index', cit.sourceIndex);
+          marker.title = (sources[cit.sourceIndex] ? (sources[cit.sourceIndex].section || sources[cit.sourceIndex].file || '') : '') + ' (' + Math.round(cit.overlap * 100) + '%)';
+          block.appendChild(marker);
+        }
+      }
+
+      sentenceCounter = blockSentenceEnd;
+    }
+  }
+
+  function _renderQualityBadge(msgEl, groundingScore, citationCount) {
+    if (!msgEl) return;
+    if (groundingScore === null || groundingScore === undefined) return;
+
+    var body = msgEl.querySelector('.msg-body');
+    if (!body) return;
+
+    var badge = document.createElement('div');
+    badge.className = 'quality-badge';
+
+    var level = 'poor';
+    var label = 'دقة منخفضة';
+    if (groundingScore >= 0.8) { level = 'good'; label = 'دقة عالية'; }
+    else if (groundingScore >= 0.6) { level = 'medium'; label = 'دقة متوسطة'; }
+    badge.classList.add('quality-badge--' + level);
+
+    var dot = document.createElement('span');
+    dot.className = 'quality-badge-dot';
+    badge.appendChild(dot);
+
+    var text = document.createElement('span');
+    text.textContent = label + ' · ' + citationCount + ' إسناد';
+    badge.appendChild(text);
+
+    body.appendChild(badge);
   }
 
   /* ══════════════════════════════════════════════════════════

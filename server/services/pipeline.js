@@ -23,6 +23,7 @@ import { contentGapDetector }                 from './contentGapDetector.js';
 import { searchReranker }                     from './searchReranker.js';
 import { queryComplexityAnalyzer }            from './queryComplexityAnalyzer.js';
 import { answerGroundingChecker }             from './answerGroundingChecker.js';
+import { citationMapper }                     from './citationMapper.js';
 
 // ── Singleton ContextManager (same as previous chat.js) ────────
 const contextManager = new ContextManager();
@@ -480,6 +481,25 @@ async function stageGroundingCheck(ctx, _trace) {
   return ctx;
 }
 
+// ── Stage 10: Citation Mapping (Phase 71) ──────────────────────
+async function stageCitationMapping(ctx, _trace) {
+  if (!citationMapper.enabled || ctx.aborted || !ctx.fullText || !ctx.sources) {
+    ctx._citationSkipped = true;
+    ctx._citations = null;
+    ctx._sourceRelevance = null;
+    return ctx;
+  }
+
+  const contextText = ctx.context || '';
+  const result = citationMapper.map(ctx.fullText, ctx.sources, contextText);
+
+  ctx._citations = result.citations;
+  ctx._sourceRelevance = result.sourceRelevance;
+  ctx._citationSkipped = false;
+
+  return ctx;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // PipelineRunner — executes stages sequentially with tracing
 // ═══════════════════════════════════════════════════════════════
@@ -686,6 +706,18 @@ function buildStageRecord(stageName, ctx, _elapsed) {
         },
       };
 
+    case 'stageCitationMapping':
+      if (ctx._citationSkipped) {
+        return { status: 'skip', detail: { reason: ctx.aborted ? 'aborted' : 'disabled' } };
+      }
+      return {
+        status: 'ok',
+        detail: {
+          citationCount: ctx._citations?.length ?? 0,
+          sourceCount: ctx._sourceRelevance?.length ?? 0,
+        },
+      };
+
     default:
       return { status: 'ok', detail: null };
   }
@@ -707,6 +739,7 @@ const chatPipeline = new PipelineRunner([
   stageBuildContext,
   stageStream,
   stageGroundingCheck,      // Phase 69 — answer grounding & faithfulness check
+  stageCitationMapping,     // Phase 71 — sentence-to-source citation mapping
 ], config.PIPELINE?.enableHooks !== false ? pipelineHooks : null,
    config.PIPELINE?.retryableStages ?? {});
 
@@ -855,6 +888,11 @@ if (config.PIPELINE?.enableHooks !== false) {
       // ── Grounding check (Phase 69) ───────────────────────────
       _groundingScore: _ctx._groundingScore ?? null,
       _groundingSkipped: _ctx._groundingSkipped ?? true,
+
+      // ── Citation mapping (Phase 71) ──────────────────────────
+      _citations: _ctx._citations ?? null,
+      _citationSkipped: _ctx._citationSkipped ?? true,
+      _sourceRelevance: _ctx._sourceRelevance ?? null,
     });
   });
 }
@@ -863,4 +901,4 @@ if (config.PIPELINE?.enableHooks !== false) {
 // Exports
 // ═══════════════════════════════════════════════════════════════
 
-export { PipelineContext, PipelineRunner, chatPipeline, writeChunk, buildContext, buildSources, attemptLocalRewrite, buildDynamicSystemPrompt, stageRerank, stageComplexityAnalysis, stageGroundingCheck };
+export { PipelineContext, PipelineRunner, chatPipeline, writeChunk, buildContext, buildSources, attemptLocalRewrite, buildDynamicSystemPrompt, stageRerank, stageComplexityAnalysis, stageGroundingCheck, stageCitationMapping };

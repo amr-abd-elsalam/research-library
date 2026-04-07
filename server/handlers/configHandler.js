@@ -150,6 +150,7 @@ export async function handleConfigFeatures(_req, res) {
     RETRIEVAL:          featureFlags.isEnabled('RETRIEVAL'),
     QUERY_COMPLEXITY:   featureFlags.isEnabled('QUERY_COMPLEXITY'),
     GROUNDING:          featureFlags.isEnabled('GROUNDING'),
+    CITATION:           featureFlags.isEnabled('CITATION'),
   };
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(payload));

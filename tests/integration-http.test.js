@@ -789,4 +789,31 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     const data = await res.json();
     assert.ok('metrics' in data, 'should contain metrics field');
   });
+
+  // T-IH67: GET /api/config/features includes CITATION boolean (Phase 71)
+  it('T-IH67: GET /api/config/features includes CITATION boolean', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.CITATION, 'boolean');
+  });
+
+  // T-IH68: GET /api/admin/inspect includes citationMapper (Phase 71)
+  it('T-IH68: GET /api/admin/inspect includes citationMapper', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('citationMapper' in data, 'inspect should contain citationMapper');
+    assert.strictEqual(typeof data.citationMapper.enabled, 'boolean');
+  });
+
+  // T-IH69: GET /api/config/features returns exactly 10 keys (Phase 71)
+  it('T-IH69: GET /api/config/features returns exactly 10 keys', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(Object.keys(data).length, 10, `expected 10 feature keys, got ${Object.keys(data).length}`);
+  });
 });

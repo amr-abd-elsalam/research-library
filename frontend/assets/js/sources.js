@@ -59,7 +59,7 @@ const SourcesModule = (() => {
      SOURCE CHIPS (تحت فقاعة الإجابة)
   ══════════════════════════════════════════════════════════ */
 
-  function buildSourceChips(sources, container) {
+  function buildSourceChips(sources, container, sourceRelevance) {
     if (!container || !sources.length) return;
 
     const unique = _dedup(sources);
@@ -83,7 +83,23 @@ const SourcesModule = (() => {
       nameSpan.textContent = name;
       chip.appendChild(nameSpan);
 
-      // بدون نسبة — أنظف للمستخدم
+      // Phase 71: Source relevance bar
+      if (sourceRelevance && Array.isArray(sourceRelevance)) {
+        const relEntry = sourceRelevance.find(r => r.sourceIndex === i);
+        if (relEntry && relEntry.relevance > 0) {
+          const relBar = document.createElement('span');
+          relBar.className = 'source-relevance-bar';
+          const relFill = document.createElement('span');
+          relFill.className = 'source-relevance-fill';
+          relFill.style.width = Math.round(relEntry.relevance * 100) + '%';
+          relBar.appendChild(relFill);
+          const relLabel = document.createElement('span');
+          relLabel.className = 'source-relevance-label';
+          relLabel.textContent = Math.round(relEntry.relevance * 100) + '%';
+          chip.appendChild(relBar);
+          chip.appendChild(relLabel);
+        }
+      }
 
       chip.addEventListener('click', () => openDrawer(src));
 

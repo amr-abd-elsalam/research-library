@@ -266,6 +266,8 @@ async function _handleChat(req, res) {
             suggestions,
             correlationId: trace.correlationId,
             groundingScore: ctx._groundingSkipped ? null : ctx._groundingScore,
+            citations: ctx._citationSkipped ? null : ctx._citations,
+            sourceRelevance: ctx._citationSkipped ? null : ctx._sourceRelevance,
           };
           if (config.RESPONSE?.structuredIncludeTrace === true) {
             payload.trace = trace.toJSON();
@@ -284,7 +286,7 @@ async function _handleChat(req, res) {
                 && config.GROUNDING?.warnUser !== false) {
               writeChunk(res, { groundingWarning: true, groundingScore: ctx._groundingScore });
             }
-            writeChunk(res, { done: true, sources: ctx.sources, score: ctx.avgScore, suggestions, correlationId: trace.correlationId, groundingScore: ctx._groundingSkipped ? null : ctx._groundingScore });
+            writeChunk(res, { done: true, sources: ctx.sources, score: ctx.avgScore, suggestions, correlationId: trace.correlationId, groundingScore: ctx._groundingSkipped ? null : ctx._groundingScore, citations: ctx._citationSkipped ? null : ctx._citations, sourceRelevance: ctx._citationSkipped ? null : ctx._sourceRelevance });
           }
           res.end();
         }
