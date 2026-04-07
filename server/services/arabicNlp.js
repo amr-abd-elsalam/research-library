@@ -113,5 +113,25 @@ export function splitSentences(text, minLength = 10) {
     .filter(s => s.length >= minLength);
 }
 
+/**
+ * Computes cosine similarity between two equal-length number arrays.
+ * Used for comparing embedding vectors.
+ * @param {number[]} vecA
+ * @param {number[]} vecB
+ * @returns {number} similarity score (0-1, clamped)
+ */
+export function cosineSimilarity(vecA, vecB) {
+  if (!vecA || !vecB || vecA.length !== vecB.length || vecA.length === 0) return 0;
+  let dot = 0, magA = 0, magB = 0;
+  for (let i = 0; i < vecA.length; i++) {
+    dot  += vecA[i] * vecB[i];
+    magA += vecA[i] * vecA[i];
+    magB += vecB[i] * vecB[i];
+  }
+  const denom = Math.sqrt(magA) * Math.sqrt(magB);
+  if (denom === 0) return 0;
+  return Math.max(0, Math.min(1, dot / denom));
+}
+
 // Export STOP_WORDS for consumers that need direct access
 export { STOP_WORDS };

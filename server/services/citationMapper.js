@@ -11,7 +11,8 @@
 
 import config from '../../config.js';
 import { featureFlags } from './featureFlags.js';
-import { tokenizeLight, splitSentences as nlpSplitSentences } from './arabicNlp.js';
+import { tokenizeLight, splitSentences as nlpSplitSentences, cosineSimilarity } from './arabicNlp.js';
+import { embedBatch } from './gemini.js';
 
 class CitationMapper {
 
@@ -25,9 +26,9 @@ class CitationMapper {
    * @param {string} answer — full LLM answer text
    * @param {Array<{ file: string, section: string, snippet: string, content: string, score: number }>} sources — from pipeline ctx.sources
    * @param {string} contextText — the full RAG context text (from ctx.context)
-   * @returns {{ citations: Array<{ sentenceIndex: number, sourceIndex: number, overlap: number }>, sourceRelevance: Array<{ sourceIndex: number, relevance: number }> }}
+   * @returns {Promise<{ citations: Array<{ sentenceIndex: number, sourceIndex: number, overlap: number }>, sourceRelevance: Array<{ sourceIndex: number, relevance: number }> }>}
    */
-  map(answer, sources, contextText) {
+  async map(answer, sources, contextText) {
     if (!this.enabled) {
       return { citations: [], sourceRelevance: [] };
     }
@@ -47,25 +48,64 @@ class CitationMapper {
     // Tokenize each source content
     const sourceTokenSets = sources.map(s => this.#tokenize(s.content || s.snippet || ''));
 
-    // Map each sentence to best matching source
-    const rawCitations = [];
+    // Compute token overlap matrix: overlapMatrix[si][ji]
+    const overlapMatrix = [];
     for (let si = 0; si < sentences.length; si++) {
       const sentenceTokens = this.#tokenize(sentences[si]);
-      if (sentenceTokens.size === 0) continue;
-
-      let bestSourceIndex = -1;
-      let bestOverlap = 0;
-
+      const row = [];
       for (let ji = 0; ji < sourceTokenSets.length; ji++) {
         const sourceTokens = sourceTokenSets[ji];
-        if (sourceTokens.size === 0) continue;
-
+        if (sentenceTokens.size === 0 || sourceTokens.size === 0) {
+          row.push(0);
+          continue;
+        }
         let matchCount = 0;
         for (const token of sentenceTokens) {
           if (sourceTokens.has(token)) matchCount++;
         }
-        const overlap = matchCount / sentenceTokens.size;
+        row.push(matchCount / sentenceTokens.size);
+      }
+      overlapMatrix.push(row);
+    }
 
+    // ── Semantic matching (Phase 73) — feature-gated ───────
+    if (featureFlags.isEnabled('SEMANTIC_MATCHING')) {
+      const semConfig = config.SEMANTIC_MATCHING || {};
+      try {
+        const batchSize = semConfig.batchSize || 20;
+        const tokenW = semConfig.tokenWeight ?? 0.5;
+        const semanticW = semConfig.semanticWeight ?? 0.5;
+
+        // Embed sentences + source texts
+        const sentenceVecs = await embedBatch(sentences.slice(0, batchSize), 'RETRIEVAL_DOCUMENT');
+        const sourceTexts = sources.map(s => s.content || s.snippet || '');
+        const sourceVecs = await embedBatch(sourceTexts.slice(0, batchSize), 'RETRIEVAL_DOCUMENT');
+
+        // Blend overlap matrix with semantic similarity
+        for (let si = 0; si < Math.min(sentences.length, batchSize); si++) {
+          if (!sentenceVecs[si]) continue; // embed failed — keep token-only
+          for (let ji = 0; ji < Math.min(sources.length, batchSize); ji++) {
+            if (!sourceVecs[ji]) continue;
+            const semSim = cosineSimilarity(sentenceVecs[si], sourceVecs[ji]);
+            overlapMatrix[si][ji] = (tokenW * overlapMatrix[si][ji]) + (semanticW * semSim);
+          }
+        }
+      } catch {
+        if (semConfig.fallbackOnError === false) {
+          throw new Error('Semantic matching failed and fallbackOnError is disabled');
+        }
+        // Fallback — keep token-only overlap matrix (already computed)
+      }
+    }
+
+    // Map each sentence to best matching source using (possibly blended) overlap
+    const rawCitations = [];
+    for (let si = 0; si < sentences.length; si++) {
+      let bestSourceIndex = -1;
+      let bestOverlap = 0;
+
+      for (let ji = 0; ji < sources.length; ji++) {
+        const overlap = overlapMatrix[si][ji];
         if (overlap > bestOverlap) {
           bestOverlap = overlap;
           bestSourceIndex = ji;

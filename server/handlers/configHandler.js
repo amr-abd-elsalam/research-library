@@ -151,6 +151,7 @@ export async function handleConfigFeatures(_req, res) {
     QUERY_COMPLEXITY:   featureFlags.isEnabled('QUERY_COMPLEXITY'),
     GROUNDING:          featureFlags.isEnabled('GROUNDING'),
     CITATION:           featureFlags.isEnabled('CITATION'),
+    SEMANTIC_MATCHING:  featureFlags.isEnabled('SEMANTIC_MATCHING'),
   };
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(payload));

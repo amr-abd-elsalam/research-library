@@ -11,7 +11,8 @@
 
 import config from '../../config.js';
 import { featureFlags } from './featureFlags.js';
-import { tokenizeLight, splitSentences } from './arabicNlp.js';
+import { tokenizeLight, splitSentences, cosineSimilarity } from './arabicNlp.js';
+import { embedBatch } from './gemini.js';
 
 // ── Internal overlap threshold for a claim to be "grounded" ───
 const CLAIM_OVERLAP_THRESHOLD = 0.3;
@@ -27,15 +28,15 @@ class AnswerGroundingChecker {
    * Checks how well the answer is grounded in the provided context.
    * @param {string} answer — the LLM-generated answer text
    * @param {string} contextText — the RAG context that was fed to the LLM
-   * @returns {{ score: number, totalClaims: number, groundedClaims: number, ungroundedClaims: string[], flags: string[] }}
+   * @returns {Promise<{ score: number, totalClaims: number, groundedClaims: number, ungroundedClaims: string[], flags: string[], semanticUsed: boolean }>}
    */
-  check(answer, contextText) {
+  async check(answer, contextText) {
     if (!this.enabled) {
-      return { score: 1, totalClaims: 0, groundedClaims: 0, ungroundedClaims: [], flags: [] };
+      return { score: 1, totalClaims: 0, groundedClaims: 0, ungroundedClaims: [], flags: [], semanticUsed: false };
     }
 
     if (!answer || typeof answer !== 'string' || answer.trim().length === 0) {
-      return { score: 1, totalClaims: 0, groundedClaims: 0, ungroundedClaims: [], flags: [] };
+      return { score: 1, totalClaims: 0, groundedClaims: 0, ungroundedClaims: [], flags: [], semanticUsed: false };
     }
 
     const maxClaims = Math.max(1, Math.min(config.GROUNDING?.maxClaimsToCheck ?? 10, 20));
@@ -44,20 +45,21 @@ class AnswerGroundingChecker {
     const claims = this.#extractClaims(answer, maxClaims);
 
     if (claims.length === 0) {
-      return { score: 1, totalClaims: 0, groundedClaims: 0, ungroundedClaims: [], flags: [] };
+      return { score: 1, totalClaims: 0, groundedClaims: 0, ungroundedClaims: [], flags: [], semanticUsed: false };
     }
 
     // ── Tokenize context once ──────────────────────────────
     const contextTokens = this.#tokenize(contextText || '');
 
-    // ── Check each claim against context ───────────────────
-    let groundedCount = 0;
-    const ungroundedClaims = [];
+    // ── Compute token overlap for each claim ───────────────
+    const claimOverlaps = [];
+    const claimEmptyFlags = [];
 
     for (const claim of claims) {
       const claimTokens = this.#tokenize(claim);
       if (claimTokens.size === 0) {
-        groundedCount++; // Empty claim after stop word removal — consider grounded
+        claimOverlaps.push(1); // Empty claim after stop word removal — consider grounded
+        claimEmptyFlags.push(true);
         continue;
       }
 
@@ -66,11 +68,64 @@ class AnswerGroundingChecker {
         if (contextTokens.has(token)) overlap++;
       }
 
-      const overlapRatio = overlap / claimTokens.size;
-      if (overlapRatio >= CLAIM_OVERLAP_THRESHOLD) {
+      claimOverlaps.push(overlap / claimTokens.size);
+      claimEmptyFlags.push(false);
+    }
+
+    // ── Semantic matching (Phase 73) — feature-gated ───────
+    let semanticUsed = false;
+    if (featureFlags.isEnabled('SEMANTIC_MATCHING')) {
+      const semConfig = config.SEMANTIC_MATCHING || {};
+      try {
+        const batchSize = semConfig.batchSize || 20;
+        const tokenW = semConfig.tokenWeight ?? 0.5;
+        const semanticW = semConfig.semanticWeight ?? 0.5;
+
+        // Embed claims (up to batchSize, skip empty-flagged)
+        const claimTexts = claims.slice(0, batchSize);
+        const claimVecs = await embedBatch(claimTexts, 'RETRIEVAL_DOCUMENT');
+
+        // Split context into chunks and embed
+        const contextChunks = splitSentences(contextText || '', 20);
+        const chunkVecs = await embedBatch(contextChunks.slice(0, batchSize), 'RETRIEVAL_DOCUMENT');
+
+        // Blend scores for each claim
+        for (let i = 0; i < claimTexts.length; i++) {
+          if (claimEmptyFlags[i]) continue; // skip empty claims — already scored 1
+          if (!claimVecs[i]) continue; // embed failed — keep token-only score
+          let maxSemSim = 0;
+          for (let j = 0; j < chunkVecs.length; j++) {
+            if (!chunkVecs[j]) continue;
+            const sim = cosineSimilarity(claimVecs[i], chunkVecs[j]);
+            if (sim > maxSemSim) maxSemSim = sim;
+          }
+          // Blend: replace token overlap with blended score
+          claimOverlaps[i] = (tokenW * claimOverlaps[i]) + (semanticW * maxSemSim);
+        }
+        semanticUsed = true;
+      } catch {
+        if (semConfig.fallbackOnError !== false) {
+          // Fallback — keep token-only scores (already computed)
+          semanticUsed = false;
+        } else {
+          throw new Error('Semantic matching failed and fallbackOnError is disabled');
+        }
+      }
+    }
+
+    // ── Decide grounded/ungrounded per claim ───────────────
+    let groundedCount = 0;
+    const ungroundedClaims = [];
+
+    for (let i = 0; i < claims.length; i++) {
+      if (claimEmptyFlags[i]) {
+        groundedCount++;
+        continue;
+      }
+      if (claimOverlaps[i] >= CLAIM_OVERLAP_THRESHOLD) {
         groundedCount++;
       } else {
-        ungroundedClaims.push(claim.slice(0, 150)); // Truncate for safety
+        ungroundedClaims.push(claims[i].slice(0, 150)); // Truncate for safety
       }
     }
 
@@ -84,6 +139,7 @@ class AnswerGroundingChecker {
       groundedClaims: groundedCount,
       ungroundedClaims,
       flags,
+      semanticUsed,
     };
   }
 

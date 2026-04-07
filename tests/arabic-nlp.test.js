@@ -14,6 +14,7 @@ import {
   tokenize,
   tokenizeLight,
   splitSentences,
+  cosineSimilarity,
   STOP_WORDS,
 } from '../server/services/arabicNlp.js';
 
@@ -205,5 +206,40 @@ describe('arabicNlp — STOP_WORDS export', () => {
     assert.ok(STOP_WORDS.has('and'), 'should contain and');
     assert.ok(STOP_WORDS.has('of'), 'should contain of');
     assert.ok(STOP_WORDS.has('not'), 'should contain not');
+  });
+});
+
+describe('arabicNlp — cosineSimilarity', () => {
+
+  // T-NLP23: identical vectors return ~1
+  it('T-NLP23: identical vectors return ~1', () => {
+    const vec = [0.5, 0.3, 0.8, 0.1];
+    const result = cosineSimilarity(vec, vec);
+    assert.ok(result >= 0.999 && result <= 1.0, `expected ~1, got ${result}`);
+  });
+
+  // T-NLP24: orthogonal vectors return 0
+  it('T-NLP24: orthogonal vectors return 0', () => {
+    const vecA = [1, 0, 0];
+    const vecB = [0, 1, 0];
+    const result = cosineSimilarity(vecA, vecB);
+    assert.strictEqual(result, 0);
+  });
+
+  // T-NLP25: empty/null input returns 0
+  it('T-NLP25: empty/null input returns 0', () => {
+    assert.strictEqual(cosineSimilarity(null, [1, 2]), 0);
+    assert.strictEqual(cosineSimilarity([1, 2], null), 0);
+    assert.strictEqual(cosineSimilarity([], []), 0);
+    assert.strictEqual(cosineSimilarity([1, 2], [1, 2, 3]), 0); // different lengths
+  });
+
+  // T-NLP26: known vectors return expected value (verify math)
+  it('T-NLP26: known vectors return expected value', () => {
+    // vec A = [1, 0], vec B = [1, 1]
+    // dot = 1, magA = 1, magB = sqrt(2)
+    // cosine = 1 / sqrt(2) ≈ 0.7071
+    const result = cosineSimilarity([1, 0], [1, 1]);
+    assert.ok(result >= 0.707 && result <= 0.708, `expected ~0.7071, got ${result}`);
   });
 });

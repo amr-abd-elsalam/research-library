@@ -472,11 +472,12 @@ async function stageGroundingCheck(ctx, _trace) {
   }
 
   const contextText = ctx.context || '';
-  const result = answerGroundingChecker.check(ctx.fullText, contextText);
+  const result = await answerGroundingChecker.check(ctx.fullText, contextText);
 
   ctx._groundingScore = result.score;
   ctx._groundingResult = result;
   ctx._groundingSkipped = false;
+  ctx._semanticMatchingUsed = result.semanticUsed ?? false;
 
   return ctx;
 }
@@ -491,7 +492,7 @@ async function stageCitationMapping(ctx, _trace) {
   }
 
   const contextText = ctx.context || '';
-  const result = citationMapper.map(ctx.fullText, ctx.sources, contextText);
+  const result = await citationMapper.map(ctx.fullText, ctx.sources, contextText);
 
   ctx._citations = result.citations;
   ctx._sourceRelevance = result.sourceRelevance;
@@ -893,6 +894,9 @@ if (config.PIPELINE?.enableHooks !== false) {
       _citations: _ctx._citations ?? null,
       _citationSkipped: _ctx._citationSkipped ?? true,
       _sourceRelevance: _ctx._sourceRelevance ?? null,
+
+      // ── Semantic matching (Phase 73) ─────────────────────────
+      _semanticMatchingUsed: _ctx._semanticMatchingUsed ?? false,
     });
   });
 }

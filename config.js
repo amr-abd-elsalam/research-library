@@ -792,6 +792,22 @@ const config = {
     minOverlap:          0.2,       // أقل نسبة تطابق لاعتبار الجملة مُسندة (0-1)
   },
 
+  // ═══════════════════════════════════════════════════════════════
+  // 39. المطابقة الدلالية (SEMANTIC_MATCHING)
+  //    — يستخدم Gemini embeddings لتحسين دقة الـ grounding والـ citation
+  //    — يعمل blending بين token overlap و cosine similarity
+  //    — معطّل افتراضياً — فعّله من هنا
+  //    — يتطلب: GROUNDING.enabled أو CITATION.enabled
+  //    — بدون overhead لما معطّل — الـ grounding والـ citation يفضلوا token-only
+  // ═══════════════════════════════════════════════════════════════
+  SEMANTIC_MATCHING: {
+    enabled:         false,    // true = semantic similarity for grounding + citation | false = token overlap only (zero overhead — السلوك الحالي بالظبط)
+    tokenWeight:     0.5,      // 0-1: وزن token overlap في الـ blended score
+    semanticWeight:  0.5,      // 0-1: وزن semantic (cosine) similarity في الـ blended score
+    batchSize:       20,       // أقصى عدد texts يتم embed-ها في call واحد (cost control)
+    fallbackOnError: true,     // true = يرجع لـ token-only عند فشل embedding | false = يعمل propagate للـ error
+  },
+
 };
 
 export default deepFreeze(config);

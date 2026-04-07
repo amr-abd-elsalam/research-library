@@ -44,6 +44,7 @@ class FeatureFlags {
     QUERY_COMPLEXITY:   () => config.QUERY_COMPLEXITY?.enabled === true,
     GROUNDING:          () => config.GROUNDING?.enabled === true,
     CITATION:           () => config.CITATION?.enabled === true,
+    SEMANTIC_MATCHING:  () => config.SEMANTIC_MATCHING?.enabled === true,
   };
 
   /**

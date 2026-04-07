@@ -203,6 +203,29 @@ async function _streamGenerate(systemPrompt, context, history, question, onChunk
   return { finishReason };
 }
 
+// ─── embedBatch ───────────────────────────────────────────────────────────────
+/**
+ * Embeds multiple texts using sequential embedText() calls.
+ * Returns array of embedding vectors (same order as input).
+ * If any individual embed fails, that position gets null (no throw).
+ * @param {string[]} texts — texts to embed
+ * @param {string} [taskType='RETRIEVAL_DOCUMENT']
+ * @returns {Promise<(number[]|null)[]>}
+ */
+export async function embedBatch(texts, taskType = 'RETRIEVAL_DOCUMENT') {
+  if (!texts || !Array.isArray(texts) || texts.length === 0) return [];
+  const results = [];
+  for (const text of texts) {
+    try {
+      const vec = await embedText(text, taskType);
+      results.push(vec);
+    } catch {
+      results.push(null); // graceful — caller handles nulls
+    }
+  }
+  return results;
+}
+
 export async function streamGenerate(systemPrompt, context, history, question, onChunk) {
   return geminiCB.execute(() => _streamGenerate(systemPrompt, context, history, question, onChunk));
 }

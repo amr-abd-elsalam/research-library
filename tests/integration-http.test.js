@@ -809,12 +809,12 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(typeof data.citationMapper.enabled, 'boolean');
   });
 
-  // T-IH69: GET /api/config/features returns exactly 10 keys (Phase 71)
-  it('T-IH69: GET /api/config/features returns exactly 10 keys', async () => {
+  // T-IH69: GET /api/config/features returns exactly 11 keys (Phase 73)
+  it('T-IH69: GET /api/config/features returns exactly 11 keys', async () => {
     const res = await fetch(`${ts.baseUrl}/api/config/features`);
     assert.strictEqual(res.status, 200);
     const data = await res.json();
-    assert.strictEqual(Object.keys(data).length, 10, `expected 10 feature keys, got ${Object.keys(data).length}`);
+    assert.strictEqual(Object.keys(data).length, 11, `expected 11 feature keys, got ${Object.keys(data).length}`);
   });
 
   // T-IH70: GET /api/admin/inspect — sharedUtilities includes 'arabicNlp' (Phase 72)
@@ -828,5 +828,27 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.ok(Array.isArray(data.sharedUtilities), 'sharedUtilities should be an array');
     assert.ok(data.sharedUtilities.includes('atomicWrite'), 'should include atomicWrite');
     assert.ok(data.sharedUtilities.includes('arabicNlp'), 'should include arabicNlp');
+  });
+
+  // T-IH71: GET /api/config/features — includes SEMANTIC_MATCHING boolean (Phase 73)
+  it('T-IH71: GET /api/config/features includes SEMANTIC_MATCHING boolean', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.SEMANTIC_MATCHING, 'boolean');
+    assert.strictEqual(data.SEMANTIC_MATCHING, false, 'SEMANTIC_MATCHING should default to false');
+  });
+
+  // T-IH72: GET /api/admin/inspect — featureFlags.status has 11 sections including SEMANTIC_MATCHING (Phase 73)
+  it('T-IH72: GET /api/admin/inspect — featureFlags has 11 sections', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('featureFlags' in data, 'inspect should contain featureFlags');
+    assert.strictEqual(data.featureFlags.sections, 11, 'should have 11 managed sections');
+    const sectionNames = data.featureFlags.status.map(s => s.section);
+    assert.ok(sectionNames.includes('SEMANTIC_MATCHING'), 'should include SEMANTIC_MATCHING in status');
   });
 });

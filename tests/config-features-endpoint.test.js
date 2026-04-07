@@ -26,7 +26,7 @@ function createMockRes() {
 }
 
 // ── Cleanup ───────────────────────────────────────────────────
-const SECTIONS = ['ADMIN_INTELLIGENCE', 'FEEDBACK', 'SUGGESTIONS', 'CONTENT_GAPS', 'QUALITY', 'HEALTH_SCORE', 'RETRIEVAL', 'QUERY_COMPLEXITY', 'GROUNDING', 'CITATION'];
+const SECTIONS = ['ADMIN_INTELLIGENCE', 'FEEDBACK', 'SUGGESTIONS', 'CONTENT_GAPS', 'QUALITY', 'HEALTH_SCORE', 'RETRIEVAL', 'QUERY_COMPLEXITY', 'GROUNDING', 'CITATION', 'SEMANTIC_MATCHING'];
 
 describe('handleConfigFeatures()', () => {
 
@@ -42,8 +42,8 @@ describe('handleConfigFeatures()', () => {
     assert.strictEqual(res.headers['Content-Type'], 'application/json');
   });
 
-  // T-CF02: returns all 10 feature sections
-  it('T-CF02: returns all 10 feature sections', async () => {
+  // T-CF02: returns all 11 feature sections
+  it('T-CF02: returns all 11 feature sections', async () => {
     const res = createMockRes();
     await handleConfigFeatures({}, res);
     const data = res.json;
@@ -57,7 +57,8 @@ describe('handleConfigFeatures()', () => {
     assert.ok('QUERY_COMPLEXITY' in data);
     assert.ok('GROUNDING' in data);
     assert.ok('CITATION' in data);
-    assert.strictEqual(Object.keys(data).length, 10, 'should have exactly 10 feature fields');
+    assert.ok('SEMANTIC_MATCHING' in data);
+    assert.strictEqual(Object.keys(data).length, 11, 'should have exactly 11 feature fields');
   });
 
   // T-CF03: all values are booleans
@@ -75,7 +76,7 @@ describe('handleConfigFeatures()', () => {
     const res = createMockRes();
     await handleConfigFeatures({}, res);
     const data = res.json;
-    // All 10 sections are false by default in config.js
+    // All 11 sections are false by default in config.js
     assert.strictEqual(data.ADMIN_INTELLIGENCE, false);
     assert.strictEqual(data.FEEDBACK, false);
     assert.strictEqual(data.SUGGESTIONS, false);
@@ -86,6 +87,7 @@ describe('handleConfigFeatures()', () => {
     assert.strictEqual(data.QUERY_COMPLEXITY, false);
     assert.strictEqual(data.GROUNDING, false);
     assert.strictEqual(data.CITATION, false);
+    assert.strictEqual(data.SEMANTIC_MATCHING, false);
   });
 
   // T-CF05: reflects runtime override
