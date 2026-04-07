@@ -731,4 +731,23 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
       assert.ok(Array.isArray(data.logs), 'logs should be an array');
     }
   });
+
+  // T-IH62: GET /api/config/features includes GROUNDING boolean (Phase 69)
+  it('T-IH62: GET /api/config/features includes GROUNDING boolean', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.GROUNDING, 'boolean');
+  });
+
+  // T-IH63: GET /api/admin/inspect includes answerGroundingChecker (Phase 69)
+  it('T-IH63: GET /api/admin/inspect includes answerGroundingChecker', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('answerGroundingChecker' in data, 'inspect should contain answerGroundingChecker');
+    assert.strictEqual(typeof data.answerGroundingChecker.enabled, 'boolean');
+  });
 });

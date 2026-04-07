@@ -38,6 +38,7 @@ import { adminIntelligence }     from '../services/adminIntelligence.js';
 import { dynamicWelcomeSuggestions } from '../services/dynamicWelcomeSuggestions.js';
 import { searchReranker }            from '../services/searchReranker.js';
 import { queryComplexityAnalyzer }   from '../services/queryComplexityAnalyzer.js';
+import { answerGroundingChecker }    from '../services/answerGroundingChecker.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -187,6 +188,9 @@ export async function handleInspect(_req, res) {
 
       // ── Query complexity analyzer (Phase 64) ──────────────
       queryComplexityAnalyzer: queryComplexityAnalyzer.counts(),
+
+      // ── Answer grounding checker (Phase 69) ───────────────
+      answerGroundingChecker: answerGroundingChecker.counts(),
 
       // ── Observability (Phase 65) ──────────────────────────
       observability: {

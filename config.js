@@ -750,6 +750,21 @@ const config = {
     },
   },
 
+  // ═══════════════════════════════════════════════════════════
+  // 36. فحص دقة الإجابات (GROUNDING)
+  //    — يتحقق أن الإجابة مبنية فعلاً على محتوى المكتبة
+  //    — post-generation check بدون API call (zero cost)
+  //    — معطّل افتراضياً — فعّله من هنا أو عبر feature flags
+  //    — لا يحتاج أي dependency خارجية (in-memory token overlap)
+  // ═══════════════════════════════════════════════════════════
+  GROUNDING: {
+    enabled:           false,     // true = post-generation grounding check | false = no validation (zero overhead — السلوك الحالي بالظبط)
+    minGroundingScore: 0.4,       // 0-1: إجابات بـ score أقل من كده تظهر مع تنبيه للمستخدم. 0.4 = متساهل (يسمح بإعادة الصياغة)
+    warnUser:          true,      // true = إضافة تنبيه في الـ response لما الـ score منخفض | false = تسجيل بدون تنبيه
+    includeInTrace:    true,      // true = تسجيل grounding score في الـ pipeline trace | false = لا تسجيل
+    maxClaimsToCheck:  10,        // أقصى عدد claims يتم استخراجها من الإجابة للتحقق منها (1-20). أكثر = أدق بس أبطأ
+  },
+
 };
 
 export default deepFreeze(config);

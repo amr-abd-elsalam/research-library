@@ -22,6 +22,7 @@ import { libraryIndex }                       from './libraryIndex.js';
 import { contentGapDetector }                 from './contentGapDetector.js';
 import { searchReranker }                     from './searchReranker.js';
 import { queryComplexityAnalyzer }            from './queryComplexityAnalyzer.js';
+import { answerGroundingChecker }             from './answerGroundingChecker.js';
 
 // ── Singleton ContextManager (same as previous chat.js) ────────
 const contextManager = new ContextManager();
@@ -460,6 +461,25 @@ async function stageStream(ctx, _trace) {
   return ctx;
 }
 
+// ── Stage 9: Grounding Check (Phase 69) ────────────────────────
+async function stageGroundingCheck(ctx, _trace) {
+  if (!answerGroundingChecker.enabled || ctx.aborted || !ctx.fullText) {
+    ctx._groundingSkipped = true;
+    ctx._groundingScore = null;
+    ctx._groundingResult = null;
+    return ctx;
+  }
+
+  const contextText = ctx.context || '';
+  const result = answerGroundingChecker.check(ctx.fullText, contextText);
+
+  ctx._groundingScore = result.score;
+  ctx._groundingResult = result;
+  ctx._groundingSkipped = false;
+
+  return ctx;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // PipelineRunner — executes stages sequentially with tracing
 // ═══════════════════════════════════════════════════════════════
@@ -653,6 +673,19 @@ function buildStageRecord(stageName, ctx, _elapsed) {
         detail: { responseLength: ctx.fullText.length },
       };
 
+    case 'stageGroundingCheck':
+      if (ctx._groundingSkipped) {
+        return { status: 'skip', detail: { reason: ctx.aborted ? 'aborted' : 'disabled' } };
+      }
+      return {
+        status: 'ok',
+        detail: {
+          score: ctx._groundingScore,
+          totalClaims: ctx._groundingResult?.totalClaims ?? 0,
+          groundedClaims: ctx._groundingResult?.groundedClaims ?? 0,
+        },
+      };
+
     default:
       return { status: 'ok', detail: null };
   }
@@ -673,6 +706,7 @@ const chatPipeline = new PipelineRunner([
   stageConfidenceCheck,
   stageBuildContext,
   stageStream,
+  stageGroundingCheck,      // Phase 69 — answer grounding & faithfulness check
 ], config.PIPELINE?.enableHooks !== false ? pipelineHooks : null,
    config.PIPELINE?.retryableStages ?? {});
 
@@ -817,6 +851,10 @@ if (config.PIPELINE?.enableHooks !== false) {
 
       // ── Request ID (Phase 66) ────────────────────────────────
       _requestId: _ctx.requestId || null,
+
+      // ── Grounding check (Phase 69) ───────────────────────────
+      _groundingScore: _ctx._groundingScore ?? null,
+      _groundingSkipped: _ctx._groundingSkipped ?? true,
     });
   });
 }
@@ -825,4 +863,4 @@ if (config.PIPELINE?.enableHooks !== false) {
 // Exports
 // ═══════════════════════════════════════════════════════════════
 
-export { PipelineContext, PipelineRunner, chatPipeline, writeChunk, buildContext, buildSources, attemptLocalRewrite, buildDynamicSystemPrompt, stageRerank, stageComplexityAnalysis };
+export { PipelineContext, PipelineRunner, chatPipeline, writeChunk, buildContext, buildSources, attemptLocalRewrite, buildDynamicSystemPrompt, stageRerank, stageComplexityAnalysis, stageGroundingCheck };

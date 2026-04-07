@@ -136,7 +136,7 @@ export async function handleConfig(req, res) {
  * GET /api/config/features — Phase 46
  * Lightweight endpoint returning effective feature state only.
  * Public (no admin auth required) — same access level as /api/config.
- * Returns 8 boolean values: one per managed feature section.
+ * Returns 9 boolean values: one per managed feature section.
  * Always computed fresh (no caching) — reflects runtime overrides immediately.
  */
 export async function handleConfigFeatures(_req, res) {
@@ -149,6 +149,7 @@ export async function handleConfigFeatures(_req, res) {
     HEALTH_SCORE:       featureFlags.isEnabled('HEALTH_SCORE'),
     RETRIEVAL:          featureFlags.isEnabled('RETRIEVAL'),
     QUERY_COMPLEXITY:   featureFlags.isEnabled('QUERY_COMPLEXITY'),
+    GROUNDING:          featureFlags.isEnabled('GROUNDING'),
   };
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(payload));

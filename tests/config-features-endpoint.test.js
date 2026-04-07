@@ -26,7 +26,7 @@ function createMockRes() {
 }
 
 // ── Cleanup ───────────────────────────────────────────────────
-const SECTIONS = ['ADMIN_INTELLIGENCE', 'FEEDBACK', 'SUGGESTIONS', 'CONTENT_GAPS', 'QUALITY', 'HEALTH_SCORE', 'RETRIEVAL', 'QUERY_COMPLEXITY'];
+const SECTIONS = ['ADMIN_INTELLIGENCE', 'FEEDBACK', 'SUGGESTIONS', 'CONTENT_GAPS', 'QUALITY', 'HEALTH_SCORE', 'RETRIEVAL', 'QUERY_COMPLEXITY', 'GROUNDING'];
 
 describe('handleConfigFeatures()', () => {
 
@@ -42,8 +42,8 @@ describe('handleConfigFeatures()', () => {
     assert.strictEqual(res.headers['Content-Type'], 'application/json');
   });
 
-  // T-CF02: returns all 8 feature sections
-  it('T-CF02: returns all 8 feature sections', async () => {
+  // T-CF02: returns all 9 feature sections
+  it('T-CF02: returns all 9 feature sections', async () => {
     const res = createMockRes();
     await handleConfigFeatures({}, res);
     const data = res.json;
@@ -55,7 +55,8 @@ describe('handleConfigFeatures()', () => {
     assert.ok('HEALTH_SCORE' in data);
     assert.ok('RETRIEVAL' in data);
     assert.ok('QUERY_COMPLEXITY' in data);
-    assert.strictEqual(Object.keys(data).length, 8, 'should have exactly 8 feature fields');
+    assert.ok('GROUNDING' in data);
+    assert.strictEqual(Object.keys(data).length, 9, 'should have exactly 9 feature fields');
   });
 
   // T-CF03: all values are booleans
@@ -73,7 +74,7 @@ describe('handleConfigFeatures()', () => {
     const res = createMockRes();
     await handleConfigFeatures({}, res);
     const data = res.json;
-    // All 8 sections are false by default in config.js
+    // All 9 sections are false by default in config.js
     assert.strictEqual(data.ADMIN_INTELLIGENCE, false);
     assert.strictEqual(data.FEEDBACK, false);
     assert.strictEqual(data.SUGGESTIONS, false);
@@ -82,6 +83,7 @@ describe('handleConfigFeatures()', () => {
     assert.strictEqual(data.HEALTH_SCORE, false);
     assert.strictEqual(data.RETRIEVAL, false);
     assert.strictEqual(data.QUERY_COMPLEXITY, false);
+    assert.strictEqual(data.GROUNDING, false);
   });
 
   // T-CF05: reflects runtime override

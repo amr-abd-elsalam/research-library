@@ -265,6 +265,7 @@ async function _handleChat(req, res) {
             queryType: ctx.queryRoute?.type ?? null,
             suggestions,
             correlationId: trace.correlationId,
+            groundingScore: ctx._groundingSkipped ? null : ctx._groundingScore,
           };
           if (config.RESPONSE?.structuredIncludeTrace === true) {
             payload.trace = trace.toJSON();
@@ -275,9 +276,15 @@ async function _handleChat(req, res) {
           // ── Stream/concise mode: SSE finish (existing behavior) ──
           if (ctx.aborted && ctx.abortReason === 'low_confidence') {
             writeChunk(res, { text: 'لا تتضمن المكتبة معلومات كافية حول هذا السؤال.' });
-            writeChunk(res, { done: true, sources: [], score: ctx.avgScore, suggestions: [], correlationId: trace.correlationId });
+            writeChunk(res, { done: true, sources: [], score: ctx.avgScore, suggestions: [], correlationId: trace.correlationId, groundingScore: null });
           } else {
-            writeChunk(res, { done: true, sources: ctx.sources, score: ctx.avgScore, suggestions, correlationId: trace.correlationId });
+            // Phase 69: grounding warning chunk (before done — so frontend renders it inline)
+            if (!ctx._groundingSkipped && ctx._groundingScore != null
+                && ctx._groundingScore < (config.GROUNDING?.minGroundingScore ?? 0.4)
+                && config.GROUNDING?.warnUser !== false) {
+              writeChunk(res, { groundingWarning: true, groundingScore: ctx._groundingScore });
+            }
+            writeChunk(res, { done: true, sources: ctx.sources, score: ctx.avgScore, suggestions, correlationId: trace.correlationId, groundingScore: ctx._groundingSkipped ? null : ctx._groundingScore });
           }
           res.end();
         }

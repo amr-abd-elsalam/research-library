@@ -42,6 +42,7 @@ class FeatureFlags {
     HEALTH_SCORE:       () => config.HEALTH_SCORE?.enabled === true,
     RETRIEVAL:          () => config.RETRIEVAL?.rerankEnabled === true,
     QUERY_COMPLEXITY:   () => config.QUERY_COMPLEXITY?.enabled === true,
+    GROUNDING:          () => config.GROUNDING?.enabled === true,
   };
 
   /**

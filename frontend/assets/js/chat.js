@@ -440,6 +440,21 @@ const ChatModule = (() => {
             if (refs) _appendRawText(refs.bubble, parsed.text);
           }
 
+          // Phase 69: grounding warning chunk
+          if (parsed.groundingWarning && refs) {
+            var gwBanner = document.createElement('div');
+            gwBanner.className = 'grounding-warning';
+            var gwIcon = document.createElement('span');
+            gwIcon.textContent = '⚠️';
+            gwIcon.setAttribute('aria-hidden', 'true');
+            gwBanner.appendChild(gwIcon);
+            var gwText = document.createElement('span');
+            gwText.textContent = 'تنبيه: قد تتضمن هذه الإجابة معلومات غير مستندة بالكامل إلى محتوى المكتبة.';
+            gwBanner.appendChild(gwText);
+            var body = refs.msgEl.querySelector('.msg-body');
+            if (body) body.appendChild(gwBanner);
+          }
+
           if (parsed.done) {
             done = true;
 
