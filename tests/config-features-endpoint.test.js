@@ -58,7 +58,8 @@ describe('handleConfigFeatures()', () => {
     assert.ok('GROUNDING' in data);
     assert.ok('CITATION' in data);
     assert.ok('SEMANTIC_MATCHING' in data);
-    assert.strictEqual(Object.keys(data).length, 11, 'should have exactly 11 feature fields');
+    assert.ok('COST_GOVERNANCE' in data);
+    assert.strictEqual(Object.keys(data).length, 12, 'should have exactly 12 feature fields');
   });
 
   // T-CF03: all values are booleans
