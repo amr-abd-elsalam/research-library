@@ -17,6 +17,7 @@ import { eventBus }                           from './eventBus.js';
 import { estimateTokens, estimateRequestCost } from './costTracker.js';
 import { CircuitOpenError }                   from './circuitBreaker.js';
 import config                                 from '../../config.js';
+import { splitSentences }                     from './arabicNlp.js';
 import { conversationContext }                from './conversationContext.js';
 import { libraryIndex }                       from './libraryIndex.js';
 import { contentGapDetector }                 from './contentGapDetector.js';
@@ -109,6 +110,29 @@ function buildSources(hits) {
       score:   Math.round(h.score * 10000) / 10000,
     };
   });
+}
+
+// ── Structured Output Helpers (Phase 79) — zero API call ──────
+
+function extractKeyPoints(text, maxPoints = 5) {
+  if (!text || typeof text !== 'string') return [];
+  const sentences = splitSentences(text, 15);
+  if (sentences.length === 0) return [];
+  const candidates = sentences.filter(s => {
+    const trimmed = s.trim();
+    return !trimmed.endsWith('؟') && !trimmed.endsWith('?')
+      && !trimmed.startsWith('هل ') && !trimmed.startsWith('ما ')
+      && !trimmed.startsWith('لا تتضمن') && !trimmed.startsWith('لا أستطيع')
+      && trimmed.length >= 20;
+  });
+  return candidates.slice(0, maxPoints).map(s => s.trim());
+}
+
+function calculateConfidence(avgScore, groundingScore) {
+  const search = typeof avgScore === 'number' ? avgScore : 0;
+  const grounding = typeof groundingScore === 'number' ? groundingScore : search;
+  const raw = (search * 0.6) + (grounding * 0.4);
+  return Math.round(raw * 10000) / 10000;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -481,6 +505,18 @@ async function stageStream(ctx, _trace) {
     ctx.message,
     onChunk,
   );
+
+  // ── Phase 79: Structured Output Enrichment ──────────────────
+  if (ctx._responseMode === 'structured' && config.STRUCTURED_OUTPUT?.enabled) {
+    const maxKP = Math.min(Math.max(config.STRUCTURED_OUTPUT.maxKeyPoints ?? 5, 1), 10);
+    ctx._keyPoints = extractKeyPoints(ctx.fullText, maxKP);
+    ctx._structuredSchema = 'default';
+
+    if (config.STRUCTURED_OUTPUT.includeConfidence !== false) {
+      ctx._confidencePending = true;
+    }
+  }
+
   return ctx;
 }
 
@@ -1054,4 +1090,4 @@ if (config.PIPELINE?.enableHooks !== false) {
 // Exports
 // ═══════════════════════════════════════════════════════════════
 
-export { PipelineContext, PipelineRunner, chatPipeline, writeChunk, buildContext, buildSources, attemptLocalRewrite, buildDynamicSystemPrompt, stageRerank, stageComplexityAnalysis, stageGroundingCheck, stageAnswerRefinement, stageCitationMapping, stageBudgetCheck };
+export { PipelineContext, PipelineRunner, chatPipeline, writeChunk, buildContext, buildSources, attemptLocalRewrite, buildDynamicSystemPrompt, stageRerank, stageComplexityAnalysis, stageGroundingCheck, stageAnswerRefinement, stageCitationMapping, stageBudgetCheck, extractKeyPoints, calculateConfidence };

@@ -8,7 +8,7 @@ import { executeCommand }  from '../services/commands.js';
 import { executionRouter } from '../services/executionRouter.js';
 import { EventTrace }      from '../services/eventTrace.js';
 import { eventBus }        from '../services/eventBus.js';
-import { PipelineContext, chatPipeline, writeChunk } from '../services/pipeline.js';
+import { PipelineContext, chatPipeline, writeChunk, calculateConfidence } from '../services/pipeline.js';
 import { metrics }         from '../services/metrics.js';
 import config              from '../../config.js';
 import { buildPermissionContext } from '../services/permissionContext.js';
@@ -268,6 +268,12 @@ async function _handleChat(req, res) {
             groundingScore: ctx._groundingSkipped ? null : ctx._groundingScore,
             citations: ctx._citationSkipped ? null : ctx._citations,
             sourceRelevance: ctx._citationSkipped ? null : ctx._sourceRelevance,
+            // Phase 79: structured output enrichment
+            keyPoints:  ctx._keyPoints ?? null,
+            confidence: (ctx._keyPoints && ctx._confidencePending)
+              ? calculateConfidence(ctx.avgScore, ctx._groundingSkipped ? null : ctx._groundingScore)
+              : null,
+            schema:     ctx._structuredSchema ?? null,
           };
           if (config.RESPONSE?.structuredIncludeTrace === true) {
             payload.trace = trace.toJSON();

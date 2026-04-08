@@ -33,6 +33,7 @@ import { invalidateConfigCache } from './handlers/configHandler.js';
 import { llmProviderRegistry } from './services/llmProvider.js';
 import { GeminiProvider } from './services/providers/geminiProvider.js';
 import { OpenAIProvider } from './services/providers/openaiProvider.js';
+import { configValidator } from './services/configValidator.js';
 
 // ── Timeout helper (for bootstrap-specific timeouts) ──────────
 function raceTimeout(promise, ms) {
@@ -82,6 +83,15 @@ class BootstrapManager {
 
     // ── Stage 2: config_check (sync) ─────────────────────────
     stages.push(await this.#runStage('config_check', () => this.#checkConfig()));
+
+    // ── Config Validation (Phase 79) ─────────────────────────
+    const validationResult = configValidator.validate();
+    if (validationResult.errors.length > 0) {
+      logger.error('bootstrap', `config validation: ${validationResult.errors.length} error(s)`, { errors: validationResult.errors });
+    }
+    if (validationResult.warnings.length > 0) {
+      logger.warn('bootstrap', `config validation: ${validationResult.warnings.length} warning(s)`, { warnings: validationResult.warnings });
+    }
 
     // ── Snapshot Recovery (Phase 23) ─────────────────────────
     await metricsPersister.restore();

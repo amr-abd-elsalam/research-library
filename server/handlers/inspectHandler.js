@@ -43,6 +43,7 @@ import { groundingAnalytics }        from '../services/groundingAnalytics.js';
 import { citationMapper }            from '../services/citationMapper.js';
 import { llmProviderRegistry }       from '../services/llmProvider.js';
 import { costGovernor }              from '../services/costGovernor.js';
+import { configValidator }  from '../services/configValidator.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -218,6 +219,9 @@ export async function handleInspect(_req, res) {
         minScoreToRetry: config.ANSWER_REFINEMENT?.minScoreToRetry ?? 0.3,
         requiresGrounding: true,
       },
+
+      // ── Config Validator (Phase 79) ──────────────────────────
+      configValidator: configValidator.counts(),
 
       // ── Observability (Phase 65) ──────────────────────────────
       observability: {
