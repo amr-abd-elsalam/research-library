@@ -222,6 +222,46 @@ class ConversationContext {
     this.#sessions.delete(sessionId);
   }
 
+  // ── Turn tracking (Phase 82) ───────────────────────────────
+
+  /**
+   * Increments the pipeline execution counter for a session.
+   * Independent from recordTurn() — tracks pipeline runs, not context recordings.
+   * Creates session state if it doesn't exist yet.
+   * @param {string} sessionId
+   * @returns {number} — new turn count (1-based)
+   */
+  incrementTurn(sessionId) {
+    if (!sessionId) return 0;
+    let state = this.#sessions.get(sessionId);
+    if (!state) {
+      state = {
+        turns: 0,
+        entities: [],
+        recentTopics: [],
+        lastQueryType: null,
+        contextSummary: null,
+        lastActiveAt: Date.now(),
+        turnCount: 0,
+      };
+      this.#sessions.set(sessionId, state);
+    }
+    state.turnCount = (state.turnCount || 0) + 1;
+    state.lastActiveAt = Date.now();
+    return state.turnCount;
+  }
+
+  /**
+   * Returns the pipeline execution count for a session.
+   * @param {string} sessionId
+   * @returns {number} — current turn count (0 if unknown)
+   */
+  getTurnCount(sessionId) {
+    if (!sessionId) return 0;
+    const state = this.#sessions.get(sessionId);
+    return state?.turnCount || 0;
+  }
+
   // ── Eviction lifecycle (Phase 30) ──────────────────────────
 
   /**
@@ -387,13 +427,16 @@ class ConversationContext {
    */
   counts() {
     let totalTurns = 0;
+    let totalPipelineExecutions = 0;
     for (const [, state] of this.#sessions) {
       totalTurns += state.turns;
+      totalPipelineExecutions += (state.turnCount || 0);
     }
     return {
       enabled:        this.#active,
       activeSessions: this.#sessions.size,
       totalTurns,
+      totalPipelineExecutions,
       maxEntities:    this.#maxEntities,
       entityExtractionVersion: 2,
       eviction: {

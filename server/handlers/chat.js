@@ -8,7 +8,9 @@ import { executeCommand }  from '../services/commands.js';
 import { executionRouter } from '../services/executionRouter.js';
 import { EventTrace }      from '../services/eventTrace.js';
 import { eventBus }        from '../services/eventBus.js';
-import { PipelineContext, chatPipeline, writeChunk, calculateConfidence } from '../services/pipeline.js';
+import { PipelineContext, PipelineRunner, chatPipeline, writeChunk, calculateConfidence } from '../services/pipeline.js';
+import { pipelineComposer } from '../services/pipelineComposer.js';
+import { pipelineHooks }    from '../services/hookRegistry.js';
 import { metrics }         from '../services/metrics.js';
 import config              from '../../config.js';
 import { buildPermissionContext } from '../services/permissionContext.js';
@@ -243,8 +245,28 @@ async function _handleChat(req, res) {
       // Pass intent classification to pipeline (Phase 21 — for stage gating + observability)
       if (queryIntent) ctx._queryIntent = queryIntent;
 
+      // Phase 82: Dynamic pipeline composition
+      const composedStages = pipelineComposer.compose({
+        isFollowUp: !!(history && history.length > 0),
+        responseMode,
+        libraryId: library_id || null,
+      });
+
+      const hooksRef = config.PIPELINE?.enableHooks !== false ? pipelineHooks : null;
+      const retryConfig = config.PIPELINE?.retryableStages ?? {};
+      const runner = composedStages
+        ? new PipelineRunner(composedStages, hooksRef, retryConfig)
+        : chatPipeline;
+
+      ctx._composedStageCount = composedStages ? composedStages.length : null;
+
       try {
-        await chatPipeline.run(ctx, trace);
+        await runner.run(ctx, trace);
+
+        // Phase 82: Track turn after pipeline execution
+        if (session_id) {
+          ctx._turnNumber = conversationContext.incrementTurn(session_id);
+        }
 
         // ── Generate suggestions (Phase 29 — zero cost, template-based) ──
         let suggestions = [];

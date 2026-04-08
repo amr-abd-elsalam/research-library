@@ -1146,4 +1146,35 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     const data = await res.json();
     assert.strictEqual(Object.keys(data).length, 14, `expected 14 feature keys, got ${Object.keys(data).length}`);
   });
+
+  // T-IH98: GET /api/admin/inspect includes pipelineComposer section (Phase 82)
+  it('T-IH98: GET /api/admin/inspect includes pipelineComposer section', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('pipelineComposer' in data, 'inspect should contain pipelineComposer');
+  });
+
+  // T-IH99: GET /api/admin/inspect — pipelineComposer has totalComposed and totalFallbacks (Phase 82)
+  it('T-IH99: GET /api/admin/inspect — pipelineComposer has totalComposed and totalFallbacks', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.pipelineComposer.totalComposed, 'number');
+    assert.strictEqual(typeof data.pipelineComposer.totalFallbacks, 'number');
+  });
+
+  // T-IH100: GET /api/admin/inspect — conversationContext includes totalPipelineExecutions (Phase 82)
+  it('T-IH100: GET /api/admin/inspect — conversationContext includes totalPipelineExecutions', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.conversationContext.totalPipelineExecutions, 'number');
+  });
 });

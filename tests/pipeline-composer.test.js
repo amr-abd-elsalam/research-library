@@ -1,0 +1,342 @@
+// tests/pipeline-composer.test.js
+// ═══════════════════════════════════════════════════════════════
+// Phase 82 — PipelineComposer Tests
+// Tests dynamic pipeline composition, stage inclusion/exclusion
+// based on feature flags, stage ordering, and turn tracking.
+// No network calls — tests pure composition logic.
+// ═══════════════════════════════════════════════════════════════
+
+import { describe, it, afterEach } from 'node:test';
+import assert from 'node:assert/strict';
+import { PipelineComposer, pipelineComposer } from '../server/services/pipelineComposer.js';
+import { featureFlags } from '../server/services/featureFlags.js';
+import { conversationContext } from '../server/services/conversationContext.js';
+import {
+  stageTranscriptInit,
+  stageRouteQuery,
+  stageEmbed,
+  stageSearch,
+  stageConfidenceCheck,
+  stageBuildContext,
+  stageStream,
+  stageBudgetCheck,
+  stageComplexityAnalysis,
+  stageQueryPlan,
+  stageRewriteQuery,
+  stageRerank,
+  stageGroundingCheck,
+  stageAnswerRefinement,
+  stageCitationMapping,
+} from '../server/services/pipeline.js';
+
+// ── Cleanup ───────────────────────────────────────────────────
+afterEach(() => {
+  featureFlags.clearOverride('QUERY_COMPLEXITY');
+  featureFlags.clearOverride('QUERY_PLANNING');
+  featureFlags.clearOverride('RETRIEVAL');
+  featureFlags.clearOverride('GROUNDING');
+  featureFlags.clearOverride('ANSWER_REFINEMENT');
+  featureFlags.clearOverride('CITATION');
+  featureFlags.clearOverride('COST_GOVERNANCE');
+  pipelineComposer.reset();
+  conversationContext.reset();
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Block 1: PipelineComposer Structure
+// ═══════════════════════════════════════════════════════════════
+describe('PipelineComposer Structure', () => {
+
+  // T-PCO01: PipelineComposer is a class
+  it('T-PCO01: PipelineComposer is a class', () => {
+    assert.strictEqual(typeof PipelineComposer, 'function', 'PipelineComposer should be a constructor');
+    const instance = new PipelineComposer();
+    assert.ok(instance instanceof PipelineComposer, 'should create instance');
+  });
+
+  // T-PCO02: pipelineComposer is a singleton instance
+  it('T-PCO02: pipelineComposer is a singleton instance of PipelineComposer', () => {
+    assert.ok(pipelineComposer instanceof PipelineComposer, 'should be PipelineComposer instance');
+  });
+
+  // T-PCO03: counts() returns correct shape
+  it('T-PCO03: counts() returns { totalComposed, totalFallbacks } shape', () => {
+    const c = pipelineComposer.counts();
+    assert.strictEqual(typeof c.totalComposed, 'number', 'totalComposed should be number');
+    assert.strictEqual(typeof c.totalFallbacks, 'number', 'totalFallbacks should be number');
+  });
+
+  // T-PCO04: reset() clears stats
+  it('T-PCO04: reset() clears stats — counts shows 0', () => {
+    pipelineComposer.compose({});
+    pipelineComposer.compose({});
+    const before = pipelineComposer.counts();
+    assert.ok(before.totalComposed >= 2, 'should have composed at least 2');
+    pipelineComposer.reset();
+    const after = pipelineComposer.counts();
+    assert.strictEqual(after.totalComposed, 0);
+    assert.strictEqual(after.totalFallbacks, 0);
+  });
+
+  // T-PCO05: compose() returns array or null
+  it('T-PCO05: compose() returns array', () => {
+    const result = pipelineComposer.compose({});
+    assert.ok(Array.isArray(result), 'should return an array');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Block 2: Core Stages Always Included
+// ═══════════════════════════════════════════════════════════════
+describe('PipelineComposer Core Stages', () => {
+
+  // T-PCO06: compose() always includes stageTranscriptInit
+  it('T-PCO06: compose() always includes stageTranscriptInit', () => {
+    const stages = pipelineComposer.compose({});
+    assert.ok(stages.includes(stageTranscriptInit), 'should include stageTranscriptInit');
+  });
+
+  // T-PCO07: compose() always includes stageRouteQuery
+  it('T-PCO07: compose() always includes stageRouteQuery', () => {
+    const stages = pipelineComposer.compose({});
+    assert.ok(stages.includes(stageRouteQuery), 'should include stageRouteQuery');
+  });
+
+  // T-PCO08: compose() always includes stageEmbed, stageSearch, stageConfidenceCheck, stageBuildContext, stageStream
+  it('T-PCO08: compose() always includes 5 core stages', () => {
+    const stages = pipelineComposer.compose({});
+    assert.ok(stages.includes(stageEmbed), 'should include stageEmbed');
+    assert.ok(stages.includes(stageSearch), 'should include stageSearch');
+    assert.ok(stages.includes(stageConfidenceCheck), 'should include stageConfidenceCheck');
+    assert.ok(stages.includes(stageBuildContext), 'should include stageBuildContext');
+    assert.ok(stages.includes(stageStream), 'should include stageStream');
+  });
+
+  // T-PCO09: compose() minimum stage count is 7 (all features disabled)
+  it('T-PCO09: compose() minimum stage count is 7 with all features disabled', () => {
+    // Default config: all optional features disabled
+    const stages = pipelineComposer.compose({});
+    // 7 core + stageRewriteQuery (if FOLLOWUP.enabled is true in default config)
+    // FOLLOWUP.enabled defaults to true in config → stageRewriteQuery included
+    assert.ok(stages.length >= 7, `expected >= 7, got ${stages.length}`);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Block 3: Conditional Stage Inclusion
+// ═══════════════════════════════════════════════════════════════
+describe('PipelineComposer Conditional Stages', () => {
+
+  // T-PCO10: stageBudgetCheck NOT included when costGovernor.enforcementEnabled is false
+  it('T-PCO10: stageBudgetCheck NOT included when enforcement disabled', () => {
+    // Default: COST_GOVERNANCE.enforceBudget = false → enforcementEnabled = false
+    const stages = pipelineComposer.compose({});
+    assert.ok(!stages.includes(stageBudgetCheck), 'should NOT include stageBudgetCheck');
+  });
+
+  // T-PCO11: stageComplexityAnalysis included when QUERY_COMPLEXITY enabled
+  it('T-PCO11: stageComplexityAnalysis included when QUERY_COMPLEXITY enabled', () => {
+    featureFlags.setOverride('QUERY_COMPLEXITY', true);
+    const stages = pipelineComposer.compose({});
+    assert.ok(stages.includes(stageComplexityAnalysis), 'should include stageComplexityAnalysis');
+  });
+
+  // T-PCO12: stageComplexityAnalysis NOT included when QUERY_COMPLEXITY disabled
+  it('T-PCO12: stageComplexityAnalysis NOT included when QUERY_COMPLEXITY disabled', () => {
+    const stages = pipelineComposer.compose({});
+    assert.ok(!stages.includes(stageComplexityAnalysis), 'should NOT include stageComplexityAnalysis');
+  });
+
+  // T-PCO13: stageQueryPlan included when QUERY_PLANNING enabled
+  it('T-PCO13: stageQueryPlan included when QUERY_PLANNING enabled', () => {
+    featureFlags.setOverride('QUERY_PLANNING', true);
+    const stages = pipelineComposer.compose({});
+    assert.ok(stages.includes(stageQueryPlan), 'should include stageQueryPlan');
+  });
+
+  // T-PCO14: stageRerank included when RETRIEVAL enabled
+  it('T-PCO14: stageRerank included when RETRIEVAL enabled', () => {
+    featureFlags.setOverride('RETRIEVAL', true);
+    const stages = pipelineComposer.compose({});
+    assert.ok(stages.includes(stageRerank), 'should include stageRerank');
+  });
+
+  // T-PCO15: stageGroundingCheck included when GROUNDING enabled
+  it('T-PCO15: stageGroundingCheck included when GROUNDING enabled', () => {
+    featureFlags.setOverride('GROUNDING', true);
+    const stages = pipelineComposer.compose({});
+    assert.ok(stages.includes(stageGroundingCheck), 'should include stageGroundingCheck');
+  });
+
+  // T-PCO16: stageAnswerRefinement included when ANSWER_REFINEMENT enabled AND responseMode='structured'
+  it('T-PCO16: stageAnswerRefinement included when enabled + structured mode', () => {
+    featureFlags.setOverride('ANSWER_REFINEMENT', true);
+    const stages = pipelineComposer.compose({ responseMode: 'structured' });
+    assert.ok(stages.includes(stageAnswerRefinement), 'should include stageAnswerRefinement');
+  });
+
+  // T-PCO17: stageAnswerRefinement NOT included when responseMode='stream' even if enabled
+  it('T-PCO17: stageAnswerRefinement NOT included when stream mode', () => {
+    featureFlags.setOverride('ANSWER_REFINEMENT', true);
+    const stages = pipelineComposer.compose({ responseMode: 'stream' });
+    assert.ok(!stages.includes(stageAnswerRefinement), 'should NOT include stageAnswerRefinement in stream mode');
+  });
+
+  // T-PCO18: stageCitationMapping included when CITATION enabled
+  it('T-PCO18: stageCitationMapping included when CITATION enabled', () => {
+    featureFlags.setOverride('CITATION', true);
+    const stages = pipelineComposer.compose({});
+    assert.ok(stages.includes(stageCitationMapping), 'should include stageCitationMapping');
+  });
+
+  // T-PCO19: stageRewriteQuery included when config.FOLLOWUP.enabled is true
+  it('T-PCO19: stageRewriteQuery included when FOLLOWUP enabled', () => {
+    // Default config: FOLLOWUP.enabled = true
+    const stages = pipelineComposer.compose({});
+    assert.ok(stages.includes(stageRewriteQuery), 'should include stageRewriteQuery');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Block 4: Stage Ordering
+// ═══════════════════════════════════════════════════════════════
+describe('PipelineComposer Stage Ordering', () => {
+
+  // T-PCO20: composed stages maintain correct order
+  it('T-PCO20: composed stages maintain correct order', () => {
+    // Enable all conditional stages
+    featureFlags.setOverride('QUERY_COMPLEXITY', true);
+    featureFlags.setOverride('QUERY_PLANNING', true);
+    featureFlags.setOverride('RETRIEVAL', true);
+    featureFlags.setOverride('GROUNDING', true);
+    featureFlags.setOverride('ANSWER_REFINEMENT', true);
+    featureFlags.setOverride('CITATION', true);
+
+    const stages = pipelineComposer.compose({ responseMode: 'structured' });
+
+    // Verify order: transcriptInit < routeQuery < complexity < queryPlan < rewrite < embed < search < rerank < confidence < buildContext < stream < grounding < refinement < citation
+    const idxTranscript  = stages.indexOf(stageTranscriptInit);
+    const idxRoute       = stages.indexOf(stageRouteQuery);
+    const idxComplexity  = stages.indexOf(stageComplexityAnalysis);
+    const idxPlan        = stages.indexOf(stageQueryPlan);
+    const idxRewrite     = stages.indexOf(stageRewriteQuery);
+    const idxEmbed       = stages.indexOf(stageEmbed);
+    const idxSearch      = stages.indexOf(stageSearch);
+    const idxRerank      = stages.indexOf(stageRerank);
+    const idxConfidence  = stages.indexOf(stageConfidenceCheck);
+    const idxBuild       = stages.indexOf(stageBuildContext);
+    const idxStreamStage = stages.indexOf(stageStream);
+    const idxGrounding   = stages.indexOf(stageGroundingCheck);
+    const idxRefinement  = stages.indexOf(stageAnswerRefinement);
+    const idxCitation    = stages.indexOf(stageCitationMapping);
+
+    assert.ok(idxTranscript < idxRoute, 'transcriptInit before routeQuery');
+    assert.ok(idxRoute < idxComplexity, 'routeQuery before complexity');
+    assert.ok(idxComplexity < idxPlan, 'complexity before plan');
+    assert.ok(idxPlan < idxRewrite, 'plan before rewrite');
+    assert.ok(idxRewrite < idxEmbed, 'rewrite before embed');
+    assert.ok(idxEmbed < idxSearch, 'embed before search');
+    assert.ok(idxSearch < idxRerank, 'search before rerank');
+    assert.ok(idxRerank < idxConfidence, 'rerank before confidence');
+    assert.ok(idxConfidence < idxBuild, 'confidence before build');
+    assert.ok(idxBuild < idxStreamStage, 'build before stream');
+    assert.ok(idxStreamStage < idxGrounding, 'stream before grounding');
+    assert.ok(idxGrounding < idxRefinement, 'grounding before refinement');
+    assert.ok(idxRefinement < idxCitation, 'refinement before citation');
+  });
+
+  // T-PCO21: no duplicate stages in composed array
+  it('T-PCO21: no duplicate stages in composed array', () => {
+    featureFlags.setOverride('QUERY_COMPLEXITY', true);
+    featureFlags.setOverride('RETRIEVAL', true);
+    featureFlags.setOverride('GROUNDING', true);
+    featureFlags.setOverride('CITATION', true);
+
+    const stages = pipelineComposer.compose({});
+    const unique = new Set(stages);
+    assert.strictEqual(unique.size, stages.length, 'should have no duplicates');
+  });
+
+  // T-PCO22: stage count matches expected when all features enabled vs all disabled
+  it('T-PCO22: stage count — all disabled vs all enabled', () => {
+    // All disabled (default) — 7 core + stageRewriteQuery (FOLLOWUP.enabled=true) = 8
+    const minStages = pipelineComposer.compose({});
+    const minCount = minStages.length;
+
+    // All enabled + structured mode — should be up to 15 (minus budgetCheck if enforcement off)
+    featureFlags.setOverride('QUERY_COMPLEXITY', true);
+    featureFlags.setOverride('QUERY_PLANNING', true);
+    featureFlags.setOverride('RETRIEVAL', true);
+    featureFlags.setOverride('GROUNDING', true);
+    featureFlags.setOverride('ANSWER_REFINEMENT', true);
+    featureFlags.setOverride('CITATION', true);
+
+    const maxStages = pipelineComposer.compose({ responseMode: 'structured' });
+    const maxCount = maxStages.length;
+
+    assert.ok(maxCount > minCount, `max (${maxCount}) should be > min (${minCount})`);
+    // maxCount = 7 core + rewrite + complexity + plan + rerank + grounding + refinement + citation = 14
+    // (budgetCheck not included because enforcementEnabled=false)
+    assert.strictEqual(maxCount, 14, `expected 14 with all features on (no budget enforcement), got ${maxCount}`);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Block 5: Turn Tracking
+// ═══════════════════════════════════════════════════════════════
+describe('Turn Tracking', () => {
+
+  // T-PCO23: conversationContext.incrementTurn returns 1 for new session
+  it('T-PCO23: incrementTurn returns 1 for new session', () => {
+    const result = conversationContext.incrementTurn('test-session-1');
+    assert.strictEqual(result, 1, 'first incrementTurn should return 1');
+  });
+
+  // T-PCO24: incrementTurn increments correctly (1, 2, 3)
+  it('T-PCO24: incrementTurn increments correctly', () => {
+    assert.strictEqual(conversationContext.incrementTurn('test-session-2'), 1);
+    assert.strictEqual(conversationContext.incrementTurn('test-session-2'), 2);
+    assert.strictEqual(conversationContext.incrementTurn('test-session-2'), 3);
+  });
+
+  // T-PCO25: getTurnCount returns 0 for unknown session
+  it('T-PCO25: getTurnCount returns 0 for unknown session', () => {
+    assert.strictEqual(conversationContext.getTurnCount('nonexistent-session'), 0);
+  });
+
+  // T-PCO26: getTurnCount returns correct value after incrementTurn
+  it('T-PCO26: getTurnCount returns correct value after incrementTurn', () => {
+    conversationContext.incrementTurn('test-session-3');
+    conversationContext.incrementTurn('test-session-3');
+    assert.strictEqual(conversationContext.getTurnCount('test-session-3'), 2);
+  });
+
+  // T-PCO27: incrementTurn with null sessionId returns 0
+  it('T-PCO27: incrementTurn with null sessionId returns 0', () => {
+    assert.strictEqual(conversationContext.incrementTurn(null), 0);
+    assert.strictEqual(conversationContext.incrementTurn(undefined), 0);
+    assert.strictEqual(conversationContext.incrementTurn(''), 0);
+  });
+
+  // T-PCO28: getTurnCount with null sessionId returns 0
+  it('T-PCO28: getTurnCount with null sessionId returns 0', () => {
+    assert.strictEqual(conversationContext.getTurnCount(null), 0);
+    assert.strictEqual(conversationContext.getTurnCount(undefined), 0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Block 6: Composition Stats
+// ═══════════════════════════════════════════════════════════════
+describe('PipelineComposer Stats', () => {
+
+  // T-PCO29: compose() increments totalComposed
+  it('T-PCO29: compose() increments totalComposed', () => {
+    pipelineComposer.compose({});
+    pipelineComposer.compose({});
+    pipelineComposer.compose({});
+    const c = pipelineComposer.counts();
+    assert.strictEqual(c.totalComposed, 3);
+    assert.strictEqual(c.totalFallbacks, 0);
+  });
+});

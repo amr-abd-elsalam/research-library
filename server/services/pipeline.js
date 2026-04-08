@@ -1152,6 +1152,10 @@ if (config.PIPELINE?.enableHooks !== false) {
       _queryPlanApplied: !(_ctx._planSkipped ?? true),
       _subQueryCount: _ctx._subQueries?.length ?? 0,
       _mergeStrategy: _ctx._mergeStrategy ?? null,
+
+      // ── Pipeline composition (Phase 82) ──────────────────────
+      _turnNumber: _ctx._turnNumber ?? 0,
+      _composedStageCount: _ctx._composedStageCount ?? null,
     });
   });
 }
@@ -1160,4 +1164,4 @@ if (config.PIPELINE?.enableHooks !== false) {
 // Exports
 // ═══════════════════════════════════════════════════════════════
 
-export { PipelineContext, PipelineRunner, chatPipeline, writeChunk, buildContext, buildSources, attemptLocalRewrite, buildDynamicSystemPrompt, stageRerank, stageComplexityAnalysis, stageQueryPlan, stageGroundingCheck, stageAnswerRefinement, stageCitationMapping, stageBudgetCheck, extractKeyPoints, calculateConfidence };
+export { PipelineContext, PipelineRunner, chatPipeline, writeChunk, buildContext, buildSources, attemptLocalRewrite, buildDynamicSystemPrompt, stageTranscriptInit, stageBudgetCheck, stageRouteQuery, stageComplexityAnalysis, stageQueryPlan, stageRewriteQuery, stageEmbed, stageSearch, stageRerank, stageConfidenceCheck, stageBuildContext, stageStream, stageGroundingCheck, stageAnswerRefinement, stageCitationMapping, extractKeyPoints, calculateConfidence };

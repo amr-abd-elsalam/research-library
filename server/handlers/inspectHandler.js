@@ -45,8 +45,9 @@ import { llmProviderRegistry }       from '../services/llmProvider.js';
 import { costGovernor }              from '../services/costGovernor.js';
 import { configValidator }  from '../services/configValidator.js';
 import { actionRegistry }   from '../services/actionRegistry.js';
-import { queryPlanner }     from '../services/queryPlanner.js';
-import config               from '../../config.js';
+import { queryPlanner }      from '../services/queryPlanner.js';
+import { pipelineComposer }  from '../services/pipelineComposer.js';
+import config                from '../../config.js';
 
 export async function handleInspect(_req, res) {
   try {
@@ -230,6 +231,9 @@ export async function handleInspect(_req, res) {
 
       // ── Query Planner (Phase 81) ─────────────────────────────
       queryPlanner: queryPlanner.counts(),
+
+      // ── Pipeline Composer (Phase 82) ─────────────────────────
+      pipelineComposer: pipelineComposer.counts(),
 
       // ── Observability (Phase 65) ──────────────────────────────
       observability: {
