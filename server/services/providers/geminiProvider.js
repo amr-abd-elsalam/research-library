@@ -235,6 +235,82 @@ class GeminiProvider extends LLMProvider {
 
     return { finishReason };
   }
+
+  // ── generate — non-streaming via generateContent endpoint ──
+  async generate(systemPrompt, context, history, question) {
+    const controller = new AbortController();
+    const timeout    = config.LLM_PROVIDER?.rewrite?.timeoutMs || config.LLM_PROVIDER?.generation?.timeoutMs || 35000;
+    const timer      = setTimeout(() => controller.abort(), timeout);
+
+    // Build contents array (same logic as streamGenerate)
+    const contents = [];
+
+    for (const item of (history ?? [])) {
+      if (item.role === 'user'  && item.text) contents.push({ role: 'user',  parts: [{ text: item.text }] });
+      if (item.role === 'model' && item.text) contents.push({ role: 'model', parts: [{ text: item.text }] });
+    }
+
+    const userTurn = context
+      ? `السياق من المكتبة:\n${context}\n\nالسؤال: ${question}`
+      : question;
+
+    contents.push({ role: 'user', parts: [{ text: userTurn }] });
+
+    const body = JSON.stringify({
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents,
+      generationConfig: {
+        temperature:     this.#temperature,
+        maxOutputTokens: this.#maxOutputTokens,
+      },
+    });
+
+    // Non-streaming URL: generateContent (not streamGenerateContent)
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.#genModel}:generateContent`;
+
+    let res;
+    try {
+      res = await fetch(url, {
+        method:  'POST',
+        headers: this.#authHeaders,
+        body,
+        signal:  controller.signal,
+      });
+    } catch (err) {
+      clearTimeout(timer);
+      if (err.name === 'AbortError') throw new GeminiTimeoutError('generate');
+      throw err;
+    }
+
+    clearTimeout(timer);
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '');
+      throw new GeminiAPIError(res.status, errBody);
+    }
+
+    const json = await res.json();
+
+    const candidate = json?.candidates?.[0];
+    if (!candidate) throw new GeminiEmptyError();
+
+    const finishReason = candidate.finishReason ?? null;
+
+    if (finishReason === 'SAFETY') {
+      throw new GeminiSafetyError();
+    }
+
+    const text = candidate?.content?.parts?.[0]?.text;
+    if (!text) throw new GeminiEmptyError();
+
+    // Extract actual token usage from usageMetadata
+    const usage = {
+      inputTokens:  json?.usageMetadata?.promptTokenCount     ?? 0,
+      outputTokens: json?.usageMetadata?.candidatesTokenCount ?? 0,
+    };
+
+    return { text, usage, finishReason };
+  }
 }
 
 export { GeminiProvider };

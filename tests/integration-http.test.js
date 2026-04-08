@@ -900,7 +900,7 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
       'registered array length should match registeredCount');
   });
 
-  // T-IH77: GET /api/admin/inspect — llmProvider.activeProvider is string (Phase 75)
+  // T-IH77: GET /api/admin/inspect — activeProvider is string from config
   it('T-IH77: GET /api/admin/inspect — activeProvider is string from config', async () => {
     const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
       headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
@@ -912,5 +912,30 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     // activeProvider comes from config — should be 'gemini' by default
     assert.strictEqual(data.llmProvider.activeProvider, 'gemini',
       'default activeProvider should be gemini');
+  });
+
+  // T-IH78: GET /api/admin/inspect includes costGovernor section (Phase 76)
+  it('T-IH78: GET /api/admin/inspect includes costGovernor', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('costGovernor' in data, 'inspect should contain costGovernor');
+    assert.strictEqual(typeof data.costGovernor.enabled, 'boolean');
+    assert.strictEqual(typeof data.costGovernor.activeSessions, 'number');
+    assert.strictEqual(typeof data.costGovernor.trackedProviders, 'number');
+    assert.ok('globalUsage' in data.costGovernor, 'should contain globalUsage');
+  });
+
+  // T-IH79: GET /api/admin/inspect costGovernor has enabled boolean field (Phase 76)
+  it('T-IH79: GET /api/admin/inspect — costGovernor.enabled is false by default', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.costGovernor.enabled, false, 'should default to false');
+    assert.strictEqual(data.costGovernor.monthlyBudgetCeiling, 0, 'default budget ceiling is 0');
   });
 });

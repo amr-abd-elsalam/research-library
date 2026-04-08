@@ -142,7 +142,7 @@ export async function rewriteQuery(message, recentHistory) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  try {
+    try {
     let provider;
     try {
       provider = llmProviderRegistry.get();
@@ -151,11 +151,10 @@ export async function rewriteQuery(message, recentHistory) {
       return fallback;
     }
 
-    // Accumulate streamed chunks into full text
-    let fullText = '';
-    await provider.streamGenerate(systemPrompt, '', [], question, (chunk) => { fullText += chunk; });
+    // Non-streaming generation (Phase 76 — faster, simpler, actual token usage)
+    const result = await provider.generate(systemPrompt, '', [], question);
 
-    const rewritten = fullText.trim();
+    const rewritten = result.text.trim();
 
     if (!rewritten || rewritten.length < 3) {
       console.warn('[queryRewriter] empty rewrite response — using original');

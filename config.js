@@ -832,6 +832,33 @@ const config = {
       model:     null,       // null = يستخدم generation.model | string = نموذج مخصص لإعادة الصياغة (أسرع/أرخص). مثال: 'gemini-2.0-flash-lite' أو 'gpt-4o-mini'
       timeoutMs: 5000,       // مهلة استدعاء إعادة الصياغة (مللي ثانية) — fallback: FOLLOWUP.rewriteTimeoutMs
     },
+    rewrite: {
+      model:     null,       // null = يستخدم generation.model | string = نموذج مخصص لإعادة الصياغة (أسرع/أرخص). مثال: 'gemini-2.0-flash-lite' أو 'gpt-4o-mini'
+      timeoutMs: 5000,       // مهلة استدعاء إعادة الصياغة (مللي ثانية) — fallback: FOLLOWUP.rewriteTimeoutMs
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 41. حوكمة التكلفة (COST_GOVERNANCE)
+  //    — تتبع استهلاك الـ tokens الفعلي per session + per provider
+  //    — حساب التكلفة بناءً على أسعار كل provider
+  //    — معطّل افتراضياً — فعّله من هنا
+  //    — zero overhead عند التعطيل
+  // ═══════════════════════════════════════════════════════════════
+  COST_GOVERNANCE: {
+    enabled:            false,      // true = تتبع استهلاك الـ tokens الفعلي | false = معطّل (zero overhead)
+    perProviderRates: {
+      gemini: {
+        inputPer1kTokens:  0.000125,   // USD per 1K input tokens
+        outputPer1kTokens: 0.000375,   // USD per 1K output tokens
+      },
+      openai: {
+        inputPer1kTokens:  0.00015,    // USD per 1K input tokens
+        outputPer1kTokens: 0.0006,     // USD per 1K output tokens
+      },
+    },
+    monthlyBudgetCeiling: 0,         // 0 = بدون حد شهري. > 0 = حد شهري بالدولار
+    sessionWarnThreshold: 0.80,      // نسبة استهلاك الـ session التي يُطلق عندها تحذير (0-1)
   },
 
 };

@@ -59,6 +59,22 @@ class LLMProvider {
   async streamGenerate(systemPrompt, context, history, question, onChunk) {
     throw new Error('LLMProvider.streamGenerate() must be overridden');
   }
+
+  /**
+   * Non-streaming generation. Returns full response + actual token usage.
+   * Default implementation: wraps streamGenerate() with accumulator.
+   * Providers SHOULD override with native non-streaming API for efficiency + actual usage.
+   * @param {string} systemPrompt
+   * @param {string} context
+   * @param {Array} history
+   * @param {string} question
+   * @returns {Promise<{ text: string, usage: { inputTokens: number, outputTokens: number }, finishReason: string|null }>}
+   */
+  async generate(systemPrompt, context, history, question) {
+    let text = '';
+    const result = await this.streamGenerate(systemPrompt, context, history, question, (chunk) => { text += chunk; });
+    return { text, usage: { inputTokens: 0, outputTokens: 0 }, finishReason: result?.finishReason ?? null };
+  }
 }
 
 /**

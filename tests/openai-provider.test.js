@@ -215,3 +215,29 @@ describe('OpenAIProvider Error Patterns', () => {
     assert.strictEqual(e500.message, 'OpenAI API error 500');
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// Block 5: Non-Streaming generate() (Phase 76)
+// ═══════════════════════════════════════════════════════════════
+describe('OpenAIProvider generate() — Phase 76', () => {
+
+  // T-OAI23: generate() is async function
+  it('T-OAI23: generate() is async function', () => {
+    const provider = new OpenAIProvider();
+    assert.strictEqual(typeof provider.generate, 'function');
+  });
+
+  // T-OAI24: generate() exists on OpenAIProvider prototype
+  it('T-OAI24: generate() exists on OpenAIProvider prototype', () => {
+    assert.strictEqual(typeof OpenAIProvider.prototype.generate, 'function');
+  });
+
+  // T-OAI25: OpenAIProvider has generate as own method (not just inherited default)
+  it('T-OAI25: OpenAIProvider overrides generate (not inherited)', () => {
+    // OpenAIProvider should have its own generate(), not just the base class default
+    assert.ok(
+      OpenAIProvider.prototype.hasOwnProperty('generate'),
+      'OpenAIProvider should have its own generate method'
+    );
+  });
+});

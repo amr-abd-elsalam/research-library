@@ -314,3 +314,80 @@ describe('Multi-Provider Registry (Phase 75)', () => {
     assert.strictEqual(callCount, 2, 're-register should clear cache and use new factory');
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// Block 7: Non-Streaming generate() (Phase 76)
+// ═══════════════════════════════════════════════════════════════
+describe('LLMProvider generate() — Phase 76', () => {
+
+  // T-LLM31: LLMProvider base generate() has default implementation (not throw)
+  it('T-LLM31: base generate() has default implementation', async () => {
+    // Create a minimal provider that overrides only streamGenerate
+    class MinimalProvider extends LLMProvider {
+      get name() { return 'minimal'; }
+      get embeddingDimensions() { return 128; }
+      get embeddingModel() { return 'mini-embed'; }
+      get generationModel() { return 'mini-gen'; }
+      async embedText() { return [0.1]; }
+      async embedBatch() { return []; }
+      async streamGenerate(_sys, _ctx, _hist, _q, onChunk) {
+        onChunk('Hello ');
+        onChunk('World');
+        return { finishReason: 'stop' };
+      }
+    }
+
+    const provider = new MinimalProvider();
+    // generate() should NOT throw — uses default wrapping streamGenerate
+    const result = await provider.generate('sys', '', [], 'test');
+    assert.strictEqual(result.text, 'Hello World');
+    assert.strictEqual(result.finishReason, 'stop');
+  });
+
+  // T-LLM32: LLMProvider base generate() returns { text, usage, finishReason } shape
+  it('T-LLM32: base generate() returns correct shape', async () => {
+    class ShapeTestProvider extends LLMProvider {
+      get name() { return 'shape-test'; }
+      get embeddingDimensions() { return 128; }
+      get embeddingModel() { return 'test'; }
+      get generationModel() { return 'test'; }
+      async embedText() { return []; }
+      async embedBatch() { return []; }
+      async streamGenerate(_s, _c, _h, _q, onChunk) {
+        onChunk('response');
+        return { finishReason: 'STOP' };
+      }
+    }
+
+    const result = await new ShapeTestProvider().generate('sys', '', [], 'q');
+    assert.ok('text' in result, 'should have text');
+    assert.ok('usage' in result, 'should have usage');
+    assert.ok('finishReason' in result, 'should have finishReason');
+    assert.strictEqual(typeof result.usage.inputTokens, 'number');
+    assert.strictEqual(typeof result.usage.outputTokens, 'number');
+    // Default implementation returns 0 for usage (no actual counts from streaming)
+    assert.strictEqual(result.usage.inputTokens, 0);
+    assert.strictEqual(result.usage.outputTokens, 0);
+  });
+
+  // T-LLM33: MockProvider generate() returns custom response via default
+  it('T-LLM33: MockProvider generate() works via default implementation', async () => {
+    // MockProvider has streamGenerate that returns { finishReason: 'stop' }
+    // but doesn't call onChunk — so text will be empty
+    const provider = new MockProvider();
+    const result = await provider.generate('sys', '', [], 'q');
+    assert.strictEqual(result.text, '');
+    assert.strictEqual(result.finishReason, 'stop');
+  });
+
+  // T-LLM34: GeminiProvider has generate method
+  it('T-LLM34: GeminiProvider has generate method', () => {
+    const provider = new GeminiProvider();
+    assert.strictEqual(typeof provider.generate, 'function');
+  });
+
+  // T-LLM35: generate() is on LLMProvider prototype
+  it('T-LLM35: generate() is on LLMProvider prototype', () => {
+    assert.strictEqual(typeof LLMProvider.prototype.generate, 'function');
+  });
+});

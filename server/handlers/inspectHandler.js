@@ -42,6 +42,7 @@ import { answerGroundingChecker }    from '../services/answerGroundingChecker.js
 import { groundingAnalytics }        from '../services/groundingAnalytics.js';
 import { citationMapper }            from '../services/citationMapper.js';
 import { llmProviderRegistry }       from '../services/llmProvider.js';
+import { costGovernor }              from '../services/costGovernor.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -206,6 +207,9 @@ export async function handleInspect(_req, res) {
 
       // ── LLM Provider (Phase 74) ──────────────────────────────
       llmProvider: llmProviderRegistry.counts(),
+
+      // ── Cost Governor (Phase 76) ─────────────────────────────
+      costGovernor: costGovernor.counts(),
 
       // ── Observability (Phase 65) ──────────────────────────────
       observability: {

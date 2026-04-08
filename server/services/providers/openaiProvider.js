@@ -238,6 +238,81 @@ class OpenAIProvider extends LLMProvider {
 
     return { finishReason };
   }
+
+  // ── generate — non-streaming via Chat Completions ──────────
+  async generate(systemPrompt, context, history, question) {
+    const controller = new AbortController();
+    const timeout    = config.LLM_PROVIDER?.rewrite?.timeoutMs || config.LLM_PROVIDER?.generation?.timeoutMs || 35000;
+    const timer      = setTimeout(() => controller.abort(), timeout);
+
+    // Build messages array (same logic as streamGenerate)
+    const messages = [];
+
+    if (systemPrompt) {
+      messages.push({ role: 'system', content: systemPrompt });
+    }
+
+    for (const item of (history ?? [])) {
+      if (item.role === 'user'  && item.text) messages.push({ role: 'user',      content: item.text });
+      if (item.role === 'model' && item.text) messages.push({ role: 'assistant', content: item.text });
+    }
+
+    const userTurn = context
+      ? `السياق من المكتبة:\n${context}\n\nالسؤال: ${question}`
+      : question;
+
+    messages.push({ role: 'user', content: userTurn });
+
+    const body = JSON.stringify({
+      model:       this.#genModel,
+      temperature: this.#temperature,
+      max_tokens:  this.#maxOutputTokens,
+      messages,
+    });
+
+    let res;
+    try {
+      res = await fetch(this.#genUrl, {
+        method:  'POST',
+        headers: this.#authHeaders,
+        body,
+        signal:  controller.signal,
+      });
+    } catch (err) {
+      clearTimeout(timer);
+      if (err.name === 'AbortError') throw new OpenAITimeoutError('generate');
+      throw err;
+    }
+
+    clearTimeout(timer);
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '');
+      throw new OpenAIAPIError(res.status, errBody);
+    }
+
+    const json = await res.json();
+
+    const choice = json?.choices?.[0];
+    if (!choice) throw new OpenAIEmptyError();
+
+    const finishReason = choice.finish_reason ?? null;
+
+    if (finishReason === 'content_filter') {
+      throw new OpenAISafetyError();
+    }
+
+    const text = choice?.message?.content;
+    if (!text) throw new OpenAIEmptyError();
+
+    // Extract actual token usage from usage object
+    const usage = {
+      inputTokens:  json?.usage?.prompt_tokens     ?? 0,
+      outputTokens: json?.usage?.completion_tokens  ?? 0,
+    };
+
+    return { text, usage, finishReason };
+  }
 }
 
 export { OpenAIProvider };

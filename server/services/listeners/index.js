@@ -26,6 +26,7 @@ import { register as registerIntelligence }    from './intelligenceListener.js';
 import { register as registerConfigCache }     from './configCacheListener.js';
 import { register as registerGrounding }       from './groundingListener.js';
 import { register as registerCitation }        from './citationListener.js';
+import { register as registerCost }            from './costListener.js';
 import { logger }                            from '../logger.js';
 
 /**
@@ -56,6 +57,7 @@ export function registerAllListeners() {
   registerConfigCache();     // #20 — config cache + DWS invalidation (Phase 62)
   registerGrounding();       // #21 — grounding analytics feed (Phase 70)
   registerCitation();        // #22 — citation metrics (Phase 71)
+  registerCost();            // #23 — cost governance feed (Phase 76)
 
-  logger.info('listeners', '22 EventBus listeners registered (analytics, cache, session, metrics, command, log, circuit, sessionStats, analyticsDigest, routing, context, suggestions, eviction, feedback, correlation, auditTrail, contentGap, quality, intelligence, configCache, grounding, citation)');
+  logger.info('listeners', '23 EventBus listeners registered (analytics, cache, session, metrics, command, log, circuit, sessionStats, analyticsDigest, routing, context, suggestions, eviction, feedback, correlation, auditTrail, contentGap, quality, intelligence, configCache, grounding, citation, cost)');
 }

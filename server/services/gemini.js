@@ -30,3 +30,8 @@ export async function embedBatch(texts, taskType = 'RETRIEVAL_DOCUMENT') {
 export async function streamGenerate(systemPrompt, context, history, question, onChunk) {
   return geminiCB.execute(() => llmProviderRegistry.get().streamGenerate(systemPrompt, context, history, question, onChunk));
 }
+
+// ── generate — facade (Phase 76 — non-streaming) ──────────────
+export async function generate(systemPrompt, context, history, question) {
+  return geminiCB.execute(() => llmProviderRegistry.get().generate(systemPrompt, context, history, question));
+}
