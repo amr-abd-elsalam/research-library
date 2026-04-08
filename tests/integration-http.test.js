@@ -1177,4 +1177,30 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     const data = await res.json();
     assert.strictEqual(typeof data.conversationContext.totalPipelineExecutions, 'number');
   });
+
+  // T-IH101: GET /api/health — still ok/degraded (mock infrastructure not loaded) (Phase 83)
+  it('T-IH101: GET /api/health — still returns ok/degraded', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/health`);
+    assert.ok([200, 207].includes(res.status), `expected 200/207, got ${res.status}`);
+    const data = await res.json();
+    assert.ok(['ok', 'degraded'].includes(data.status), 'status should be ok or degraded');
+  });
+
+  // T-IH102: GET /api/config/features — still returns 14 features (Phase 83)
+  it('T-IH102: GET /api/config/features — still returns 14 features', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(Object.keys(data).length, 14, `expected 14 features, got ${Object.keys(data).length}`);
+  });
+
+  // T-IH103: GET /api/admin/inspect — no mock singletons registered (Phase 83)
+  it('T-IH103: GET /api/admin/inspect — llmProvider is gemini (not mock)', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.llmProvider.activeProvider, 'gemini', 'should be gemini, not mock');
+  });
 });
