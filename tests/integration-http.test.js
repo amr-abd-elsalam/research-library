@@ -809,12 +809,12 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(typeof data.citationMapper.enabled, 'boolean');
   });
 
-  // T-IH69: GET /api/config/features returns exactly 11 keys (Phase 73)
-  it('T-IH69: GET /api/config/features returns exactly 11 keys', async () => {
+  // T-IH69: GET /api/config/features returns exactly 12 keys (Phase 77: was 11, +COST_GOVERNANCE)
+  it('T-IH69: GET /api/config/features returns exactly 12 keys', async () => {
     const res = await fetch(`${ts.baseUrl}/api/config/features`);
     assert.strictEqual(res.status, 200);
     const data = await res.json();
-    assert.strictEqual(Object.keys(data).length, 11, `expected 11 feature keys, got ${Object.keys(data).length}`);
+    assert.strictEqual(Object.keys(data).length, 12, `expected 12 feature keys, got ${Object.keys(data).length}`);
   });
 
   // T-IH70: GET /api/admin/inspect — sharedUtilities includes 'arabicNlp' (Phase 72)
@@ -839,17 +839,18 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(data.SEMANTIC_MATCHING, false, 'SEMANTIC_MATCHING should default to false');
   });
 
-  // T-IH72: GET /api/admin/inspect — featureFlags.status has 11 sections including SEMANTIC_MATCHING (Phase 73)
-  it('T-IH72: GET /api/admin/inspect — featureFlags has 11 sections', async () => {
+  // T-IH72: GET /api/admin/inspect — featureFlags.status has 12 sections including COST_GOVERNANCE (Phase 77: was 11)
+  it('T-IH72: GET /api/admin/inspect — featureFlags has 12 sections', async () => {
     const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
       headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
     });
     assert.strictEqual(res.status, 200);
     const data = await res.json();
     assert.ok('featureFlags' in data, 'inspect should contain featureFlags');
-    assert.strictEqual(data.featureFlags.sections, 11, 'should have 11 managed sections');
+    assert.strictEqual(data.featureFlags.sections, 12, 'should have 12 managed sections');
     const sectionNames = data.featureFlags.status.map(s => s.section);
     assert.ok(sectionNames.includes('SEMANTIC_MATCHING'), 'should include SEMANTIC_MATCHING in status');
+    assert.ok(sectionNames.includes('COST_GOVERNANCE'), 'should include COST_GOVERNANCE in status');
   });
 
   // T-IH73: GET /api/admin/inspect — response includes llmProvider object (Phase 74)
@@ -937,5 +938,62 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     const data = await res.json();
     assert.strictEqual(data.costGovernor.enabled, false, 'should default to false');
     assert.strictEqual(data.costGovernor.monthlyBudgetCeiling, 0, 'default budget ceiling is 0');
+  });
+
+  // T-IH80: GET /api/admin/cost without auth — returns 401 (Phase 77)
+  it('T-IH80: GET /api/admin/cost without auth — returns 401', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/cost`);
+    assert.strictEqual(res.status, 401);
+  });
+
+  // T-IH81: GET /api/admin/cost with valid token — returns 200 with cost data shape (Phase 77)
+  it('T-IH81: GET /api/admin/cost with valid token — returns 200 with cost data', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/cost`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.enabled, 'boolean');
+    assert.strictEqual(typeof data.enforcementEnabled, 'boolean');
+    assert.ok('globalUsage' in data, 'should have globalUsage');
+    assert.ok(Array.isArray(data.providers), 'providers should be array');
+    assert.ok(Array.isArray(data.topSessions), 'topSessions should be array');
+    assert.strictEqual(typeof data.monthlyBudgetCeiling, 'number');
+    assert.strictEqual(typeof data.monthlyBudgetUsed, 'number');
+  });
+
+  // T-IH82: GET /api/config/features — includes COST_GOVERNANCE boolean (Phase 77)
+  it('T-IH82: GET /api/config/features includes COST_GOVERNANCE boolean', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.COST_GOVERNANCE, 'boolean');
+    assert.strictEqual(data.COST_GOVERNANCE, false, 'COST_GOVERNANCE should default to false');
+  });
+
+  // T-IH83: GET /api/admin/inspect — costGovernor includes enforcementEnabled (Phase 77)
+  it('T-IH83: GET /api/admin/inspect — costGovernor includes enforcementEnabled', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('enforcementEnabled' in data.costGovernor, 'costGovernor should have enforcementEnabled');
+    assert.strictEqual(typeof data.costGovernor.enforcementEnabled, 'boolean');
+    assert.strictEqual(data.costGovernor.enforcementEnabled, false, 'should default to false');
+  });
+
+  // T-IH84: GET /api/admin/cost — globalUsage has expected shape (Phase 77)
+  it('T-IH84: GET /api/admin/cost — globalUsage has expected shape', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/cost`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    const g = data.globalUsage;
+    assert.strictEqual(typeof g.inputTokens, 'number');
+    assert.strictEqual(typeof g.outputTokens, 'number');
+    assert.strictEqual(typeof g.requests, 'number');
+    assert.strictEqual(typeof g.totalCost, 'number');
   });
 });

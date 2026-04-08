@@ -24,6 +24,7 @@ import { searchReranker }                     from './searchReranker.js';
 import { queryComplexityAnalyzer }            from './queryComplexityAnalyzer.js';
 import { answerGroundingChecker }             from './answerGroundingChecker.js';
 import { citationMapper }                     from './citationMapper.js';
+import { costGovernor }                       from './costGovernor.js';
 
 // ── Singleton ContextManager (same as previous chat.js) ────────
 const contextManager = new ContextManager();
@@ -124,7 +125,27 @@ async function stageTranscriptInit(ctx, _trace) {
   return ctx;
 }
 
-// ── Stage 2: Route Query ───────────────────────────────────────
+// ── Stage 2: Budget Check (Phase 77) ───────────────────────────
+async function stageBudgetCheck(ctx, _trace) {
+  if (!costGovernor.enforcementEnabled) {
+    ctx._budgetSkipped = true;
+    return ctx;
+  }
+
+  const check = costGovernor.isSessionOverBudget(ctx.sessionId);
+  ctx._budgetCheck = check;
+
+  if (check.overBudget) {
+    ctx.aborted = true;
+    ctx.abortReason = 'budget_exceeded';
+    ctx._budgetSkipped = false;
+  } else {
+    ctx._budgetSkipped = false;
+  }
+  return ctx;
+}
+
+// ── Stage 3: Route Query ───────────────────────────────────────
 async function stageRouteQuery(ctx, _trace) {
   ctx.queryRoute = routeQuery(ctx.message);
   return ctx;
@@ -615,6 +636,19 @@ function buildStageRecord(stageName, ctx, _elapsed) {
     case 'stageTranscriptInit':
       return { status: 'ok', detail: { size: ctx.transcript.size } };
 
+    case 'stageBudgetCheck':
+      if (ctx._budgetSkipped) {
+        return { status: 'skip', detail: { reason: 'enforcement_disabled' } };
+      }
+      return {
+        status: ctx.aborted ? 'aborted' : 'ok',
+        detail: {
+          currentTokens: ctx._budgetCheck?.currentTokens ?? 0,
+          limit: ctx._budgetCheck?.limit ?? 0,
+          ratio: ctx._budgetCheck?.ratio ?? 0,
+        },
+      };
+
     case 'stageRouteQuery':
       return {
         status: 'ok',
@@ -730,6 +764,7 @@ function buildStageRecord(stageName, ctx, _elapsed) {
 
 const chatPipeline = new PipelineRunner([
   stageTranscriptInit,
+  stageBudgetCheck,           // Phase 77 — actual token budget enforcement
   stageRouteQuery,
   stageComplexityAnalysis,  // Phase 64 — query complexity analysis
   stageRewriteQuery,
@@ -905,4 +940,4 @@ if (config.PIPELINE?.enableHooks !== false) {
 // Exports
 // ═══════════════════════════════════════════════════════════════
 
-export { PipelineContext, PipelineRunner, chatPipeline, writeChunk, buildContext, buildSources, attemptLocalRewrite, buildDynamicSystemPrompt, stageRerank, stageComplexityAnalysis, stageGroundingCheck, stageCitationMapping };
+export { PipelineContext, PipelineRunner, chatPipeline, writeChunk, buildContext, buildSources, attemptLocalRewrite, buildDynamicSystemPrompt, stageRerank, stageComplexityAnalysis, stageGroundingCheck, stageCitationMapping, stageBudgetCheck };

@@ -46,6 +46,16 @@ class CostGovernor {
   get enabled() { return this.#enabled; }
 
   /**
+   * Whether budget enforcement is active.
+   * Requires: enabled + enforceBudget config flag.
+   * @returns {boolean}
+   */
+  get enforcementEnabled() {
+    if (!this.#enabled) return false;
+    return config.COST_GOVERNANCE?.enforceBudget === true;
+  }
+
+  /**
    * Records token usage for a request.
    * Updates session, provider, and global counters.
    * Calculates cost based on provider-specific rates.
@@ -123,12 +133,47 @@ class CostGovernor {
   }
 
   /**
+   * Checks if a session has exceeded its actual token budget.
+   * Uses actual tokens recorded by CostGovernor (not estimates).
+   * @param {string} sessionId
+   * @returns {{ overBudget: boolean, currentTokens: number, limit: number, ratio: number }}
+   */
+  isSessionOverBudget(sessionId) {
+    if (!this.enforcementEnabled || !sessionId) {
+      return { overBudget: false, currentTokens: 0, limit: 0, ratio: 0 };
+    }
+    const limit = config.SESSIONS?.maxTokensPerSession || 0;
+    if (limit === 0) return { overBudget: false, currentTokens: 0, limit: 0, ratio: 0 };
+
+    const usage = this.#sessionUsage.get(sessionId);
+    const currentTokens = usage ? (usage.inputTokens + usage.outputTokens) : 0;
+    const ratio = limit > 0 ? currentTokens / limit : 0;
+
+    return { overBudget: ratio >= 1.0, currentTokens, limit, ratio };
+  }
+
+  /**
+   * Returns top N sessions sorted by estimatedCost descending.
+   * @param {number} [limit=5]
+   * @returns {Array<{ sessionId: string, inputTokens: number, outputTokens: number, requests: number, estimatedCost: number }>}
+   */
+  getTopSessions(limit = 5) {
+    const entries = [];
+    for (const [sessionId, usage] of this.#sessionUsage) {
+      entries.push({ sessionId, ...usage });
+    }
+    entries.sort((a, b) => b.estimatedCost - a.estimatedCost);
+    return entries.slice(0, limit);
+  }
+
+  /**
    * Summary for inspect endpoint.
-   * @returns {{ enabled: boolean, activeSessions: number, trackedProviders: number, globalUsage: object, monthlyBudgetCeiling: number }}
+   * @returns {{ enabled: boolean, enforcementEnabled: boolean, activeSessions: number, trackedProviders: number, globalUsage: object, monthlyBudgetCeiling: number }}
    */
   counts() {
     return {
       enabled:              this.#enabled,
+      enforcementEnabled:   this.enforcementEnabled,
       activeSessions:       this.#sessionUsage.size,
       trackedProviders:     this.#providerUsage.size,
       globalUsage:          { ...this.#globalUsage },

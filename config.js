@@ -122,6 +122,7 @@ const config = {
     errorTimeout:  "استغرقت الإجابة وقتاً طويلاً، يرجى المحاولة مرة أخرى",
     errorRate:     "يرجى الانتظار لحظة قبل إرسال سؤال جديد",
     errorServer:   "حدث خطأ في المعالجة، يرجى المحاولة مرة أخرى",
+    errorBudget:   "تم تجاوز الحد المسموح من الاستخدام لهذه الجلسة. يرجى بدء جلسة جديدة.",
     errorEmpty:    "لا تتضمن المكتبة معلومات كافية حول هذا الموضوع",
 
     // ── أزرار ─────────────────────────────────────────────
@@ -859,6 +860,7 @@ const config = {
     },
     monthlyBudgetCeiling: 0,         // 0 = بدون حد شهري. > 0 = حد شهري بالدولار
     sessionWarnThreshold: 0.80,      // نسبة استهلاك الـ session التي يُطلق عندها تحذير (0-1)
+    enforceBudget:        false,     // true = الـ pipeline يوقف لما session تتخطى token budget (actual tokens) | false = tracking فقط بدون enforcement (السلوك الحالي بالظبط). يعمل فقط لما enabled: true + SESSIONS.maxTokensPerSession > 0
   },
 
 };

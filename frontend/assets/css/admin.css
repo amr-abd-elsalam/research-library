@@ -2769,6 +2769,153 @@ img { max-width: 100%; display: block; }
 }
 
 /* ══════════════════════════════════════════════════════════
+   30. COST GOVERNANCE DASHBOARD (Phase 77)
+══════════════════════════════════════════════════════════ */
+.cost-gov-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.cost-gov-stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  text-align: center;
+  transition: border-color var(--speed) var(--ease);
+}
+
+.cost-gov-stat-card:hover {
+  border-color: var(--border-accent);
+}
+
+.cost-gov-stat-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--accent-light);
+  font-family: var(--font-en);
+}
+
+.cost-gov-stat-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.cost-gov-providers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.cost-gov-provider-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 100px 120px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.cost-gov-provider-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--accent-light);
+  font-family: var(--font-en);
+}
+
+.cost-gov-provider-bar {
+  height: 8px;
+  background: var(--bg-elevated);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.cost-gov-provider-bar-fill {
+  height: 100%;
+  background: var(--gradient-brand);
+  border-radius: 4px;
+  min-width: 2px;
+  transition: width 0.4s var(--ease);
+}
+
+.cost-gov-provider-cost {
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  font-family: var(--font-en);
+  text-align: end;
+  font-weight: 600;
+}
+
+.cost-gov-provider-detail {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: var(--font-en);
+  text-align: end;
+}
+
+.cost-gov-top-sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cost-gov-session-row {
+  display: grid;
+  grid-template-columns: 90px 100px 100px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+}
+
+.cost-gov-session-id {
+  font-family: var(--font-en);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.cost-gov-session-tokens {
+  font-family: var(--font-en);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.cost-gov-session-cost {
+  font-family: var(--font-en);
+  color: var(--accent-light);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.cost-gov-session-reqs {
+  font-family: var(--font-en);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+@media (max-width: 960px) {
+  .cost-gov-stats { grid-template-columns: repeat(2, 1fr); }
+  .cost-gov-provider-row { grid-template-columns: 70px 1fr 80px; }
+  .cost-gov-provider-detail { display: none; }
+}
+
+@media (max-width: 640px) {
+  .cost-gov-stats { grid-template-columns: 1fr; }
+  .cost-gov-provider-row { grid-template-columns: 70px 1fr 70px; }
+  .cost-gov-session-row { grid-template-columns: 80px 1fr 70px; }
+  .cost-gov-session-tokens { display: none; }
+}
+
+/* ══════════════════════════════════════════════════════════
    29. INTELLIGENCE SECTION (Phase 53)
 ══════════════════════════════════════════════════════════ */
 .intelligence-meta {

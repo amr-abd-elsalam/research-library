@@ -152,6 +152,7 @@ export async function handleConfigFeatures(_req, res) {
     GROUNDING:          featureFlags.isEnabled('GROUNDING'),
     CITATION:           featureFlags.isEnabled('CITATION'),
     SEMANTIC_MATCHING:  featureFlags.isEnabled('SEMANTIC_MATCHING'),
+    COST_GOVERNANCE:    featureFlags.isEnabled('COST_GOVERNANCE'),
   };
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(payload));

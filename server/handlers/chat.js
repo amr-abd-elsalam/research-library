@@ -276,7 +276,11 @@ async function _handleChat(req, res) {
           res.end(JSON.stringify(payload));
         } else {
           // ── Stream/concise mode: SSE finish (existing behavior) ──
-          if (ctx.aborted && ctx.abortReason === 'low_confidence') {
+          if (ctx.aborted && ctx.abortReason === 'budget_exceeded') {
+            const errorMsg = config.CHAT?.errorBudget || 'تم تجاوز الحد المسموح من الاستخدام لهذه الجلسة. يرجى بدء جلسة جديدة.';
+            writeChunk(res, { text: errorMsg });
+            writeChunk(res, { done: true, sources: [], score: 0, suggestions: [], correlationId: trace.correlationId, groundingScore: null, budgetExceeded: true });
+          } else if (ctx.aborted && ctx.abortReason === 'low_confidence') {
             writeChunk(res, { text: 'لا تتضمن المكتبة معلومات كافية حول هذا السؤال.' });
             writeChunk(res, { done: true, sources: [], score: ctx.avgScore, suggestions: [], correlationId: trace.correlationId, groundingScore: null });
           } else {

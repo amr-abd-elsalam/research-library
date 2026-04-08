@@ -193,4 +193,45 @@ describe('CostGovernor Edge Cases', () => {
     const instance = new CostGovernor();
     assert.strictEqual(instance.counts().enabled, false);
   });
+
+  // T-CG21: isSessionOverBudget is a function
+  it('T-CG21: isSessionOverBudget is a function', () => {
+    const instance = new CostGovernor();
+    assert.strictEqual(typeof instance.isSessionOverBudget, 'function');
+  });
+
+  // T-CG22: isSessionOverBudget returns correct shape
+  it('T-CG22: isSessionOverBudget returns correct shape', () => {
+    const instance = new CostGovernor();
+    const result = instance.isSessionOverBudget('s1');
+    assert.ok('overBudget' in result);
+    assert.ok('currentTokens' in result);
+    assert.ok('limit' in result);
+    assert.ok('ratio' in result);
+    assert.strictEqual(typeof result.overBudget, 'boolean');
+    assert.strictEqual(typeof result.currentTokens, 'number');
+    assert.strictEqual(typeof result.limit, 'number');
+    assert.strictEqual(typeof result.ratio, 'number');
+  });
+
+  // T-CG23: enforcementEnabled getter returns boolean
+  it('T-CG23: enforcementEnabled getter returns boolean', () => {
+    const instance = new CostGovernor();
+    assert.strictEqual(typeof instance.enforcementEnabled, 'boolean');
+  });
+
+  // T-CG24: enforcementEnabled is false by default
+  it('T-CG24: enforcementEnabled is false by default', () => {
+    const instance = new CostGovernor();
+    assert.strictEqual(instance.enforcementEnabled, false);
+  });
+
+  // T-CG25: counts() includes enforcementEnabled field
+  it('T-CG25: counts() includes enforcementEnabled field', () => {
+    const instance = new CostGovernor();
+    const c = instance.counts();
+    assert.ok('enforcementEnabled' in c, 'counts should have enforcementEnabled');
+    assert.strictEqual(typeof c.enforcementEnabled, 'boolean');
+    assert.strictEqual(c.enforcementEnabled, false);
+  });
 });

@@ -2770,7 +2770,98 @@
     }
   }
 
+  // ══════════════════════════════════════════════════════════
+  //  COST GOVERNANCE DASHBOARD (Phase 77)
+  // ══════════════════════════════════════════════════════════
+  async function loadCostDashboard() {
+    var container = document.getElementById('admin-cost-governance-content');
+    if (!container) return;
+
+    container.innerHTML = '<p class="admin-empty-msg">\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u062D\u0645\u064A\u0644...</p>';
+
+    try {
+      var data = await adminFetch('/api/admin/cost');
+      if (!data) {
+        container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623 \u0641\u064A \u062A\u062D\u0645\u064A\u0644 \u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0644\u062A\u0643\u0644\u0641\u0629</p>';
+        return;
+      }
+
+      if (!data.enabled) {
+        container.innerHTML = '<p class="admin-empty-msg">\u062D\u0648\u0643\u0645\u0629 \u0627\u0644\u062A\u0643\u0644\u0641\u0629 \u0645\u0639\u0637\u0651\u0644\u0629 \u2014 \u0641\u0639\u0651\u0644\u0647\u0627 \u0645\u0646 <code>COST_GOVERNANCE.enabled: true</code></p>';
+        return;
+      }
+
+      var html = '';
+      var g = data.globalUsage || {};
+      var totalTokens = (g.inputTokens || 0) + (g.outputTokens || 0);
+
+      // Stats cards
+      html += '<div class="cost-gov-stats">';
+      html += '<div class="cost-gov-stat-card"><div class="cost-gov-stat-value">$' + (g.totalCost || 0).toFixed(6) + '</div><div class="cost-gov-stat-label">\u0627\u0644\u062A\u0643\u0644\u0641\u0629 \u0627\u0644\u0625\u062C\u0645\u0627\u0644\u064A\u0629</div></div>';
+      html += '<div class="cost-gov-stat-card"><div class="cost-gov-stat-value">' + (g.requests || 0) + '</div><div class="cost-gov-stat-label">\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0637\u0644\u0628\u0627\u062A</div></div>';
+      html += '<div class="cost-gov-stat-card"><div class="cost-gov-stat-value">' + formatNum(totalTokens) + '</div><div class="cost-gov-stat-label">\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0640 Tokens</div></div>';
+
+      // Monthly budget card
+      if (data.monthlyBudgetCeiling > 0) {
+        var budgetPct = data.monthlyBudgetCeiling > 0 ? Math.min(((data.monthlyBudgetUsed || 0) / data.monthlyBudgetCeiling) * 100, 100).toFixed(1) : 0;
+        html += '<div class="cost-gov-stat-card"><div class="cost-gov-stat-value">' + budgetPct + '%</div><div class="cost-gov-stat-label">\u0627\u0644\u0645\u064A\u0632\u0627\u0646\u064A\u0629 \u0627\u0644\u0634\u0647\u0631\u064A\u0629 ($' + data.monthlyBudgetCeiling + ')</div></div>';
+      } else {
+        html += '<div class="cost-gov-stat-card"><div class="cost-gov-stat-value">' + (data.enforcementEnabled ? '\u0645\u0641\u0639\u0651\u0644' : '\u0645\u0639\u0637\u0651\u0644') + '</div><div class="cost-gov-stat-label">Enforcement</div></div>';
+      }
+      html += '</div>';
+
+      // Per-provider breakdown
+      var providers = data.providers || [];
+      if (providers.length > 0) {
+        var maxProviderCost = 0;
+        for (var pi = 0; pi < providers.length; pi++) {
+          if (providers[pi].estimatedCost > maxProviderCost) maxProviderCost = providers[pi].estimatedCost;
+        }
+        if (maxProviderCost === 0) maxProviderCost = 1;
+
+        html += '<h3 style="font-size:13px;color:var(--text-muted);margin:16px 0 8px;">\u062A\u0648\u0632\u064A\u0639 \u062D\u0633\u0628 \u0627\u0644\u0645\u0632\u0648\u0651\u062F</h3>';
+        html += '<div class="cost-gov-providers">';
+        for (var pj = 0; pj < providers.length; pj++) {
+          var prov = providers[pj];
+          var pPct = Math.max((prov.estimatedCost / maxProviderCost) * 100, 2);
+          var pTokens = (prov.inputTokens || 0) + (prov.outputTokens || 0);
+          html += '<div class="cost-gov-provider-row">';
+          html += '<span class="cost-gov-provider-name">' + prov.name + '</span>';
+          html += '<div class="cost-gov-provider-bar"><div class="cost-gov-provider-bar-fill" style="width:' + pPct + '%"></div></div>';
+          html += '<span class="cost-gov-provider-cost">$' + (prov.estimatedCost || 0).toFixed(6) + '</span>';
+          html += '<span class="cost-gov-provider-detail">' + formatNum(pTokens) + ' tokens \u00B7 ' + (prov.requests || 0) + ' req</span>';
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+
+      // Top sessions
+      var topSessions = data.topSessions || [];
+      if (topSessions.length > 0) {
+        html += '<h3 style="font-size:13px;color:var(--text-muted);margin:16px 0 8px;">\u0623\u0639\u0644\u0649 \u0627\u0644\u062C\u0644\u0633\u0627\u062A \u062A\u0643\u0644\u0641\u0629</h3>';
+        html += '<div class="cost-gov-top-sessions">';
+        for (var si = 0; si < Math.min(topSessions.length, 5); si++) {
+          var sess = topSessions[si];
+          var sTokens = (sess.inputTokens || 0) + (sess.outputTokens || 0);
+          html += '<div class="cost-gov-session-row">';
+          html += '<span class="cost-gov-session-id">' + (sess.sessionId || '').slice(0, 8) + '\u2026</span>';
+          html += '<span class="cost-gov-session-tokens">' + formatNum(sTokens) + ' tokens</span>';
+          html += '<span class="cost-gov-session-cost">$' + (sess.estimatedCost || 0).toFixed(6) + '</span>';
+          html += '<span class="cost-gov-session-reqs">' + (sess.requests || 0) + ' req</span>';
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+
+      container.innerHTML = html;
+
+    } catch (err) {
+      container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623: ' + err.message + '</p>';
+    }
+  }
+
   async function loadOperationsTab() {
+    loadCostDashboard();
     showHealthSkeleton();
     showSessionsSkeleton();
     showMetricsSkeleton();

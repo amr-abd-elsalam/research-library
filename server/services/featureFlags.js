@@ -45,6 +45,7 @@ class FeatureFlags {
     GROUNDING:          () => config.GROUNDING?.enabled === true,
     CITATION:           () => config.CITATION?.enabled === true,
     SEMANTIC_MATCHING:  () => config.SEMANTIC_MATCHING?.enabled === true,
+    COST_GOVERNANCE:    () => config.COST_GOVERNANCE?.enabled === true,
   };
 
   /**
