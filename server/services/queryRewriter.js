@@ -4,6 +4,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import { estimateTokens } from './costTracker.js';
+import { llmProviderRegistry } from './llmProvider.js';
 import config from '../../config.js';
 
 // ── Follow-up detection patterns ───────────────────────────────
@@ -123,13 +124,8 @@ export async function rewriteQuery(message, recentHistory) {
     return fallback;
   }
 
-  const timeoutMs = config.FOLLOWUP?.rewriteTimeoutMs ?? 5000;
-  const apiKey = process.env.GEMINI_API_KEY ?? '';
-
-  if (!apiKey) {
-    console.warn('[queryRewriter] GEMINI_API_KEY not set — skipping rewrite');
-    return fallback;
-  }
+  const rewriteCfg = config.LLM_PROVIDER?.rewrite || {};
+  const timeoutMs  = rewriteCfg.timeoutMs || config.FOLLOWUP?.rewriteTimeoutMs || 5000;
 
   // Build conversation string from recent history
   const historyText = recentHistory
@@ -139,46 +135,27 @@ export async function rewriteQuery(message, recentHistory) {
     })
     .join('\n');
 
-  const prompt = `أنت مساعد إعادة صياغة. مهمتك الوحيدة هي إعادة صياغة السؤال الأخير ليكون مكتفياً بذاته.
+  const systemPrompt = 'أنت مساعد إعادة صياغة. مهمتك الوحيدة هي إعادة صياغة السؤال الأخير ليكون مكتفياً بذاته.\nلا تجب على السؤال — فقط أعد صياغته.\nأرجع السؤال المُعاد صياغته فقط — بدون أي شرح أو مقدمة.';
 
-المحادثة السابقة:
-${historyText}
-
-السؤال الأخير: ${message}
-
-أعد صياغة السؤال الأخير فقط في جملة واحدة واضحة ومكتفية بذاتها، بحيث يمكن فهمه بدون المحادثة السابقة.
-لا تجب على السؤال — فقط أعد صياغته.
-أرجع السؤال المُعاد صياغته فقط — بدون أي شرح أو مقدمة.`;
-
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+  const question = `المحادثة السابقة:\n${historyText}\n\nالسؤال الأخير: ${message}\n\nأعد صياغة السؤال الأخير فقط في جملة واحدة واضحة ومكتفية بذاتها، بحيث يمكن فهمه بدون المحادثة السابقة.`;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type':   'application/json',
-        'x-goog-api-key': apiKey,
-      },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature:     0.1,
-          maxOutputTokens: 150,
-        },
-      }),
-      signal: controller.signal,
-    });
-
-    if (!res.ok) {
-      console.warn(`[queryRewriter] Gemini API error ${res.status} — using original`);
+    let provider;
+    try {
+      provider = llmProviderRegistry.get();
+    } catch {
+      console.warn('[queryRewriter] no LLM provider available — skipping rewrite');
       return fallback;
     }
 
-    const json = await res.json();
-    const rewritten = json?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    // Accumulate streamed chunks into full text
+    let fullText = '';
+    await provider.streamGenerate(systemPrompt, '', [], question, (chunk) => { fullText += chunk; });
+
+    const rewritten = fullText.trim();
 
     if (!rewritten || rewritten.length < 3) {
       console.warn('[queryRewriter] empty rewrite response — using original');
@@ -186,7 +163,7 @@ ${historyText}
     }
 
     // Log token usage estimate
-    const inputTokens  = estimateTokens(prompt);
+    const inputTokens  = estimateTokens(systemPrompt + question);
     const outputTokens = estimateTokens(rewritten);
     console.log(`[queryRewriter] rewrite: "${message}" → "${rewritten}" (tokens: ~${inputTokens}in ~${outputTokens}out)`);
 

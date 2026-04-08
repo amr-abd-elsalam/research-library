@@ -246,3 +246,71 @@ describe('Gemini Facade Re-exports', () => {
     assert.strictEqual(gemini.GeminiAPIError, provider.GeminiAPIError);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// Block 6: Multi-Provider Registry (Phase 75)
+// ═══════════════════════════════════════════════════════════════
+describe('Multi-Provider Registry (Phase 75)', () => {
+
+  // ── MockOpenAIProvider for registry tests (no real API) ─────
+  class MockOpenAIProvider extends LLMProvider {
+    get name() { return 'openai'; }
+    get embeddingDimensions() { return 1536; }
+    get embeddingModel() { return 'text-embedding-3-small'; }
+    get generationModel() { return 'gpt-4o-mini'; }
+    async embedText() { return new Array(1536).fill(0); }
+    async embedBatch() { return []; }
+    async streamGenerate() { return { finishReason: 'stop' }; }
+  }
+
+  let registry;
+
+  beforeEach(() => {
+    registry = new LLMProviderRegistry();
+  });
+
+  // T-LLM26: register('openai', factory) + get('openai') returns instance
+  it('T-LLM26: register + get openai returns OpenAI instance', () => {
+    registry.register('openai', () => new MockOpenAIProvider());
+    const instance = registry.get('openai');
+    assert.strictEqual(instance.name, 'openai');
+    assert.strictEqual(instance.embeddingDimensions, 1536);
+  });
+
+  // T-LLM27: registering both providers → counts().registeredCount === 2
+  it('T-LLM27: two providers registered — registeredCount is 2', () => {
+    registry.register('gemini', () => new MockProvider());
+    registry.register('openai', () => new MockOpenAIProvider());
+    assert.strictEqual(registry.counts().registeredCount, 2);
+  });
+
+  // T-LLM28: counts().registered includes both names
+  it('T-LLM28: counts().registered includes both names', () => {
+    registry.register('gemini', () => new MockProvider());
+    registry.register('openai', () => new MockOpenAIProvider());
+    const registered = registry.counts().registered;
+    assert.ok(registered.includes('gemini'), 'should include gemini');
+    assert.ok(registered.includes('openai'), 'should include openai');
+  });
+
+  // T-LLM29: get() defaults to config provider even when multiple registered
+  it('T-LLM29: get() defaults to config provider (gemini)', () => {
+    registry.register('gemini', () => new MockProvider());
+    registry.register('openai', () => new MockOpenAIProvider());
+    // config.LLM_PROVIDER.provider is 'gemini' by default
+    const instance = registry.get();
+    assert.strictEqual(instance.name, 'mock'); // MockProvider.name is 'mock', but config resolves to 'gemini' factory
+  });
+
+  // T-LLM30: re-register clears cached instance
+  it('T-LLM30: re-register clears cached instance — new factory used', () => {
+    let callCount = 0;
+    registry.register('openai', () => { callCount++; return new MockOpenAIProvider(); });
+    registry.get('openai');
+    assert.strictEqual(callCount, 1);
+    // Re-register with a different factory
+    registry.register('openai', () => { callCount++; return new MockOpenAIProvider(); });
+    registry.get('openai');
+    assert.strictEqual(callCount, 2, 're-register should clear cache and use new factory');
+  });
+});

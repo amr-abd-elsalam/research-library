@@ -32,6 +32,7 @@ import { setConfigCacheInvalidator } from './services/listeners/configCacheListe
 import { invalidateConfigCache } from './handlers/configHandler.js';
 import { llmProviderRegistry } from './services/llmProvider.js';
 import { GeminiProvider } from './services/providers/geminiProvider.js';
+import { OpenAIProvider } from './services/providers/openaiProvider.js';
 
 // ── Timeout helper (for bootstrap-specific timeouts) ──────────
 function raceTimeout(promise, ms) {
@@ -117,6 +118,11 @@ class BootstrapManager {
 
     // ── LLM Provider Registration (Phase 74) ─────────────────
     llmProviderRegistry.register('gemini', () => new GeminiProvider());
+
+    // ── OpenAI Provider Registration (Phase 75 — conditional) ─
+    if (process.env.OPENAI_API_KEY) {
+      llmProviderRegistry.register('openai', () => new OpenAIProvider());
+    }
 
     // ── Register EventBus listeners (Phase 13) ───────────────
     registerAllListeners();
@@ -360,6 +366,20 @@ class BootstrapManager {
     try {
       const info  = await raceTimeout(getCollectionInfo(), BOOT_TIMEOUT_MS);
       const count = info?.points_count ?? info?.vectors_count ?? 0;
+
+      // ── Embedding dimension mismatch warning (Phase 75) ────
+      try {
+        const provider = llmProviderRegistry.get();
+        const providerDim = provider.embeddingDimensions;
+        const collectionDim = info?.config?.params?.vectors?.size ?? null;
+        if (collectionDim && collectionDim !== providerDim) {
+          return {
+            status: 'warn',
+            detail: `${count} points, ⚠ embedding dimension mismatch: collection=${collectionDim} provider=${providerDim} (${provider.name})`,
+          };
+        }
+      } catch { /* provider not yet instantiated or not registered — skip check */ }
+
       return {
         status: 'ok',
         detail: `${count} points`,

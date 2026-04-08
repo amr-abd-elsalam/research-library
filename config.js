@@ -828,6 +828,10 @@ const config = {
       maxOutputTokens: 2048,                   // أقصى عدد tokens في الإجابة
       timeoutMs:     35000,                    // مهلة استدعاء التوليد (مللي ثانية)
     },
+    rewrite: {
+      model:     null,       // null = يستخدم generation.model | string = نموذج مخصص لإعادة الصياغة (أسرع/أرخص). مثال: 'gemini-2.0-flash-lite' أو 'gpt-4o-mini'
+      timeoutMs: 5000,       // مهلة استدعاء إعادة الصياغة (مللي ثانية) — fallback: FOLLOWUP.rewriteTimeoutMs
+    },
   },
 
 };
