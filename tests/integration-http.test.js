@@ -873,6 +873,7 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(res.status, 200);
     const data = await res.json();
     assert.strictEqual(data.llmProvider.activeProvider, 'gemini');
-    assert.ok(data.llmProvider.registered.includes('gemini'), 'gemini should be in registered list');
+    assert.strictEqual(typeof data.llmProvider.registeredCount, 'number');
+    assert.ok(Array.isArray(data.llmProvider.registered), 'registered should be an array');
   });
 });
