@@ -4,7 +4,7 @@
 // discrete, traceable stages with a shared PipelineContext.
 // ═══════════════════════════════════════════════════════════════
 
-import { embedText, streamGenerate, GeminiTimeoutError, GeminiSafetyError, GeminiEmptyError } from './gemini.js';
+import { embedText, streamGenerate, generate, GeminiTimeoutError, GeminiSafetyError, GeminiEmptyError } from './gemini.js';
 import { search }                             from './qdrant.js';
 import { routeQuery, getTopK }                from './queryRouter.js';
 import { rewriteQuery }                       from './queryRewriter.js';
@@ -25,6 +25,7 @@ import { queryComplexityAnalyzer }            from './queryComplexityAnalyzer.js
 import { answerGroundingChecker }             from './answerGroundingChecker.js';
 import { citationMapper }                     from './citationMapper.js';
 import { costGovernor }                       from './costGovernor.js';
+import { featureFlags }                       from './featureFlags.js';
 
 // ── Singleton ContextManager (same as previous chat.js) ────────
 const contextManager = new ContextManager();
@@ -503,7 +504,100 @@ async function stageGroundingCheck(ctx, _trace) {
   return ctx;
 }
 
-// ── Stage 10: Citation Mapping (Phase 71) ──────────────────────
+// ── Stage 10: Answer Refinement — Self-Correction Loop (Phase 78) ──
+async function stageAnswerRefinement(ctx, _trace) {
+  // ── Skip conditions ───────────────────────────────────────
+  // 1. Feature not enabled
+  if (!featureFlags.isEnabled('ANSWER_REFINEMENT')) {
+    ctx._refinementSkipped = true;
+    ctx._refinementSkipReason = 'disabled';
+    return ctx;
+  }
+  // 2. Grounding check was skipped or not available
+  if (ctx._groundingSkipped || ctx._groundingScore === null || ctx._groundingScore === undefined) {
+    ctx._refinementSkipped = true;
+    ctx._refinementSkipReason = 'no_grounding_data';
+    return ctx;
+  }
+  // 3. Pipeline aborted or no text
+  if (ctx.aborted || !ctx.fullText) {
+    ctx._refinementSkipped = true;
+    ctx._refinementSkipReason = 'aborted_or_empty';
+    return ctx;
+  }
+  // 4. Response mode is 'stream' — can't replace already-streamed text
+  if (ctx._responseMode === 'stream') {
+    ctx._refinementSkipped = true;
+    ctx._refinementSkipReason = 'streaming_mode';
+    return ctx;
+  }
+  // 5. Grounding score already acceptable
+  const minScore = config.ANSWER_REFINEMENT?.minScoreToRetry ?? 0.3;
+  if (ctx._groundingScore >= minScore) {
+    ctx._refinementSkipped = true;
+    ctx._refinementSkipReason = 'score_acceptable';
+    return ctx;
+  }
+
+  // ── Refinement loop ───────────────────────────────────────
+  const maxAttempts = Math.min(Math.max(config.ANSWER_REFINEMENT?.maxRefinements ?? 1, 1), 3);
+  const suffix = config.ANSWER_REFINEMENT?.refinementPromptSuffix || '';
+  const enhancedPrompt = ctx.systemPrompt + (suffix ? `\n\n${suffix}` : '');
+
+  let bestText = ctx.fullText;
+  let bestScore = ctx._groundingScore;
+  const originalScore = ctx._groundingScore;
+  let attempts = 0;
+
+  for (let i = 0; i < maxAttempts; i++) {
+    attempts++;
+    try {
+      const result = await generate(enhancedPrompt, ctx.context, ctx.trimmedHistory, ctx.message);
+      if (!result.text) break;
+
+      const newGrounding = await answerGroundingChecker.check(result.text, ctx.context || '');
+
+      if (newGrounding.score > bestScore) {
+        bestText = result.text;
+        bestScore = newGrounding.score;
+      }
+
+      // Good enough — stop retrying
+      if (newGrounding.score >= (config.GROUNDING?.minGroundingScore ?? 0.4)) break;
+    } catch (_err) {
+      // Refinement failure should not crash pipeline — log and break
+      break;
+    }
+  }
+
+  // ── Apply best result ─────────────────────────────────────
+  const improved = bestScore > originalScore;
+  if (improved) {
+    ctx.fullText = bestText;
+    ctx._groundingScore = bestScore;
+  }
+
+  ctx._refinementSkipped = false;
+  ctx._refinementAttempts = attempts;
+  ctx._refinementImproved = improved;
+  ctx._refinementOriginalScore = originalScore;
+  ctx._refinementFinalScore = bestScore;
+
+  // ── Emit event ────────────────────────────────────────────
+  eventBus.emit('answer:refined', {
+    correlationId: _trace?.correlationId ?? null,
+    attempts,
+    improved,
+    originalScore,
+    finalScore: bestScore,
+    sessionId: ctx.sessionId,
+    timestamp: Date.now(),
+  });
+
+  return ctx;
+}
+
+// ── Stage 11: Citation Mapping (Phase 71) ──────────────────────
 async function stageCitationMapping(ctx, _trace) {
   if (!citationMapper.enabled || ctx.aborted || !ctx.fullText || !ctx.sources) {
     ctx._citationSkipped = true;
@@ -753,6 +847,20 @@ function buildStageRecord(stageName, ctx, _elapsed) {
         },
       };
 
+    case 'stageAnswerRefinement':
+      if (ctx._refinementSkipped) {
+        return { status: 'skip', detail: { reason: ctx._refinementSkipReason || 'disabled' } };
+      }
+      return {
+        status: 'ok',
+        detail: {
+          attempts: ctx._refinementAttempts ?? 0,
+          improved: ctx._refinementImproved ?? false,
+          originalScore: ctx._refinementOriginalScore ?? null,
+          finalScore: ctx._refinementFinalScore ?? null,
+        },
+      };
+
     default:
       return { status: 'ok', detail: null };
   }
@@ -775,6 +883,7 @@ const chatPipeline = new PipelineRunner([
   stageBuildContext,
   stageStream,
   stageGroundingCheck,      // Phase 69 — answer grounding & faithfulness check
+  stageAnswerRefinement,    // Phase 78 — self-correction loop (structured mode only)
   stageCitationMapping,     // Phase 71 — sentence-to-source citation mapping
 ], config.PIPELINE?.enableHooks !== false ? pipelineHooks : null,
    config.PIPELINE?.retryableStages ?? {});
@@ -932,6 +1041,11 @@ if (config.PIPELINE?.enableHooks !== false) {
 
       // ── Semantic matching (Phase 73) ─────────────────────────
       _semanticMatchingUsed: _ctx._semanticMatchingUsed ?? false,
+
+      // ── Answer refinement (Phase 78) ─────────────────────────
+      _refinementApplied: !(_ctx._refinementSkipped ?? true),
+      _refinementAttempts: _ctx._refinementAttempts ?? 0,
+      _refinementImproved: _ctx._refinementImproved ?? false,
     });
   });
 }
@@ -940,4 +1054,4 @@ if (config.PIPELINE?.enableHooks !== false) {
 // Exports
 // ═══════════════════════════════════════════════════════════════
 
-export { PipelineContext, PipelineRunner, chatPipeline, writeChunk, buildContext, buildSources, attemptLocalRewrite, buildDynamicSystemPrompt, stageRerank, stageComplexityAnalysis, stageGroundingCheck, stageCitationMapping, stageBudgetCheck };
+export { PipelineContext, PipelineRunner, chatPipeline, writeChunk, buildContext, buildSources, attemptLocalRewrite, buildDynamicSystemPrompt, stageRerank, stageComplexityAnalysis, stageGroundingCheck, stageAnswerRefinement, stageCitationMapping, stageBudgetCheck };

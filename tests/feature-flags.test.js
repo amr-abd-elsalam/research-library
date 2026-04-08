@@ -90,10 +90,10 @@ describe('FeatureFlags', () => {
     assert.strictEqual(overrides.SUGGESTIONS, undefined); // not overridden
   });
 
-  // T-FF10: getStatus — returns all 12 sections (Phase 77: was 11, +COST_GOVERNANCE)
-  it('T-FF10: getStatus returns all 12 sections', () => {
+  // T-FF10: getStatus — returns all 13 sections (Phase 78: was 12, +ANSWER_REFINEMENT)
+  it('T-FF10: getStatus returns all 13 sections', () => {
     const status = featureFlags.getStatus();
-    assert.strictEqual(status.length, 12);
+    assert.strictEqual(status.length, 13);
     const sectionNames = status.map(s => s.section);
     assert.ok(sectionNames.includes('SUGGESTIONS'));
     assert.ok(sectionNames.includes('CONTENT_GAPS'));
@@ -107,6 +107,7 @@ describe('FeatureFlags', () => {
     assert.ok(sectionNames.includes('CITATION'));
     assert.ok(sectionNames.includes('SEMANTIC_MATCHING'));
     assert.ok(sectionNames.includes('COST_GOVERNANCE'));
+    assert.ok(sectionNames.includes('ANSWER_REFINEMENT'));
   });
 
   // T-FF11: getStatus — effective reflects override
@@ -125,7 +126,7 @@ describe('FeatureFlags', () => {
     const c = featureFlags.counts();
     assert.strictEqual(typeof c.totalOverrides, 'number');
     assert.ok(c.totalOverrides >= 1);
-    assert.strictEqual(c.sections, 12);
+    assert.strictEqual(c.sections, 13);
     assert.strictEqual(typeof c.persisted, 'boolean');
   });
 

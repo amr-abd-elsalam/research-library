@@ -211,6 +211,14 @@ export async function handleInspect(_req, res) {
       // ── Cost Governor (Phase 76) ─────────────────────────────
       costGovernor: costGovernor.counts(),
 
+      // ── Answer Refinement (Phase 78) ─────────────────────────
+      answerRefinement: {
+        enabled: featureFlags.isEnabled('ANSWER_REFINEMENT'),
+        maxRefinements: config.ANSWER_REFINEMENT?.maxRefinements ?? 1,
+        minScoreToRetry: config.ANSWER_REFINEMENT?.minScoreToRetry ?? 0.3,
+        requiresGrounding: true,
+      },
+
       // ── Observability (Phase 65) ──────────────────────────────
       observability: {
         requestIdEnabled: config.OBSERVABILITY?.requestIdEnabled !== false,

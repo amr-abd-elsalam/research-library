@@ -863,6 +863,22 @@ const config = {
     enforceBudget:        false,     // true = الـ pipeline يوقف لما session تتخطى token budget (actual tokens) | false = tracking فقط بدون enforcement (السلوك الحالي بالظبط). يعمل فقط لما enabled: true + SESSIONS.maxTokensPerSession > 0
   },
 
+  // ═══════════════════════════════════════════════════════════════
+  // 42. تحسين جودة الإجابات (ANSWER_REFINEMENT)
+  //    — self-correction loop: يعيد توليد الإجابة بـ prompt أقوى
+  //      لما الـ grounding score منخفض (الإجابة غير مستندة للمحتوى)
+  //    — يعمل فقط في structured response mode (مش streaming)
+  //    — يتطلب: GROUNDING.enabled: true (لفحص جودة الإجابة)
+  //    — معطّل افتراضياً — فعّله من هنا
+  //    — zero overhead عند التعطيل
+  // ═══════════════════════════════════════════════════════════════
+  ANSWER_REFINEMENT: {
+    enabled:            false,     // true = إعادة توليد الإجابة لما الـ grounding score منخفض | false = بدون refinement (zero overhead — السلوك الحالي بالظبط)
+    maxRefinements:     1,         // أقصى عدد محاولات إعادة التوليد (1-3). أكثر = جودة أعلى بس تكلفة أعلى
+    minScoreToRetry:    0.3,       // grounding score أقل من كده يُفعّل إعادة التوليد (0-1). 0.3 = يعيد فقط للإجابات الضعيفة جداً
+    refinementPromptSuffix: 'تعليمات صارمة: أجب فقط وحصرياً بناءً على المحتوى المقدم إليك. لا تضف أي معلومة من خارج النص. كل جملة في إجابتك يجب أن تكون مدعومة مباشرة بمحتوى من المكتبة. إذا لم تجد معلومة كافية، قل ذلك بوضوح.',
+  },
+
 };
 
 export default deepFreeze(config);
