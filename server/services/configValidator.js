@@ -88,6 +88,15 @@ class ConfigValidator {
           return { ok: true };
         },
       },
+      {
+        name: 'QUERY_PLANNING_requires_QUERY_COMPLEXITY',
+        check: () => {
+          if (config.QUERY_PLANNING?.enabled === true && config.QUERY_COMPLEXITY?.enabled !== true) {
+            return { ok: false, message: 'QUERY_PLANNING.enabled is true but QUERY_COMPLEXITY.enabled is not true — planner needs complexity data to decide when to decompose', severity: 'warning' };
+          }
+          return { ok: true };
+        },
+      },
     ];
   }
 

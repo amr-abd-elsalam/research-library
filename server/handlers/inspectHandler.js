@@ -45,6 +45,7 @@ import { llmProviderRegistry }       from '../services/llmProvider.js';
 import { costGovernor }              from '../services/costGovernor.js';
 import { configValidator }  from '../services/configValidator.js';
 import { actionRegistry }   from '../services/actionRegistry.js';
+import { queryPlanner }     from '../services/queryPlanner.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -226,6 +227,9 @@ export async function handleInspect(_req, res) {
 
       // ── Action Registry (Phase 80) ───────────────────────────
       actionRegistry: actionRegistry.counts(),
+
+      // ── Query Planner (Phase 81) ─────────────────────────────
+      queryPlanner: queryPlanner.counts(),
 
       // ── Observability (Phase 65) ──────────────────────────────
       observability: {

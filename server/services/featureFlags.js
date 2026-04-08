@@ -47,6 +47,7 @@ class FeatureFlags {
     SEMANTIC_MATCHING:  () => config.SEMANTIC_MATCHING?.enabled === true,
     COST_GOVERNANCE:    () => config.COST_GOVERNANCE?.enabled === true,
     ANSWER_REFINEMENT:  () => config.ANSWER_REFINEMENT?.enabled === true,
+    QUERY_PLANNING:     () => config.QUERY_PLANNING?.enabled === true,
   };
 
   /**

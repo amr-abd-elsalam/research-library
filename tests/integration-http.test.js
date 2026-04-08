@@ -809,12 +809,12 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(typeof data.citationMapper.enabled, 'boolean');
   });
 
-  // T-IH69: GET /api/config/features returns exactly 13 keys (Phase 78: was 12, +ANSWER_REFINEMENT)
-  it('T-IH69: GET /api/config/features returns exactly 13 keys', async () => {
+  // T-IH69: GET /api/config/features returns exactly 14 keys (Phase 81: was 13, +QUERY_PLANNING)
+  it('T-IH69: GET /api/config/features returns exactly 14 keys', async () => {
     const res = await fetch(`${ts.baseUrl}/api/config/features`);
     assert.strictEqual(res.status, 200);
     const data = await res.json();
-    assert.strictEqual(Object.keys(data).length, 13, `expected 13 feature keys, got ${Object.keys(data).length}`);
+    assert.strictEqual(Object.keys(data).length, 14, `expected 14 feature keys, got ${Object.keys(data).length}`);
   });
 
   // T-IH70: GET /api/admin/inspect — sharedUtilities includes 'arabicNlp' (Phase 72)
@@ -839,19 +839,20 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(data.SEMANTIC_MATCHING, false, 'SEMANTIC_MATCHING should default to false');
   });
 
-  // T-IH72: GET /api/admin/inspect — featureFlags.status has 13 sections including ANSWER_REFINEMENT (Phase 78: was 12)
-  it('T-IH72: GET /api/admin/inspect — featureFlags has 13 sections', async () => {
+  // T-IH72: GET /api/admin/inspect — featureFlags.status has 14 sections including QUERY_PLANNING (Phase 81: was 13)
+  it('T-IH72: GET /api/admin/inspect — featureFlags has 14 sections', async () => {
     const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
       headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
     });
     assert.strictEqual(res.status, 200);
     const data = await res.json();
     assert.ok('featureFlags' in data, 'inspect should contain featureFlags');
-    assert.strictEqual(data.featureFlags.sections, 13, 'should have 13 managed sections');
+    assert.strictEqual(data.featureFlags.sections, 14, 'should have 14 managed sections');
     const sectionNames = data.featureFlags.status.map(s => s.section);
     assert.ok(sectionNames.includes('SEMANTIC_MATCHING'), 'should include SEMANTIC_MATCHING in status');
     assert.ok(sectionNames.includes('COST_GOVERNANCE'), 'should include COST_GOVERNANCE in status');
     assert.ok(sectionNames.includes('ANSWER_REFINEMENT'), 'should include ANSWER_REFINEMENT in status');
+    assert.ok(sectionNames.includes('QUERY_PLANNING'), 'should include QUERY_PLANNING in status');
   });
 
   // T-IH73: GET /api/admin/inspect — response includes llmProvider object (Phase 74)
@@ -998,25 +999,27 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(typeof g.totalCost, 'number');
   });
 
-  // T-IH85: GET /api/config/features — returns 13 boolean keys including ANSWER_REFINEMENT (Phase 78)
-  it('T-IH85: GET /api/config/features returns exactly 13 keys', async () => {
+  // T-IH85: GET /api/config/features — returns 14 boolean keys including QUERY_PLANNING (Phase 81: was 13)
+  it('T-IH85: GET /api/config/features returns exactly 14 keys', async () => {
     const res = await fetch(`${ts.baseUrl}/api/config/features`);
     assert.strictEqual(res.status, 200);
     const data = await res.json();
-    assert.strictEqual(Object.keys(data).length, 13, `expected 13 feature keys, got ${Object.keys(data).length}`);
+    assert.strictEqual(Object.keys(data).length, 14, `expected 14 feature keys, got ${Object.keys(data).length}`);
     assert.strictEqual(typeof data.ANSWER_REFINEMENT, 'boolean');
+    assert.strictEqual(typeof data.QUERY_PLANNING, 'boolean');
   });
 
-  // T-IH86: GET /api/admin/inspect — featureFlags has 13 sections including ANSWER_REFINEMENT (Phase 78)
-  it('T-IH86: GET /api/admin/inspect — featureFlags has 13 sections', async () => {
+  // T-IH86: GET /api/admin/inspect — featureFlags has 14 sections including QUERY_PLANNING (Phase 81: was 13)
+  it('T-IH86: GET /api/admin/inspect — featureFlags has 14 sections', async () => {
     const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
       headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
     });
     assert.strictEqual(res.status, 200);
     const data = await res.json();
-    assert.strictEqual(data.featureFlags.sections, 13, 'should have 13 managed sections');
+    assert.strictEqual(data.featureFlags.sections, 14, 'should have 14 managed sections');
     const sectionNames = data.featureFlags.status.map(s => s.section);
     assert.ok(sectionNames.includes('ANSWER_REFINEMENT'), 'should include ANSWER_REFINEMENT in status');
+    assert.ok(sectionNames.includes('QUERY_PLANNING'), 'should include QUERY_PLANNING in status');
   });
 
   // T-IH87: GET /api/admin/inspect — includes answerRefinement section with enabled boolean (Phase 78)
@@ -1044,14 +1047,14 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(typeof data.configValidator.totalRules, 'number');
   });
 
-  // T-IH89: GET /api/admin/inspect — configValidator.totalRules is 7 (Phase 79)
-  it('T-IH89: GET /api/admin/inspect — configValidator.totalRules is 7', async () => {
+  // T-IH89: GET /api/admin/inspect — configValidator.totalRules is 8 (Phase 81: was 7, +QUERY_PLANNING rule)
+  it('T-IH89: GET /api/admin/inspect — configValidator.totalRules is 8', async () => {
     const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
       headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
     });
     assert.strictEqual(res.status, 200);
     const data = await res.json();
-    assert.strictEqual(data.configValidator.totalRules, 7, 'should have 7 validation rules');
+    assert.strictEqual(data.configValidator.totalRules, 8, 'should have 8 validation rules');
   });
 
   // T-IH90: GET /api/admin/inspect — configValidator.lastResult is null or object (Phase 79)
@@ -1112,5 +1115,35 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(res.status, 200);
     const data = await res.json();
     assert.strictEqual(typeof data.actionRegistry.enabled, 'boolean');
+  });
+
+  // T-IH95: GET /api/config/features includes QUERY_PLANNING boolean (Phase 81)
+  it('T-IH95: GET /api/config/features includes QUERY_PLANNING boolean', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.QUERY_PLANNING, 'boolean');
+    assert.strictEqual(data.QUERY_PLANNING, false, 'QUERY_PLANNING should default to false');
+  });
+
+  // T-IH96: GET /api/admin/inspect includes queryPlanner section (Phase 81)
+  it('T-IH96: GET /api/admin/inspect includes queryPlanner section', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('queryPlanner' in data, 'inspect should contain queryPlanner');
+    assert.strictEqual(typeof data.queryPlanner.enabled, 'boolean');
+    assert.strictEqual(typeof data.queryPlanner.totalPlanned, 'number');
+    assert.strictEqual(typeof data.queryPlanner.totalSkipped, 'number');
+  });
+
+  // T-IH97: GET /api/config/features returns exactly 14 keys (Phase 81)
+  it('T-IH97: GET /api/config/features returns exactly 14 keys', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(Object.keys(data).length, 14, `expected 14 feature keys, got ${Object.keys(data).length}`);
   });
 });

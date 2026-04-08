@@ -4,7 +4,7 @@
 // discrete, traceable stages with a shared PipelineContext.
 // ═══════════════════════════════════════════════════════════════
 
-import { embedText, streamGenerate, generate, GeminiTimeoutError, GeminiSafetyError, GeminiEmptyError } from './gemini.js';
+import { embedText, embedBatch, streamGenerate, generate, GeminiTimeoutError, GeminiSafetyError, GeminiEmptyError } from './gemini.js';
 import { search }                             from './qdrant.js';
 import { routeQuery, getTopK }                from './queryRouter.js';
 import { rewriteQuery }                       from './queryRewriter.js';
@@ -27,6 +27,7 @@ import { answerGroundingChecker }             from './answerGroundingChecker.js'
 import { citationMapper }                     from './citationMapper.js';
 import { costGovernor }                       from './costGovernor.js';
 import { featureFlags }                       from './featureFlags.js';
+import { queryPlanner }                       from './queryPlanner.js';
 
 // ── Singleton ContextManager (same as previous chat.js) ────────
 const contextManager = new ContextManager();
@@ -195,6 +196,40 @@ async function stageComplexityAnalysis(ctx, _trace) {
   }
 
   ctx._complexitySkipped = false;
+  return ctx;
+}
+
+// ── Stage 5: Query Planning (Phase 81) ─────────────────────────
+async function stageQueryPlan(ctx, _trace) {
+  if (!queryPlanner.enabled || !ctx._complexity || ctx._complexitySkipped) {
+    ctx._planSkipped = true;
+    ctx._planSkipReason = 'disabled';
+    ctx._subQueries = null;
+    ctx._mergeStrategy = null;
+    return ctx;
+  }
+
+  if (!queryPlanner.shouldPlan(ctx.effectiveMessage, ctx._complexity)) {
+    ctx._planSkipped = true;
+    ctx._planSkipReason = 'below_threshold';
+    ctx._subQueries = null;
+    ctx._mergeStrategy = null;
+    return ctx;
+  }
+
+  const plan = queryPlanner.decompose(ctx.effectiveMessage, ctx._complexity);
+
+  if (!plan.subQueries || plan.subQueries.length <= 1) {
+    ctx._planSkipped = true;
+    ctx._planSkipReason = 'single_query';
+    ctx._subQueries = null;
+    ctx._mergeStrategy = null;
+    return ctx;
+  }
+
+  ctx._subQueries = plan.subQueries;
+  ctx._mergeStrategy = plan.strategy;
+  ctx._planSkipped = false;
   return ctx;
 }
 
@@ -386,7 +421,17 @@ async function stageRewriteQuery(ctx, _trace) {
 
 // ── Stage 4: Embed ─────────────────────────────────────────────
 async function stageEmbed(ctx, _trace) {
-  ctx.queryVector = await embedText(ctx.effectiveMessage);
+  if (ctx._subQueries && ctx._subQueries.length > 1) {
+    // Phase 81: Multi-query embedding via embedBatch
+    const vectors = await embedBatch(ctx._subQueries);
+    ctx._queryVectors = vectors.filter(v => v !== null);
+    // Primary vector for backward compat (used by stages that expect single vector)
+    ctx.queryVector = ctx._queryVectors.length > 0
+      ? ctx._queryVectors[0]
+      : await embedText(ctx.effectiveMessage);
+  } else {
+    ctx.queryVector = await embedText(ctx.effectiveMessage);
+  }
   return ctx;
 }
 
@@ -412,7 +457,13 @@ async function stageSearch(ctx, _trace) {
   }
 
   const collection = resolveCollection(ctx.libraryId);
-  ctx.hits   = await search(ctx.queryVector, topK, ctx.topicFilter, collection);
+
+  // Phase 81: Multi-step search when sub-queries produced multiple vectors
+  if (ctx._queryVectors && ctx._queryVectors.length > 1) {
+    ctx.hits = await queryPlanner.searchAndMerge(ctx._queryVectors, topK, ctx.topicFilter, collection);
+  } else {
+    ctx.hits = await search(ctx.queryVector, topK, ctx.topicFilter, collection);
+  }
 
   // Compute average score (same logic as previous chat.js)
   if (!ctx.hits.length) {
@@ -798,6 +849,19 @@ function buildStageRecord(stageName, ctx, _elapsed) {
         },
       };
 
+    case 'stageQueryPlan':
+      if (ctx._planSkipped) {
+        return { status: 'skip', detail: { reason: ctx._planSkipReason || 'disabled' } };
+      }
+      return {
+        status: 'ok',
+        detail: {
+          subQueryCount: ctx._subQueries?.length ?? 0,
+          mergeStrategy: ctx._mergeStrategy ?? 'single',
+          complexityType: ctx._complexity?.type ?? 'unknown',
+        },
+      };
+
     case 'stageRewriteQuery':
       if (ctx._rewriteSkipped) {
         return { status: 'skip', detail: null };
@@ -911,6 +975,7 @@ const chatPipeline = new PipelineRunner([
   stageBudgetCheck,           // Phase 77 — actual token budget enforcement
   stageRouteQuery,
   stageComplexityAnalysis,  // Phase 64 — query complexity analysis
+  stageQueryPlan,           // Phase 81 — multi-step query decomposition
   stageRewriteQuery,
   stageEmbed,
   stageSearch,
@@ -1082,6 +1147,11 @@ if (config.PIPELINE?.enableHooks !== false) {
       _refinementApplied: !(_ctx._refinementSkipped ?? true),
       _refinementAttempts: _ctx._refinementAttempts ?? 0,
       _refinementImproved: _ctx._refinementImproved ?? false,
+
+      // ── Query planning (Phase 81) ────────────────────────────
+      _queryPlanApplied: !(_ctx._planSkipped ?? true),
+      _subQueryCount: _ctx._subQueries?.length ?? 0,
+      _mergeStrategy: _ctx._mergeStrategy ?? null,
     });
   });
 }
@@ -1090,4 +1160,4 @@ if (config.PIPELINE?.enableHooks !== false) {
 // Exports
 // ═══════════════════════════════════════════════════════════════
 
-export { PipelineContext, PipelineRunner, chatPipeline, writeChunk, buildContext, buildSources, attemptLocalRewrite, buildDynamicSystemPrompt, stageRerank, stageComplexityAnalysis, stageGroundingCheck, stageAnswerRefinement, stageCitationMapping, stageBudgetCheck, extractKeyPoints, calculateConfidence };
+export { PipelineContext, PipelineRunner, chatPipeline, writeChunk, buildContext, buildSources, attemptLocalRewrite, buildDynamicSystemPrompt, stageRerank, stageComplexityAnalysis, stageQueryPlan, stageGroundingCheck, stageAnswerRefinement, stageCitationMapping, stageBudgetCheck, extractKeyPoints, calculateConfidence };

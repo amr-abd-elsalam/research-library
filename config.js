@@ -900,6 +900,23 @@ const config = {
     includeInInspect: true,         // true = عرض بيانات السجل في inspect endpoint | false = إخفاء
   },
 
+  // ═══════════════════════════════════════════════════════════════
+  // 45. تخطيط الاستعلام الذكي (QUERY_PLANNING)
+  //    — يحلل الأسئلة المركّبة ويقسمها لاستعلامات فرعية
+  //    — كل استعلام فرعي يُبحث بشكل مستقل ثم تُدمج النتائج
+  //    — يتطلب: QUERY_COMPLEXITY.enabled: true (لتحديد نوع التعقيد)
+  //    — معطّل افتراضياً — فعّله من هنا
+  //    — Pattern-based decomposition — بدون استدعاء API (تكلفة صفر)
+  // ═══════════════════════════════════════════════════════════════
+  QUERY_PLANNING: {
+    enabled:               false,          // true = multi-step retrieval للأسئلة المركّبة | false = single-pass (السلوك الحالي بالظبط)
+    maxSubQueries:         3,              // أقصى عدد استعلامات فرعية لكل سؤال (1-5)
+    mergeStrategy:         'interleave',   // 'interleave' = round-robin من كل sub-query | 'concatenate' = flatten + sort by score | 'ranked' = weighted by position + score
+    minComplexityForPlan:  'comparative',  // أقل مستوى تعقيد لتفعيل التخطيط ('comparative' | 'analytical' | 'multi_part'). 'factual' و 'exploratory' = لا تخطيط
+    includeInTrace:        true,           // true = تسجيل تفاصيل التخطيط في الـ trace | false = لا تسجيل
+    budgetPerSubQuery:     0.6,            // نسبة الـ topK لكل sub-query (0.3-1.0). 0.6 = كل sub-query يأخذ 60% من الـ topK الأصلي
+  },
+
 };
 
 export default deepFreeze(config);
