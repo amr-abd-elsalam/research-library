@@ -888,6 +888,18 @@ const config = {
     includeConfidence: true,         // true = حساب مؤشر ثقة مركّب من search score + grounding score | false = بدون
   },
 
+  // ═══════════════════════════════════════════════════════════════
+  // 44. سجل الأوامر الموحد (ACTION_REGISTRY)
+  //    — يجمع كل الأوامر والأدوات في سجل واحد قابل للبحث
+  //    — يستورد الأوامر تلقائياً من CommandRegistry عند التشغيل
+  //    — يظهر في inspect endpoint
+  //    — معطّل افتراضياً — فعّله من هنا
+  // ═══════════════════════════════════════════════════════════════
+  ACTION_REGISTRY: {
+    enabled:          false,        // true = تفعيل السجل الموحد | false = معطّل (zero overhead)
+    includeInInspect: true,         // true = عرض بيانات السجل في inspect endpoint | false = إخفاء
+  },
+
 };
 
 export default deepFreeze(config);

@@ -146,3 +146,50 @@ describe('Validation Rules Detail', () => {
     assert.strictEqual(instance.counts().totalRules, 7);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// Block 4: revalidate() Method (Phase 80)
+// ═══════════════════════════════════════════════════════════════
+describe('ConfigValidator revalidate()', () => {
+
+  // T-CV16: revalidate() is a method on ConfigValidator
+  it('T-CV16: revalidate is a method', () => {
+    assert.strictEqual(typeof configValidator.revalidate, 'function');
+  });
+
+  // T-CV17: revalidate() returns { result, changed, newErrors, newWarnings } shape
+  it('T-CV17: revalidate returns correct shape', () => {
+    const rv = configValidator.revalidate();
+    assert.strictEqual(typeof rv.result, 'object', 'result should be object');
+    assert.strictEqual(typeof rv.changed, 'boolean', 'changed should be boolean');
+    assert.ok(Array.isArray(rv.newErrors), 'newErrors should be array');
+    assert.ok(Array.isArray(rv.newWarnings), 'newWarnings should be array');
+    assert.strictEqual(typeof rv.result.valid, 'boolean', 'result.valid should be boolean');
+    assert.ok(Array.isArray(rv.result.errors), 'result.errors should be array');
+    assert.ok(Array.isArray(rv.result.warnings), 'result.warnings should be array');
+    assert.strictEqual(typeof rv.result.checkedAt, 'number', 'result.checkedAt should be number');
+  });
+
+  // T-CV18: revalidate() returns changed=false when called twice with same config
+  it('T-CV18: revalidate twice returns changed=false on second call', () => {
+    const first = configValidator.revalidate();
+    const second = configValidator.revalidate();
+    assert.strictEqual(second.changed, false, 'should not change on identical config');
+    assert.strictEqual(second.newErrors.length, 0);
+    assert.strictEqual(second.newWarnings.length, 0);
+  });
+
+  // T-CV19: revalidate() result.valid is boolean
+  it('T-CV19: result.valid is boolean', () => {
+    const rv = configValidator.revalidate();
+    assert.strictEqual(typeof rv.result.valid, 'boolean');
+  });
+
+  // T-CV20: revalidate() after reset() returns changed=true (no previous)
+  it('T-CV20: after reset, revalidate returns changed=true', () => {
+    configValidator.validate(); // populate lastResult
+    configValidator.reset();    // clear it
+    const rv = configValidator.revalidate();
+    assert.strictEqual(rv.changed, true, 'should be changed when no previous result exists');
+  });
+});

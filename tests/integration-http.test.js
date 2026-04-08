@@ -1082,4 +1082,35 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
       assert.strictEqual(lr, null);
     }
   });
+
+  // T-IH92: GET /api/admin/inspect — includes actionRegistry section (Phase 80)
+  it('T-IH92: GET /api/admin/inspect — includes actionRegistry section', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('actionRegistry' in data, 'inspect should contain actionRegistry');
+  });
+
+  // T-IH93: GET /api/admin/inspect — actionRegistry.totalActions is a number >= 0 (Phase 80)
+  it('T-IH93: GET /api/admin/inspect — actionRegistry.totalActions is number >= 0', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.actionRegistry.totalActions, 'number');
+    assert.ok(data.actionRegistry.totalActions >= 0, 'totalActions should be >= 0');
+  });
+
+  // T-IH94: GET /api/admin/inspect — actionRegistry.enabled is boolean (Phase 80)
+  it('T-IH94: GET /api/admin/inspect — actionRegistry.enabled is boolean', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.actionRegistry.enabled, 'boolean');
+  });
 });

@@ -34,6 +34,7 @@ import { llmProviderRegistry } from './services/llmProvider.js';
 import { GeminiProvider } from './services/providers/geminiProvider.js';
 import { OpenAIProvider } from './services/providers/openaiProvider.js';
 import { configValidator } from './services/configValidator.js';
+import { actionRegistry } from './services/actionRegistry.js';
 
 // ── Timeout helper (for bootstrap-specific timeouts) ──────────
 function raceTimeout(promise, ms) {
@@ -204,6 +205,12 @@ class BootstrapManager {
       await pluginRegistry.initialize();
 
       logger.info('plugins', `${pluginRegistry.size} plugin(s) loaded (${inlineCount} inline, ${fileCount} file-based), ${pluginCommands.length} command(s), ${pluginListeners.length} listener(s)`);
+    }
+
+    // ── ActionRegistry population (Phase 80) ─────────────────
+    if (actionRegistry.enabled) {
+      const importedCount = actionRegistry.importFromCommandRegistry();
+      logger.info('bootstrap', `ActionRegistry: imported ${importedCount} command(s) from CommandRegistry`);
     }
 
     // ── Stages 3+4: qdrant + gemini (parallel) ───────────────

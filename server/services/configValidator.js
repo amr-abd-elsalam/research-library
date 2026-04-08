@@ -141,6 +141,26 @@ class ConfigValidator {
   reset() {
     this.#lastResult = null;
   }
+
+  /**
+   * Re-validates config (same rules as validate).
+   * Compares with previous lastResult to detect new issues.
+   * Designed to be called after runtime config changes (e.g. feature flag toggles).
+   * @returns {{ result: { valid: boolean, errors: string[], warnings: string[], checkedAt: number }, changed: boolean, newErrors: string[], newWarnings: string[] }}
+   */
+  revalidate() {
+    const previous = this.#lastResult;
+    const current = this.validate();
+
+    const changed = !previous
+      || previous.errors.length !== current.errors.length
+      || previous.warnings.length !== current.warnings.length;
+
+    const newErrors = current.errors.filter(e => !previous?.errors?.includes(e));
+    const newWarnings = current.warnings.filter(w => !previous?.warnings?.includes(w));
+
+    return { result: current, changed, newErrors, newWarnings };
+  }
 }
 
 // ── Singleton instance ─────────────────────────────────────────

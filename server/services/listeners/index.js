@@ -28,6 +28,7 @@ import { register as registerGrounding }       from './groundingListener.js';
 import { register as registerCitation }        from './citationListener.js';
 import { register as registerCost }            from './costListener.js';
 import { register as registerRefinement }      from './refinementListener.js';
+import { registerConfigRevalidationListener }  from './configRevalidationListener.js';
 import { logger }                            from '../logger.js';
 
 /**
@@ -60,6 +61,7 @@ export function registerAllListeners() {
   registerCitation();        // #22 — citation metrics (Phase 71)
   registerCost();            // #23 — cost governance feed (Phase 76)
   registerRefinement();      // #24 — answer refinement metrics (Phase 78)
+  registerConfigRevalidationListener();  // #25 — config re-validation on feature:toggled (Phase 80)
 
-  logger.info('listeners', '24 EventBus listeners registered (analytics, cache, session, metrics, command, log, circuit, sessionStats, analyticsDigest, routing, context, suggestions, eviction, feedback, correlation, auditTrail, contentGap, quality, intelligence, configCache, grounding, citation, cost, refinement)');
+  logger.info('listeners', '25 EventBus listeners registered (analytics, cache, session, metrics, command, log, circuit, sessionStats, analyticsDigest, routing, context, suggestions, eviction, feedback, correlation, auditTrail, contentGap, quality, intelligence, configCache, grounding, citation, cost, refinement, configRevalidation)');
 }

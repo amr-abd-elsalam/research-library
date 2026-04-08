@@ -44,6 +44,7 @@ import { citationMapper }            from '../services/citationMapper.js';
 import { llmProviderRegistry }       from '../services/llmProvider.js';
 import { costGovernor }              from '../services/costGovernor.js';
 import { configValidator }  from '../services/configValidator.js';
+import { actionRegistry }   from '../services/actionRegistry.js';
 import config               from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -222,6 +223,9 @@ export async function handleInspect(_req, res) {
 
       // ── Config Validator (Phase 79) ──────────────────────────
       configValidator: configValidator.counts(),
+
+      // ── Action Registry (Phase 80) ───────────────────────────
+      actionRegistry: actionRegistry.counts(),
 
       // ── Observability (Phase 65) ──────────────────────────────
       observability: {
