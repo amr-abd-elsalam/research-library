@@ -48,6 +48,29 @@ class MockVectorStore {
     this._calls = [];
     this._emptyMode    = options.emptyMode || false;
     this._lowScoreMode = options.lowScoreMode || false;
+
+    // ── Chaos injection (Phase 89) ────────────────────────────
+    this._chaosConfig = {
+      randomFailureRate: 0,    // 0-1: probability of random Error throw
+      failOnNthCall:    null,  // number — fail on exact call index (0-based)
+    };
+    this._chaosCallCount = 0;
+  }
+
+  /**
+   * Configures chaos injection for subsequent search() calls.
+   * Chainable — returns `this`.
+   * @param {object} chaosConfig
+   * @returns {MockVectorStore}
+   */
+  setChaos(chaosConfig = {}) {
+    if (Object.keys(chaosConfig).length === 0) {
+      this._chaosConfig = { randomFailureRate: 0, failOnNthCall: null };
+      this._chaosCallCount = 0;
+    } else {
+      this._chaosConfig = { ...this._chaosConfig, ...chaosConfig };
+    }
+    return this;
   }
 
   /**
@@ -60,6 +83,19 @@ class MockVectorStore {
    */
   async search(vector, topK, filter, collection) {
     this._calls.push({ vector, topK, filter, collection, timestamp: Date.now() });
+
+    // ── Chaos injection (Phase 89) ────────────────────────────
+    const chaosIdx = this._chaosCallCount++;
+    const chaosCfg = this._chaosConfig;
+    if (typeof chaosCfg.failOnNthCall === 'number' && chaosIdx === chaosCfg.failOnNthCall) {
+      throw new Error(`MockVectorStore: chaos failOnNthCall at index ${chaosIdx}`);
+    }
+    if (typeof chaosCfg.randomFailureRate === 'number' && chaosCfg.randomFailureRate > 0) {
+      if (Math.random() < chaosCfg.randomFailureRate) {
+        throw new Error(`MockVectorStore: chaos random failure (rate: ${chaosCfg.randomFailureRate})`);
+      }
+    }
+
     if (this._emptyMode) return [];
     if (this._lowScoreMode) {
       return this._defaultHits.map(h => ({ ...h, score: 0.15, payload: { ...h.payload } })).slice(0, topK);
@@ -82,11 +118,13 @@ class MockVectorStore {
   /** Toggle low score mode (for abort tests). */
   setLowScoreMode(enabled) { this._lowScoreMode = enabled; }
 
-  /** Clears calls and resets modes. */
+  /** Clears calls, resets modes, and chaos state. */
   reset() {
     this._calls = [];
     this._emptyMode = false;
     this._lowScoreMode = false;
+    this._chaosCallCount = 0;
+    this._chaosConfig = { randomFailureRate: 0, failOnNthCall: null };
   }
 }
 

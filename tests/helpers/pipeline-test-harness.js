@@ -54,12 +54,22 @@ import { conversationContext }          from '../../server/services/conversation
 import { pipelineComposer }            from '../../server/services/pipelineComposer.js';
 import { costGovernor }                 from '../../server/services/costGovernor.js';
 
+// ── Additional imports for verification helpers (Phase 89) ────
+import { feedbackCollector }     from '../../server/services/feedbackCollector.js';
+import { eventBus }              from '../../server/services/eventBus.js';
+import { correlationIndex }      from '../../server/services/correlationIndex.js';
+import { getTrail, getTrailCounts } from '../../server/services/listeners/auditTrailListener.js';
+import { metrics }               from '../../server/services/metrics.js';
+import { strategyAnalytics }     from '../../server/services/strategyAnalytics.js';
+import { refinementAnalytics }   from '../../server/services/refinementAnalytics.js';
+import { groundingAnalytics }    from '../../server/services/groundingAnalytics.js';
+
 // ── Feature flag sections to clear on teardown ────────────────
 const ALL_FEATURE_SECTIONS = [
   'QUERY_COMPLEXITY', 'QUERY_PLANNING', 'RETRIEVAL', 'GROUNDING',
   'ANSWER_REFINEMENT', 'CITATION', 'COST_GOVERNANCE', 'SEMANTIC_MATCHING',
   'FEEDBACK', 'SUGGESTIONS', 'CONTENT_GAPS', 'QUALITY',
-  'HEALTH_SCORE', 'ADMIN_INTELLIGENCE',
+  'HEALTH_SCORE', 'ADMIN_INTELLIGENCE', 'RAG_STRATEGIES',
 ];
 
 class PipelineTestHarness {
@@ -407,6 +417,7 @@ class PipelineTestHarness {
         response:    (result.ctx.fullText || '').slice(0, 300),
         queryType:   result.ctx.queryRoute?.type ?? null,
         topicFilter,
+        avgScore:    result.ctx.avgScore ?? null,
       });
 
       // Increment turn counter (simulates what chat.js does after pipeline)
@@ -416,6 +427,85 @@ class PipelineTestHarness {
     }
 
     return results;
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  // Phase 89 — Chaos, Feedback, and Verification Helpers
+  // ═══════════════════════════════════════════════════════════
+
+  /**
+   * Runs pipeline with chaos injection on mocks.
+   * Chaos is automatically cleared after the run (even on error).
+   * @param {string} message
+   * @param {object} [options={}] — same as run() options
+   * @param {{ llm?: object, vectorStore?: object }} [chaosConfig={}]
+   * @returns {Promise<{ ctx, trace, sseChunks, traceJSON }>}
+   */
+  async runWithChaos(message, options = {}, chaosConfig = {}) {
+    if (chaosConfig.llm) this.mockLLM.setChaos(chaosConfig.llm);
+    if (chaosConfig.vectorStore) this.mockStore.setChaos(chaosConfig.vectorStore);
+    try {
+      return await this.run(message, options);
+    } finally {
+      this.mockLLM.setChaos({});
+      this.mockStore.setChaos({});
+    }
+  }
+
+  /**
+   * Simulates a user feedback submission (direct singleton call — no HTTP).
+   * Calls feedbackCollector.submit() and emits feedback:submitted event.
+   * @param {string} correlationId
+   * @param {string} rating — 'positive' | 'negative'
+   * @param {string|null} [comment=null]
+   * @param {string|null} [sessionId=null]
+   * @returns {Promise<boolean>}
+   */
+  async simulateFeedback(correlationId, rating, comment = null, sessionId = null) {
+    const result = await feedbackCollector.submit({
+      correlationId,
+      sessionId,
+      rating,
+      comment,
+      libraryId: null,
+    });
+    return result;
+  }
+
+  /**
+   * Returns counts/inspect data for a named singleton.
+   * Direct singleton access — no HTTP required.
+   * @param {string} singletonName
+   * @returns {object|null}
+   */
+  verifyInspect(singletonName) {
+    const singletons = {
+      feedbackCollector,
+      correlationIndex,
+      strategyAnalytics,
+      refinementAnalytics,
+      groundingAnalytics,
+      metrics,
+      conversationContext,
+    };
+    return singletons[singletonName]?.counts() ?? null;
+  }
+
+  /**
+   * Returns audit trail entries for a session.
+   * @param {string} sessionId
+   * @returns {Array<object>}
+   */
+  verifyAudit(sessionId) {
+    return getTrail(sessionId) || [];
+  }
+
+  /**
+   * Returns feedback collector counts.
+   * @returns {object}
+   */
+  verifyFeedback() {
+    return feedbackCollector.counts();
   }
 
   /**
@@ -437,6 +527,13 @@ class PipelineTestHarness {
     conversationContext.reset();
     pipelineComposer.reset();
     costGovernor.reset();
+
+    // 4. Reset additional singletons for Phase 89 tests
+    feedbackCollector.reset();
+    correlationIndex.reset();
+    strategyAnalytics.reset();
+    refinementAnalytics.reset();
+    groundingAnalytics.reset();
 
     this._setupDone = false;
   }

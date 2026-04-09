@@ -1391,4 +1391,89 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
       }
     }
   });
+
+  // T-IH119: GET /api/admin/inspect → refinementAnalytics has expected shape (Phase 89)
+  it('T-IH119: GET /api/admin/inspect — refinementAnalytics has expected shape', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('refinementAnalytics' in data, 'should contain refinementAnalytics');
+    assert.strictEqual(typeof data.refinementAnalytics.enabled, 'boolean');
+    assert.strictEqual(typeof data.refinementAnalytics.totalRecorded, 'number');
+    assert.strictEqual(typeof data.refinementAnalytics.maxEntries, 'number');
+    assert.strictEqual(typeof data.refinementAnalytics.successRate, 'number');
+  });
+
+  // T-IH120: GET /api/admin/inspect → strategyAnalytics has expected shape (Phase 89)
+  it('T-IH120: GET /api/admin/inspect — strategyAnalytics has expected shape', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('strategyAnalytics' in data, 'should contain strategyAnalytics');
+    assert.strictEqual(typeof data.strategyAnalytics.enabled, 'boolean');
+    assert.strictEqual(typeof data.strategyAnalytics.totalRecorded, 'number');
+    assert.strictEqual(typeof data.strategyAnalytics.maxEntries, 'number');
+    assert.strictEqual(typeof data.strategyAnalytics.strategyBreakdown, 'object');
+  });
+
+  // T-IH121: GET /api/admin/inspect → feedbackCollector has expected shape (Phase 89)
+  it('T-IH121: GET /api/admin/inspect — feedbackCollector has expected shape', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('feedbackCollector' in data, 'should contain feedbackCollector');
+    assert.strictEqual(typeof data.feedbackCollector.enabled, 'boolean');
+    assert.strictEqual(typeof data.feedbackCollector.totalPositive, 'number');
+    assert.strictEqual(typeof data.feedbackCollector.totalNegative, 'number');
+    assert.strictEqual(typeof data.feedbackCollector.recentCount, 'number');
+  });
+
+  // T-IH122: GET /api/admin/inspect → correlationIndex has expected shape (Phase 89)
+  it('T-IH122: GET /api/admin/inspect — correlationIndex has expected shape', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('correlationIndex' in data, 'should contain correlationIndex');
+    assert.strictEqual(typeof data.correlationIndex.enabled, 'boolean');
+    assert.strictEqual(typeof data.correlationIndex.size, 'number');
+    assert.strictEqual(typeof data.correlationIndex.maxSize, 'number');
+  });
+
+  // T-IH123: GET /api/admin/inspect → all 44 singleton sections present (Phase 89)
+  it('T-IH123: GET /api/admin/inspect — all 44 singleton sections present', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    const expectedSections = [
+      'config', 'commands', 'hooks', 'eventBus', 'plugins', 'metrics',
+      'logger', 'operationalLog', 'bootstrap', 'circuits', 'sessionBudget',
+      'intentClassifier', 'pipelineAnalytics', 'metricsPersister',
+      'executionRouter', 'conversationContext', 'contextPersister',
+      'suggestionsEngine', 'suggestionAnalytics', 'feedbackCollector',
+      'correlationIndex', 'auditTrail', 'auditPersister', 'libraryIndex',
+      'systemPromptEnrichment', 'contentGapDetector', 'gapPersister',
+      'sessionQualityScorer', 'libraryHealthScorer', 'adminActions',
+      'featureFlags', 'adminIntelligence', 'dynamicWelcomeSuggestions',
+      'searchReranker', 'queryComplexityAnalyzer', 'answerGroundingChecker',
+      'groundingAnalytics', 'citationMapper', 'sharedUtilities',
+      'llmProvider', 'costGovernor', 'answerRefinement', 'configValidator',
+      'actionRegistry', 'queryPlanner', 'pipelineComposer',
+      'sessionReplaySerializer', 'ragStrategySelector',
+      'refinementAnalytics', 'strategyAnalytics',
+      'observability', 'tiers',
+    ];
+    for (const section of expectedSections) {
+      assert.ok(section in data, `inspect should contain "${section}"`);
+    }
+  });
 });
