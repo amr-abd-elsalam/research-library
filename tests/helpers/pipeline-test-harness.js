@@ -353,6 +353,72 @@ class PipelineTestHarness {
   }
 
   /**
+   * Executes a multi-turn conversation on the same session.
+   * Each turn runs through the full pipeline, accumulates history,
+   * and records context (simulating contextListener + chat.js behavior).
+   *
+   * @param {Array<{ message: string, featureOverrides?: object }>} turns — ordered messages
+   * @param {object} [options]
+   * @param {string}       [options.sessionId]
+   * @param {string|null}  [options.topicFilter=null]
+   * @param {string}       [options.responseMode='stream']
+   * @param {string|null}  [options.libraryId=null]
+   * @param {object}       [options.featureOverrides={}] — shared overrides (per-turn can extend)
+   * @returns {Promise<Array<{ ctx, trace, sseChunks, traceJSON, turnIndex }>>}
+   */
+  async runConversation(turns, options = {}) {
+    if (!this._setupDone) {
+      throw new Error('PipelineTestHarness: call setup() before runConversation()');
+    }
+
+    const {
+      sessionId        = 'conv-test-' + Date.now(),
+      topicFilter      = null,
+      responseMode     = 'stream',
+      libraryId        = null,
+      featureOverrides = {},
+    } = options;
+
+    const results = [];
+    let history = [];
+
+    for (let i = 0; i < turns.length; i++) {
+      const turn = turns[i];
+      const mergedOverrides = { ...featureOverrides, ...(turn.featureOverrides || {}) };
+
+      const result = await this.run(turn.message, {
+        history: [...history],
+        sessionId,
+        topicFilter,
+        responseMode,
+        libraryId,
+        featureOverrides: mergedOverrides,
+      });
+
+      // Accumulate history for next turn (simulates what the frontend does)
+      history.push(
+        { role: 'user', text: turn.message },
+        { role: 'model', text: result.ctx.fullText || '' }
+      );
+
+      // Record context (simulates what contextListener does on pipeline:complete)
+      conversationContext.recordTurn(sessionId, {
+        message:     turn.message,
+        response:    (result.ctx.fullText || '').slice(0, 300),
+        queryType:   result.ctx.queryRoute?.type ?? null,
+        topicFilter,
+      });
+
+      // Increment turn counter (simulates what chat.js does after pipeline)
+      conversationContext.incrementTurn(sessionId);
+
+      results.push({ ...result, turnIndex: i });
+    }
+
+    return results;
+  }
+
+  /**
    * Restores all originals and resets state.
    */
   async teardown() {

@@ -12,7 +12,7 @@ import { handleMetrics }    from './handlers/metricsHandler.js';
 import { handleAdminLog }   from './handlers/adminLogHandler.js';
 import { handleInspect }    from './handlers/inspectHandler.js';
 import { handleAuthVerify }  from './handlers/authHandler.js';
-import { handleCreateSession, handleGetSession, handleDeleteSession, handleListSessions, extractSessionId, extractSessionAction, handleResumeSession, handleExportSession } from './handlers/sessions.js';
+import { handleCreateSession, handleGetSession, handleDeleteSession, handleListSessions, extractSessionId, extractSessionAction, handleResumeSession, handleExportSession, handleSessionReplay } from './handlers/sessions.js';
 import { handleCommands } from './handlers/commandsHandler.js';
 import { handleWhoami }   from './handlers/whoamiHandler.js';
 import { handleSubmitFeedback, handleAdminFeedback } from './handlers/feedbackHandler.js';
@@ -310,6 +310,14 @@ export async function router(req, res) {
     requireAccess(req, res);
     if (res.writableEnded) return;
     await handleResumeSession(req, res);
+    return;
+  }
+
+  // GET /api/admin/sessions/:id/replay (Phase 84 — admin-protected session replay)
+  if (method === 'GET' && extractSessionAction(url)?.action === 'replay') {
+    requireAdmin(req, res);
+    if (res.writableEnded) return;
+    await handleSessionReplay(req, res);
     return;
   }
 

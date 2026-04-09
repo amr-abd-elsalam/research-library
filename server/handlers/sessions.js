@@ -19,6 +19,7 @@ import { conversationContext } from '../services/conversationContext.js';
 import { sessionQualityScorer } from '../services/sessionQualityScorer.js';
 import { contextPersister } from '../services/contextPersister.js';
 import { logger } from '../services/logger.js';
+import { sessionReplaySerializer } from '../services/sessionReplaySerializer.js';
 
 // ── Custom Error ───────────────────────────────────────────────
 export class SessionHandlerError extends Error {
@@ -226,7 +227,7 @@ export async function handleListSessions(req, res) {
 }
 
 // ── Session action URL matcher ─────────────────────────────────
-const SESSION_ACTION_RE = /^\/api\/sessions\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/(resume|export)\/?$/i;
+const SESSION_ACTION_RE = /^\/api\/sessions\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/(resume|export|replay)\/?$/i;
 
 /**
  * Extracts session ID and action from URLs like /api/sessions/:id/resume
@@ -293,6 +294,50 @@ export async function handleResumeSession(req, res) {
     console.error('[sessions:resume] error:', err.message);
     res.writeHead(500, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ error: 'حدث خطأ في استئناف الجلسة', code: 'RESUME_ERROR' }));
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GET /api/admin/sessions/:id/replay — Replay session conversation (Phase 84)
+// ═══════════════════════════════════════════════════════════════
+export async function handleSessionReplay(req, res) {
+  if (!sessionReplaySerializer.enabled) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      error: 'إعادة تشغيل الجلسات غير مفعّلة',
+      code:  'FEATURE_DISABLED',
+    }));
+    return;
+  }
+
+  const parsed = extractSessionAction(req.url);
+  if (!parsed || parsed.action !== 'replay') {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'session_id مطلوب', code: 'BAD_REQUEST' }));
+    return;
+  }
+
+  try {
+    const replay = sessionReplaySerializer.buildReplay(parsed.id);
+    if (!replay) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        error: 'لا توجد بيانات إعادة تشغيل لهذه الجلسة',
+        code:  'NO_REPLAY_DATA',
+      }));
+      return;
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(replay));
+
+  } catch (err) {
+    console.error('[sessions:replay] error:', err.message);
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      error: 'حدث خطأ في إعادة تشغيل الجلسة',
+      code:  'REPLAY_ERROR',
+    }));
   }
 }
 

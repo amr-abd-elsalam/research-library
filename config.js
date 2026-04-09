@@ -223,6 +223,7 @@ const config = {
     ttlDays:              30,       // مدة الاحتفاظ بالـ session (بالأيام)
     maxSessions:          10000,    // أقصى عدد sessions محفوظة
     maxTokensPerSession:  0,        // أقصى tokens per session (0 = بدون حد). مثلاً 50000 = ~25 سؤال متوسط
+    enableReplay:         false,    // true = تفعيل Session Replay (إعادة بناء المحادثة من الـ audit trail) | false = معطّل. يتطلب AUDIT.enabled: true
   },
 
   // ═══════════════════════════════════════════════════════════

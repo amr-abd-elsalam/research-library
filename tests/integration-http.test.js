@@ -1205,4 +1205,33 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     const data = await res.json();
     assert.strictEqual(data.llmProvider.activeProvider, 'gemini', 'should be gemini, not mock');
   });
+
+  // T-IH104: GET /api/sessions/:id/replay without auth → returns 401 (Phase 84)
+  it('T-IH104: GET /api/sessions/:id/replay without auth — returns 401', async () => {
+    const fakeId = '00000000-0000-4000-a000-000000000000';
+    const res = await fetch(`${ts.baseUrl}/api/sessions/${fakeId}/replay`);
+    assert.strictEqual(res.status, 401);
+  });
+
+  // T-IH105: GET /api/sessions/:id/replay with auth → returns 404 (enableReplay disabled by default) (Phase 84)
+  it('T-IH105: GET /api/sessions/:id/replay with auth — returns 404 (feature disabled)', async () => {
+    const fakeId = '00000000-0000-4000-a000-000000000000';
+    const res = await fetch(`${ts.baseUrl}/api/sessions/${fakeId}/replay`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 404);
+    const data = await res.json();
+    assert.strictEqual(data.code, 'FEATURE_DISABLED');
+  });
+
+  // T-IH106: GET /api/admin/inspect with auth → includes sessionReplaySerializer section (Phase 84)
+  it('T-IH106: GET /api/admin/inspect — includes sessionReplaySerializer', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('sessionReplaySerializer' in data, 'inspect should contain sessionReplaySerializer');
+    assert.strictEqual(typeof data.sessionReplaySerializer.enabled, 'boolean');
+  });
 });
