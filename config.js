@@ -250,6 +250,9 @@ const config = {
     // ── Context Persistence (Phase 31) ────────────────────────
     persistContext:        false,       // true = حفظ الـ context على الديسك واستعادته عند resume | false = ذاكرة فقط (السلوك الحالي بالظبط). يعمل فقط لما intelligentCompaction: true
     contextDir:           './data/context',  // مجلد حفظ ملفات الـ context — كل session = ملف JSON واحد ({sessionId}.json). يتعمل تلقائياً لو مش موجود
+
+    // ── Rolling Quality Score (Phase 87) ──────────────────────
+    rollingQualityAlpha:  0.3,         // 0-1: weight for exponential moving average of search quality scores. 0.3 = recent scores matter ~30%. Used by RAGStrategySelector for stable quality-based decisions
   },
 
   // ═══════════════════════════════════════════════════════════
@@ -961,6 +964,28 @@ const config = {
       lowScoreThresholdForDeep:       0.5, // scores أقل من كده تُصعِّد لـ deep_analytical
       maxQuickFactualWords:           10,  // أسئلة أقصر من كده + factual → quick_factual
     },
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 47. تحليلات تحسين الإجابات (REFINEMENT_ANALYTICS)
+  //    — يجمع إحصائيات عن answer refinement performance
+  //    — نسبة النجاح، متوسط التحسين، breakdown per strategy/mode
+  //    — in-memory فقط — البيانات تضيع عند restart
+  //    — zero overhead عند التعطيل (analytics is passive)
+  // ═══════════════════════════════════════════════════════════════
+  REFINEMENT_ANALYTICS: {
+    maxEntries: 200,    // أقصى عدد entries في الـ ring buffer
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // 48. تحليلات اختيار الاستراتيجية (STRATEGY_ANALYTICS)
+  //    — يجمع إحصائيات عن RAG strategy selection performance
+  //    — per-strategy quality، escalation rate، usage frequency
+  //    — in-memory فقط — البيانات تضيع عند restart
+  //    — zero overhead عند التعطيل (analytics is passive)
+  // ═══════════════════════════════════════════════════════════════
+  STRATEGY_ANALYTICS: {
+    maxEntries: 200,    // أقصى عدد entries في الـ ring buffer
   },
 
 };

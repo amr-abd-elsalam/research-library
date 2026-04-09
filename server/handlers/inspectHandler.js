@@ -49,6 +49,8 @@ import { queryPlanner }      from '../services/queryPlanner.js';
 import { pipelineComposer }          from '../services/pipelineComposer.js';
 import { sessionReplaySerializer }   from '../services/sessionReplaySerializer.js';
 import { ragStrategySelector }       from '../services/ragStrategySelector.js';
+import { refinementAnalytics }       from '../services/refinementAnalytics.js';
+import { strategyAnalytics }         from '../services/strategyAnalytics.js';
 import config                        from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -243,6 +245,12 @@ export async function handleInspect(_req, res) {
 
       // ── RAG Strategy Selector (Phase 85) ─────────────────────
       ragStrategySelector: ragStrategySelector.counts(),
+
+      // ── Refinement Analytics (Phase 87) ──────────────────────
+      refinementAnalytics: refinementAnalytics.counts(),
+
+      // ── Strategy Analytics (Phase 87) ────────────────────────
+      strategyAnalytics: strategyAnalytics.counts(),
 
       // ── Observability (Phase 65) ──────────────────────────────
       observability: {

@@ -1291,4 +1291,65 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(data.answerRefinement.streamingRevisionEnabled, false,
       'should default to false');
   });
+
+  // T-IH112: GET /api/admin/inspect — includes refinementAnalytics section (Phase 87)
+  it('T-IH112: GET /api/admin/inspect — includes refinementAnalytics section', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('refinementAnalytics' in data, 'inspect should contain refinementAnalytics');
+    assert.strictEqual(typeof data.refinementAnalytics.enabled, 'boolean');
+    assert.strictEqual(typeof data.refinementAnalytics.totalRecorded, 'number');
+    assert.strictEqual(typeof data.refinementAnalytics.maxEntries, 'number');
+  });
+
+  // T-IH113: GET /api/admin/inspect — includes strategyAnalytics section (Phase 87)
+  it('T-IH113: GET /api/admin/inspect — includes strategyAnalytics section', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('strategyAnalytics' in data, 'inspect should contain strategyAnalytics');
+    assert.strictEqual(typeof data.strategyAnalytics.enabled, 'boolean');
+    assert.strictEqual(typeof data.strategyAnalytics.totalRecorded, 'number');
+    assert.strictEqual(typeof data.strategyAnalytics.maxEntries, 'number');
+  });
+
+  // T-IH114: GET /api/admin/inspect — refinementAnalytics.totalRecorded is number >= 0 (Phase 87)
+  it('T-IH114: GET /api/admin/inspect — refinementAnalytics.totalRecorded is number', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok(data.refinementAnalytics.totalRecorded >= 0,
+      `totalRecorded should be >= 0, got ${data.refinementAnalytics.totalRecorded}`);
+  });
+
+  // T-IH115: GET /api/admin/inspect — strategyAnalytics.totalRecorded is number >= 0 (Phase 87)
+  it('T-IH115: GET /api/admin/inspect — strategyAnalytics.totalRecorded is number', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok(data.strategyAnalytics.totalRecorded >= 0,
+      `totalRecorded should be >= 0, got ${data.strategyAnalytics.totalRecorded}`);
+  });
+
+  // T-IH116: GET /api/admin/inspect — conversationContext includes quality tracking fields (Phase 87)
+  it('T-IH116: GET /api/admin/inspect — conversationContext has quality tracking', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('conversationContext' in data, 'inspect should contain conversationContext');
+    assert.strictEqual(typeof data.conversationContext.enabled, 'boolean');
+    assert.strictEqual(typeof data.conversationContext.activeSessions, 'number');
+    assert.strictEqual(typeof data.conversationContext.totalTurns, 'number');
+  });
 });

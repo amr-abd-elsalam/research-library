@@ -27,6 +27,9 @@ class ConversationContext {
   #evictionCount  = 0;
   #onEvict        = null;
 
+  // ── Rolling quality (Phase 87) ──────────────────────────────
+  #rollingAlpha;
+
   constructor() {
     const ctx = config.CONTEXT ?? {};
     this.#maxEntities = ctx.maxContextEntities ?? 20;
@@ -36,6 +39,9 @@ class ConversationContext {
     this.#evictionEnabled    = ctx.evictionEnabled !== false;
     this.#evictionIdleMs     = Math.max(ctx.evictionIdleMs ?? 1800000, 60000);
     this.#evictionIntervalMs = Math.max(ctx.evictionIntervalMs ?? 300000, 60000);
+
+    // Rolling quality score alpha (Phase 87)
+    this.#rollingAlpha = Math.max(0, Math.min(1, ctx.rollingQualityAlpha ?? 0.3));
   }
 
   // ── Guard: skip if disabled ──────────────────────────────────
@@ -61,6 +67,7 @@ class ConversationContext {
         contextSummary: null,
         lastActiveAt: Date.now(),
         lastAvgScore: null,
+        rollingAvgScore: null,
       };
       this.#sessions.set(sessionId, state);
     }
@@ -70,8 +77,16 @@ class ConversationContext {
     state.lastQueryType = turnData.queryType || null;
 
     // Phase 86: track search quality for RAG strategy escalation
+    // Phase 87: rolling quality score via exponential moving average
     if (typeof turnData.avgScore === 'number') {
       state.lastAvgScore = turnData.avgScore;
+      const alpha = this.#rollingAlpha;
+      if (state.rollingAvgScore === null) {
+        state.rollingAvgScore = turnData.avgScore;
+      } else {
+        state.rollingAvgScore = (1 - alpha) * state.rollingAvgScore + alpha * turnData.avgScore;
+      }
+      state.rollingAvgScore = Math.round(state.rollingAvgScore * 10000) / 10000;
     }
 
     // Extract entities from message (lightweight — no API call)
@@ -129,6 +144,7 @@ class ConversationContext {
       lastQueryType: state.lastQueryType,
       summary: state.contextSummary,
       lastAvgScore: state.lastAvgScore ?? null,
+      rollingAvgScore: state.rollingAvgScore ?? null,
     };
   }
 
@@ -150,6 +166,7 @@ class ConversationContext {
       contextSummary: state.contextSummary,
       lastActiveAt:   state.lastActiveAt,
       lastAvgScore:   state.lastAvgScore ?? null,
+      rollingAvgScore: state.rollingAvgScore ?? null,
       _version:       2,
     };
   }
@@ -199,6 +216,7 @@ class ConversationContext {
       contextSummary: typeof data.contextSummary === 'string' ? data.contextSummary : null,
       lastActiveAt:   typeof data.lastActiveAt === 'number' ? data.lastActiveAt : Date.now(),
       lastAvgScore:   typeof data.lastAvgScore === 'number' ? data.lastAvgScore : null,
+      rollingAvgScore: typeof data.rollingAvgScore === 'number' ? data.rollingAvgScore : null,
     });
 
     logger.debug('conversationContext', `restored context for session ${sessionId.slice(0, 8)}`, {
@@ -252,6 +270,7 @@ class ConversationContext {
         contextSummary: null,
         lastActiveAt: Date.now(),
         lastAvgScore: null,
+        rollingAvgScore: null,
         turnCount: 0,
       };
       this.#sessions.set(sessionId, state);

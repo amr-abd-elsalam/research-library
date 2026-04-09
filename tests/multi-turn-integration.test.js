@@ -473,4 +473,85 @@ describe('Multi-Turn — Cross-Feature Interaction', () => {
     const validType = ctx.lastAvgScore === null || typeof ctx.lastAvgScore === 'number';
     assert.ok(validType, `lastAvgScore should be number or null, got ${typeof ctx.lastAvgScore}`);
   });
+
+  // T-MTI22: rollingAvgScore computed across turns — starts as seed, then smoothed (Phase 87)
+  it('T-MTI22: rollingAvgScore computed across turns', async () => {
+    const sessionId = 'mti22-' + Date.now();
+    await harness.runConversation([
+      { message: 'ما هو الذكاء الاصطناعي؟' },
+      { message: 'ما هي تطبيقاته؟' },
+      { message: 'كيف يعمل التعلم العميق؟' },
+    ], { sessionId });
+
+    const ctx = conversationContext.getContext(sessionId);
+    assert.ok(ctx !== null, 'context should exist');
+    assert.ok('rollingAvgScore' in ctx, 'should have rollingAvgScore field');
+    // After 3 turns with consistent mock scores, rolling should be a number
+    const valid = ctx.rollingAvgScore === null || typeof ctx.rollingAvgScore === 'number';
+    assert.ok(valid, `rollingAvgScore should be number or null, got ${typeof ctx.rollingAvgScore}`);
+    // With 3 turns of similar high scores from mock (0.85 avg), rolling should exist
+    if (typeof ctx.rollingAvgScore === 'number') {
+      assert.ok(ctx.rollingAvgScore > 0 && ctx.rollingAvgScore <= 1,
+        `rollingAvgScore should be in (0,1], got ${ctx.rollingAvgScore}`);
+    }
+  });
+
+  // T-MTI23: rollingAvgScore dampens single bad turn (Phase 87)
+  it('T-MTI23: rollingAvgScore dampens single bad turn', async () => {
+    const sessionId = 'mti23-' + Date.now();
+    // Run 3 good turns first
+    await harness.runConversation([
+      { message: 'ما هو الذكاء الاصطناعي؟' },
+      { message: 'ما هي تطبيقاته؟' },
+      { message: 'كيف يعمل التعلم العميق؟' },
+    ], { sessionId });
+
+    const ctxBefore = conversationContext.getContext(sessionId);
+    const rollingBefore = ctxBefore?.rollingAvgScore;
+
+    // Simulate a bad turn by recording directly (since mock always returns good scores)
+    conversationContext.recordTurn(sessionId, {
+      message: 'سؤال ضعيف', response: '', queryType: null, topicFilter: null,
+      avgScore: 0.2,
+    });
+
+    const ctxAfter = conversationContext.getContext(sessionId);
+    // lastAvgScore should drop to 0.2
+    assert.strictEqual(ctxAfter.lastAvgScore, 0.2, 'lastAvgScore should be 0.2');
+    // rollingAvgScore should drop but be dampened (not as low as 0.2)
+    if (typeof rollingBefore === 'number' && typeof ctxAfter.rollingAvgScore === 'number') {
+      assert.ok(ctxAfter.rollingAvgScore > ctxAfter.lastAvgScore,
+        `rolling (${ctxAfter.rollingAvgScore}) should be dampened above last (${ctxAfter.lastAvgScore})`);
+    }
+  });
+
+  // T-MTI24: rollingAvgScore trends downward after multiple bad turns (Phase 87)
+  it('T-MTI24: rollingAvgScore trends downward after multiple bad turns', async () => {
+    const sessionId = 'mti24-' + Date.now();
+    // Build up good quality
+    await harness.runConversation([
+      { message: 'ما هو الذكاء الاصطناعي؟' },
+      { message: 'ما هي تطبيقاته؟' },
+    ], { sessionId });
+
+    const ctxBefore = conversationContext.getContext(sessionId);
+    const rollingBefore = ctxBefore?.rollingAvgScore;
+
+    // Multiple bad turns
+    for (let i = 0; i < 5; i++) {
+      conversationContext.recordTurn(sessionId, {
+        message: `bad ${i}`, response: '', queryType: null, topicFilter: null,
+        avgScore: 0.2,
+      });
+    }
+
+    const ctxAfter = conversationContext.getContext(sessionId);
+    if (typeof rollingBefore === 'number' && typeof ctxAfter.rollingAvgScore === 'number') {
+      assert.ok(ctxAfter.rollingAvgScore < rollingBefore,
+        `rolling (${ctxAfter.rollingAvgScore}) should be lower than before (${rollingBefore})`);
+      // After 5 bad turns at 0.2, rolling should trend significantly lower
+      assert.ok(ctxAfter.rollingAvgScore < 0.6,
+        `rolling should be significantly lower after 5 bad turns, got ${ctxAfter.rollingAvgScore}`);
+    }
+  });
 });

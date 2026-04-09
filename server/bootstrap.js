@@ -35,6 +35,8 @@ import { GeminiProvider } from './services/providers/geminiProvider.js';
 import { OpenAIProvider } from './services/providers/openaiProvider.js';
 import { configValidator } from './services/configValidator.js';
 import { actionRegistry } from './services/actionRegistry.js';
+import { refinementAnalytics } from './services/refinementAnalytics.js';
+import { strategyAnalytics } from './services/strategyAnalytics.js';
 
 // ── Timeout helper (for bootstrap-specific timeouts) ──────────
 function raceTimeout(promise, ms) {

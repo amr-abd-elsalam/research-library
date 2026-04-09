@@ -422,4 +422,35 @@ describe('RAGStrategySelector Stats Tracking', () => {
     // factual + long + high score → no rule matches → null
     assert.strictEqual(result, null, 'should return null when lastAvgScore >= 0.5 and factual type');
   });
+
+  // T-RS28: Rule 3 with rolling quality value < 0.5 + analytical → triggers deep_analytical (Phase 87)
+  // Note: RAGStrategySelector reads lastAvgScore parameter — caller can pass rollingAvgScore
+  it('T-RS28: Rule 3 with rolling quality value 0.35 + analytical → deep_analytical', () => {
+    featureFlags.setOverride('RAG_STRATEGIES', true);
+    // Simulate passing rollingAvgScore as lastAvgScore (wiring done in Phase 88)
+    const result = ragStrategySelector.select({
+      complexityType: 'analytical',
+      turnNumber: 4,
+      lastAvgScore: 0.35,  // simulated rolling average
+      isFollowUp: false,
+      messageWordCount: 15,
+    });
+    assert.ok(result !== null, 'should return a strategy');
+    assert.strictEqual(result.name, 'deep_analytical', 'should escalate to deep_analytical');
+  });
+
+  // T-RS29: Rule 3 with rolling quality value >= 0.5 → does NOT trigger escalation (Phase 87)
+  it('T-RS29: Rule 3 with rolling quality value 0.55 → no escalation', () => {
+    featureFlags.setOverride('RAG_STRATEGIES', true);
+    // rollingAvgScore = 0.55 → above threshold → Rule 3 skipped
+    const result = ragStrategySelector.select({
+      complexityType: 'factual',
+      turnNumber: 4,
+      lastAvgScore: 0.55,  // simulated rolling average — above threshold
+      isFollowUp: false,
+      messageWordCount: 15,
+    });
+    // factual + long + score >= 0.5 → no match → null
+    assert.strictEqual(result, null, 'should not escalate when quality is acceptable');
+  });
 });
