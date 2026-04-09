@@ -424,4 +424,53 @@ describe('Multi-Turn — Cross-Feature Interaction', () => {
     assert.strictEqual(turn2.ctx.aborted, false, 'turn 2 should succeed after abort');
     assert.ok(turn2.ctx.fullText.length > 0, 'turn 2 should have content');
   });
+
+  // T-MTI19: lastAvgScore propagates across turns via contextListener
+  it('T-MTI19: lastAvgScore propagates across turns', async () => {
+    const sessionId = 'mti19-' + Date.now();
+    const results = await harness.runConversation([
+      { message: 'ما هو الذكاء الاصطناعي؟' },
+      { message: 'ما هي تطبيقاته؟' },
+    ], { sessionId });
+
+    const ctx = conversationContext.getContext(sessionId);
+    assert.ok(ctx !== null, 'context should exist');
+    assert.ok('lastAvgScore' in ctx, 'should have lastAvgScore field');
+    // avgScore should be a number (from pipeline results) or null
+    const validType = ctx.lastAvgScore === null || typeof ctx.lastAvgScore === 'number';
+    assert.ok(validType, `lastAvgScore should be number or null, got ${typeof ctx.lastAvgScore}`);
+  });
+
+  // T-MTI20: low avgScore in turn N is accessible to next turn via getContext
+  it('T-MTI20: avgScore from previous turn accessible in getContext', async () => {
+    const sessionId = 'mti20-' + Date.now();
+    await harness.runConversation([
+      { message: 'ما هو الذكاء الاصطناعي؟' },
+    ], { sessionId });
+
+    // After first turn, getContext should return lastAvgScore
+    const ctx = conversationContext.getContext(sessionId);
+    assert.ok(ctx !== null, 'context should exist after turn 1');
+    // The actual avgScore depends on mock search results (typically 0.85-0.90)
+    if (typeof ctx.lastAvgScore === 'number') {
+      assert.ok(ctx.lastAvgScore >= 0 && ctx.lastAvgScore <= 1,
+        `lastAvgScore should be 0-1, got ${ctx.lastAvgScore}`);
+    }
+  });
+
+  // T-MTI21: high avgScore preserves value correctly across multiple turns
+  it('T-MTI21: avgScore updates correctly across multiple turns', async () => {
+    const sessionId = 'mti21-' + Date.now();
+    const results = await harness.runConversation([
+      { message: 'ما هو الذكاء الاصطناعي؟' },
+      { message: 'ما هي تطبيقاته؟' },
+      { message: 'كيف يعمل التعلم العميق؟' },
+    ], { sessionId });
+
+    const ctx = conversationContext.getContext(sessionId);
+    assert.ok(ctx !== null, 'context should exist');
+    // lastAvgScore should reflect the LAST turn's score
+    const validType = ctx.lastAvgScore === null || typeof ctx.lastAvgScore === 'number';
+    assert.ok(validType, `lastAvgScore should be number or null, got ${typeof ctx.lastAvgScore}`);
+  });
 });

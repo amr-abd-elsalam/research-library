@@ -108,7 +108,8 @@ class PipelineComposer {
       }
 
       // ── 14. Conditional: Answer Refinement ─────────────────
-      if (featureFlags.isEnabled('ANSWER_REFINEMENT') && responseMode === 'structured') {
+      const refinementInStreaming = config.ANSWER_REFINEMENT?.streamingRevisionEnabled === true;
+      if (featureFlags.isEnabled('ANSWER_REFINEMENT') && (responseMode === 'structured' || refinementInStreaming)) {
         stages.push(stageAnswerRefinement);
       }
 

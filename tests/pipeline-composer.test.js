@@ -398,4 +398,20 @@ describe('PipelineComposer RAG Strategy Stage', () => {
 
     assert.strictEqual(countWith, countWithout + 1, `expected ${countWithout + 1} with strategy, got ${countWith}`);
   });
+
+  // T-PCO35: stageAnswerRefinement NOT included for streaming when streamingRevisionEnabled is false (default)
+  it('T-PCO35: stageAnswerRefinement excluded for streaming with default config', () => {
+    featureFlags.setOverride('ANSWER_REFINEMENT', true);
+    const stages = pipelineComposer.compose({ responseMode: 'stream' });
+    assert.ok(!stages.includes(stageAnswerRefinement),
+      'should NOT include stageAnswerRefinement in stream mode with streamingRevisionEnabled=false');
+  });
+
+  // T-PCO36: stageAnswerRefinement still included for structured regardless
+  it('T-PCO36: stageAnswerRefinement included for structured regardless of streaming config', () => {
+    featureFlags.setOverride('ANSWER_REFINEMENT', true);
+    const stages = pipelineComposer.compose({ responseMode: 'structured' });
+    assert.ok(stages.includes(stageAnswerRefinement),
+      'should include stageAnswerRefinement in structured mode');
+  });
 });

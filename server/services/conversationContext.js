@@ -60,6 +60,7 @@ class ConversationContext {
         lastQueryType: null,
         contextSummary: null,
         lastActiveAt: Date.now(),
+        lastAvgScore: null,
       };
       this.#sessions.set(sessionId, state);
     }
@@ -67,6 +68,11 @@ class ConversationContext {
     state.turns++;
     state.lastActiveAt = Date.now();
     state.lastQueryType = turnData.queryType || null;
+
+    // Phase 86: track search quality for RAG strategy escalation
+    if (typeof turnData.avgScore === 'number') {
+      state.lastAvgScore = turnData.avgScore;
+    }
 
     // Extract entities from message (lightweight — no API call)
     const extracted = this.#extractEntities(turnData.message);
@@ -122,6 +128,7 @@ class ConversationContext {
       recentTopics: [...state.recentTopics],
       lastQueryType: state.lastQueryType,
       summary: state.contextSummary,
+      lastAvgScore: state.lastAvgScore ?? null,
     };
   }
 
@@ -142,6 +149,7 @@ class ConversationContext {
       lastQueryType:  state.lastQueryType,
       contextSummary: state.contextSummary,
       lastActiveAt:   state.lastActiveAt,
+      lastAvgScore:   state.lastAvgScore ?? null,
       _version:       2,
     };
   }
@@ -190,6 +198,7 @@ class ConversationContext {
       lastQueryType:  typeof data.lastQueryType === 'string' ? data.lastQueryType : null,
       contextSummary: typeof data.contextSummary === 'string' ? data.contextSummary : null,
       lastActiveAt:   typeof data.lastActiveAt === 'number' ? data.lastActiveAt : Date.now(),
+      lastAvgScore:   typeof data.lastAvgScore === 'number' ? data.lastAvgScore : null,
     });
 
     logger.debug('conversationContext', `restored context for session ${sessionId.slice(0, 8)}`, {
@@ -242,6 +251,7 @@ class ConversationContext {
         lastQueryType: null,
         contextSummary: null,
         lastActiveAt: Date.now(),
+        lastAvgScore: null,
         turnCount: 0,
       };
       this.#sessions.set(sessionId, state);

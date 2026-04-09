@@ -44,10 +44,10 @@ describe('ConfigValidator Structure', () => {
     assert.ok('lastResult' in counts, 'should have lastResult key');
   });
 
-  // T-CV04: counts().totalRules is 9 (Phase 85: was 8, +RAG_STRATEGIES_requires_QUERY_COMPLEXITY)
-  it('T-CV04: counts().totalRules is 9', () => {
+  // T-CV04: counts().totalRules is 10 (Phase 86: was 9, +STREAMING_REVISION_requires_GROUNDING)
+  it('T-CV04: counts().totalRules is 10', () => {
     const counts = configValidator.counts();
-    assert.strictEqual(counts.totalRules, 9, 'should have 9 validation rules');
+    assert.strictEqual(counts.totalRules, 10, 'should have 10 validation rules');
   });
 
   // T-CV05: reset() clears lastResult to null
@@ -139,11 +139,11 @@ describe('Validation Rules Detail', () => {
     assert.ok(fresh.checkedAt > 0, 'fresh result should have valid checkedAt');
   });
 
-  // T-CV15: New ConfigValidator instances have null lastResult (Phase 85: 9 rules)
+  // T-CV15: New ConfigValidator instances have null lastResult (Phase 86: 10 rules)
   it('T-CV15: new instances have null lastResult', () => {
     const instance = new ConfigValidator();
     assert.strictEqual(instance.counts().lastResult, null);
-    assert.strictEqual(instance.counts().totalRules, 9);
+    assert.strictEqual(instance.counts().totalRules, 10);
   });
 });
 
@@ -207,9 +207,9 @@ describe('QUERY_PLANNING Validation Rule', () => {
     assert.strictEqual(hasQPWarning, false, 'should not have QUERY_PLANNING warning when both disabled');
   });
 
-  // T-CV22: QUERY_PLANNING rule exists in rules (9 total)
-  it('T-CV22: rule count is 9 and includes QUERY_PLANNING rule', () => {
-    assert.strictEqual(configValidator.counts().totalRules, 9);
+  // T-CV22: QUERY_PLANNING rule exists in rules (10 total)
+  it('T-CV22: rule count is 10 and includes QUERY_PLANNING rule', () => {
+    assert.strictEqual(configValidator.counts().totalRules, 10);
     // Validate runs all rules — with default config, no errors or warnings expected
     const result = configValidator.validate();
     assert.strictEqual(result.valid, true);
@@ -228,5 +228,19 @@ describe('RAG_STRATEGIES Validation Rule', () => {
     const result = configValidator.validate();
     const hasRSWarning = result.warnings.some(w => w.includes('RAG_STRATEGIES'));
     assert.strictEqual(hasRSWarning, false, 'should not have RAG_STRATEGIES warning when both disabled');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Block 7: STREAMING_REVISION Rule (Phase 86)
+// ═══════════════════════════════════════════════════════════════
+describe('STREAMING_REVISION Validation Rule', () => {
+
+  // T-CV24: STREAMING_REVISION_requires_GROUNDING — no warning with default config
+  it('T-CV24: no warning when streamingRevisionEnabled is false (default)', () => {
+    // streamingRevisionEnabled defaults to false
+    const result = configValidator.validate();
+    const hasSRWarning = result.warnings.some(w => w.includes('streamingRevisionEnabled'));
+    assert.strictEqual(hasSRWarning, false, 'should not have streaming revision warning when disabled');
   });
 });

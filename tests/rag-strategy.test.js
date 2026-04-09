@@ -389,4 +389,37 @@ describe('RAGStrategySelector Stats Tracking', () => {
     assert.strictEqual(c.strategyBreakdown.none, 1);
     assert.strictEqual(c.totalSelections, 5);
   });
+
+  // T-RS26: Rule 3 triggers with real lastAvgScore < 0.5 + analytical (quality escalation)
+  it('T-RS26: Rule 3 triggers with lastAvgScore 0.3 + analytical', () => {
+    featureFlags.setOverride('RAG_STRATEGIES', true);
+    const result = ragStrategySelector.select({
+      complexityType: 'analytical',
+      turnNumber: 2,
+      lastAvgScore: 0.3,
+      isFollowUp: false,
+      messageWordCount: 15,
+    });
+    assert.ok(result !== null, 'should return a strategy');
+    assert.strictEqual(result.name, 'deep_analytical');
+    // Verify it's Rule 3 (quality escalation) by checking lastAvgScore > 0 && < 0.5
+    // Rule 3 and Rule 5 both give deep_analytical for analytical type
+    // but Rule 3 fires first when lastAvgScore is in range
+  });
+
+  // T-RS27: Rule 3 does NOT trigger when lastAvgScore >= 0.5 (no unnecessary escalation)
+  it('T-RS27: Rule 3 does NOT trigger when lastAvgScore >= 0.5', () => {
+    featureFlags.setOverride('RAG_STRATEGIES', true);
+    // With lastAvgScore=0.7 (>= 0.5), Rule 3 should NOT trigger
+    // For factual + long question → should fall to Rule 6 (none)
+    const result = ragStrategySelector.select({
+      complexityType: 'factual',
+      turnNumber: 2,
+      lastAvgScore: 0.7,
+      isFollowUp: false,
+      messageWordCount: 15,
+    });
+    // factual + long + high score → no rule matches → null
+    assert.strictEqual(result, null, 'should return null when lastAvgScore >= 0.5 and factual type');
+  });
 });

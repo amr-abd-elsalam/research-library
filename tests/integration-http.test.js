@@ -1050,14 +1050,14 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(typeof data.configValidator.totalRules, 'number');
   });
 
-  // T-IH89: GET /api/admin/inspect — configValidator.totalRules is 9 (Phase 85: was 8, +RAG_STRATEGIES rule)
-  it('T-IH89: GET /api/admin/inspect — configValidator.totalRules is 9', async () => {
+  // T-IH89: GET /api/admin/inspect — configValidator.totalRules is 10 (Phase 86: was 9, +STREAMING_REVISION rule)
+  it('T-IH89: GET /api/admin/inspect — configValidator.totalRules is 10', async () => {
     const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
       headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
     });
     assert.strictEqual(res.status, 200);
     const data = await res.json();
-    assert.strictEqual(data.configValidator.totalRules, 9, 'should have 9 validation rules');
+    assert.strictEqual(data.configValidator.totalRules, 10, 'should have 10 validation rules');
   });
 
   // T-IH90: GET /api/admin/inspect — configValidator.lastResult is null or object (Phase 79)
@@ -1266,5 +1266,29 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(res.status, 200);
     const data = await res.json();
     assert.strictEqual(Object.keys(data).length, 15, `expected 15 feature keys, got ${Object.keys(data).length}`);
+  });
+
+  // T-IH110: GET /api/admin/inspect — configValidator.totalRules is 10 (Phase 86: +1 STREAMING_REVISION rule)
+  it('T-IH110: GET /api/admin/inspect — configValidator.totalRules is 10', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.configValidator.totalRules, 10, 'should have 10 validation rules');
+  });
+
+  // T-IH111: GET /api/admin/inspect — answerRefinement includes streamingRevisionEnabled field (Phase 86)
+  it('T-IH111: GET /api/admin/inspect — answerRefinement includes streamingRevisionEnabled', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('streamingRevisionEnabled' in data.answerRefinement,
+      'answerRefinement should include streamingRevisionEnabled');
+    assert.strictEqual(typeof data.answerRefinement.streamingRevisionEnabled, 'boolean');
+    assert.strictEqual(data.answerRefinement.streamingRevisionEnabled, false,
+      'should default to false');
   });
 });

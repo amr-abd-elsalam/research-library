@@ -21,6 +21,7 @@ export function register() {
       response:    (data.fullText || '').slice(0, 300),
       queryType:   data.queryType || null,
       topicFilter: data.topicFilter || null,
+      avgScore:    data.avgScore ?? null,
     });
 
     eventBus.emit('conversation:contextUpdated', {
@@ -47,6 +48,7 @@ export function register() {
       response:    (data.fullText || '').slice(0, 300),
       queryType:   null,
       topicFilter: data.topicFilter || null,
+      avgScore:    data.avgScore ?? null,
     });
 
     eventBus.emit('conversation:contextUpdated', {

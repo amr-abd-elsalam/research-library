@@ -106,6 +106,15 @@ class ConfigValidator {
           return { ok: true };
         },
       },
+      {
+        name: 'STREAMING_REVISION_requires_GROUNDING',
+        check: () => {
+          if (config.ANSWER_REFINEMENT?.streamingRevisionEnabled === true && config.GROUNDING?.enabled !== true) {
+            return { ok: false, message: 'ANSWER_REFINEMENT.streamingRevisionEnabled is true but GROUNDING.enabled is not true — revision needs grounding score to detect weak answers', severity: 'warning' };
+          }
+          return { ok: true };
+        },
+      },
     ];
   }
 

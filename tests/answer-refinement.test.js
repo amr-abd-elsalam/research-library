@@ -200,4 +200,54 @@ describe('Pipeline Integration', () => {
     await stageAnswerRefinement(ctx, null);
     assert.strictEqual(ctx.fullText, originalText, 'fullText should be unchanged');
   });
+
+  // T-AR21: stageAnswerRefinement skips in streaming mode when streamingRevisionEnabled is false
+  it('T-AR21: skips in streaming with streamingRevisionEnabled false', async () => {
+    featureFlags.setOverride('ANSWER_REFINEMENT', true);
+    const ctx = {
+      aborted: false,
+      fullText: 'streamed text',
+      _groundingSkipped: false,
+      _groundingScore: 0.1,
+      _responseMode: 'stream',
+    };
+    await stageAnswerRefinement(ctx, null);
+    assert.strictEqual(ctx._refinementSkipped, true);
+    assert.strictEqual(ctx._refinementSkipReason, 'streaming_mode');
+  });
+
+  // T-AR22: stageAnswerRefinement does not set _pendingRevision when skipped in streaming
+  it('T-AR22: no _pendingRevision when skipped in streaming', async () => {
+    featureFlags.setOverride('ANSWER_REFINEMENT', true);
+    const ctx = {
+      aborted: false,
+      fullText: 'streamed text',
+      _groundingSkipped: false,
+      _groundingScore: 0.1,
+      _responseMode: 'stream',
+    };
+    await stageAnswerRefinement(ctx, null);
+    assert.strictEqual(ctx._pendingRevision, undefined);
+  });
+
+  // T-AR23: stageAnswerRefinement sets correct skip reason based on response mode
+  it('T-AR23: skip reasons differ by response mode', async () => {
+    featureFlags.setOverride('ANSWER_REFINEMENT', true);
+
+    // Stream mode with default config → streaming_mode
+    const streamCtx = {
+      aborted: false, fullText: 'text', _groundingSkipped: false,
+      _groundingScore: 0.1, _responseMode: 'stream',
+    };
+    await stageAnswerRefinement(streamCtx, null);
+    assert.strictEqual(streamCtx._refinementSkipReason, 'streaming_mode');
+
+    // Structured mode with acceptable score → score_acceptable
+    const structCtx = {
+      aborted: false, fullText: 'text', _groundingSkipped: false,
+      _groundingScore: 0.5, _responseMode: 'structured',
+    };
+    await stageAnswerRefinement(structCtx, null);
+    assert.strictEqual(structCtx._refinementSkipReason, 'score_acceptable');
+  });
 });

@@ -440,6 +440,17 @@ const ChatModule = (() => {
             if (refs) _appendRawText(refs.bubble, parsed.text);
           }
 
+          // Phase 86: revision chunk — replaces last assistant message with improved answer
+          if (parsed.revision && parsed.text && refs) {
+            _renderMarkdown(refs.bubble, parsed.text);
+            var revIndicator = document.createElement('div');
+            revIndicator.className = 'revision-indicator';
+            revIndicator.textContent = 'تم تحسين الإجابة ✓';
+            revIndicator.style.cssText = 'font-size:0.75rem;color:var(--accent,#10b981);margin-top:4px;opacity:0.8;';
+            refs.bubble.appendChild(revIndicator);
+            continue;
+          }
+
           // Phase 69: grounding warning chunk
           if (parsed.groundingWarning && refs) {
             var gwBanner = document.createElement('div');

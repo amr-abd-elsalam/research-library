@@ -320,6 +320,17 @@ async function _handleChat(req, res) {
             }
             writeChunk(res, { done: true, sources: ctx.sources, score: ctx.avgScore, suggestions, correlationId: trace.correlationId, groundingScore: ctx._groundingSkipped ? null : ctx._groundingScore, citations: ctx._citationSkipped ? null : ctx._citations, sourceRelevance: ctx._citationSkipped ? null : ctx._sourceRelevance });
           }
+
+          // ── Phase 86: Streaming revision (after done, before end) ──
+          if (ctx._pendingRevision) {
+            writeChunk(res, {
+              revision: true,
+              text: ctx._pendingRevision,
+              originalGroundingScore: ctx._pendingRevisionOriginalScore ?? null,
+              revisedGroundingScore: ctx._pendingRevisionFinalScore ?? null,
+            });
+          }
+
           res.end();
         }
       } catch (err) {

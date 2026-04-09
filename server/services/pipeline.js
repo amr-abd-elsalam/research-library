@@ -650,11 +650,15 @@ async function stageAnswerRefinement(ctx, _trace) {
     ctx._refinementSkipReason = 'aborted_or_empty';
     return ctx;
   }
-  // 4. Response mode is 'stream' — can't replace already-streamed text
+  // 4. Response mode is 'stream' — revision via SSE revision chunk (Phase 86)
   if (ctx._responseMode === 'stream') {
-    ctx._refinementSkipped = true;
-    ctx._refinementSkipReason = 'streaming_mode';
-    return ctx;
+    if (config.ANSWER_REFINEMENT?.streamingRevisionEnabled !== true) {
+      ctx._refinementSkipped = true;
+      ctx._refinementSkipReason = 'streaming_mode';
+      return ctx;
+    }
+    // Streaming revision mode — continue with refinement
+    // Result stored in ctx._pendingRevision (sent as revision chunk by chat handler)
   }
   // 5. Grounding score already acceptable
   const minScore = config.ANSWER_REFINEMENT?.minScoreToRetry ?? 0.3;
@@ -698,7 +702,15 @@ async function stageAnswerRefinement(ctx, _trace) {
   // ── Apply best result ─────────────────────────────────────
   const improved = bestScore > originalScore;
   if (improved) {
-    ctx.fullText = bestText;
+    if (ctx._responseMode === 'stream') {
+      // Phase 86: Streaming mode — don't replace fullText (already streamed to client)
+      // Store as pending revision — chat handler sends as SSE revision chunk
+      ctx._pendingRevision = bestText;
+      ctx._pendingRevisionOriginalScore = originalScore;
+      ctx._pendingRevisionFinalScore = bestScore;
+    } else {
+      ctx.fullText = bestText;
+    }
     ctx._groundingScore = bestScore;
   }
 
@@ -1016,6 +1028,7 @@ function buildStageRecord(stageName, ctx, _elapsed) {
           improved: ctx._refinementImproved ?? false,
           originalScore: ctx._refinementOriginalScore ?? null,
           finalScore: ctx._refinementFinalScore ?? null,
+          streamingRevision: ctx._responseMode === 'stream' && !!ctx._pendingRevision,
         },
       };
 
