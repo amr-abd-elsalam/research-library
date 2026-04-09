@@ -90,10 +90,10 @@ describe('FeatureFlags', () => {
     assert.strictEqual(overrides.SUGGESTIONS, undefined); // not overridden
   });
 
-  // T-FF10: getStatus — returns all 14 sections (Phase 81: was 13, +QUERY_PLANNING)
-  it('T-FF10: getStatus returns all 14 sections', () => {
+  // T-FF10: getStatus — returns all 15 sections (Phase 85: was 14, +RAG_STRATEGIES)
+  it('T-FF10: getStatus returns all 15 sections', () => {
     const status = featureFlags.getStatus();
-    assert.strictEqual(status.length, 14);
+    assert.strictEqual(status.length, 15);
     const sectionNames = status.map(s => s.section);
     assert.ok(sectionNames.includes('SUGGESTIONS'));
     assert.ok(sectionNames.includes('CONTENT_GAPS'));
@@ -109,6 +109,7 @@ describe('FeatureFlags', () => {
     assert.ok(sectionNames.includes('COST_GOVERNANCE'));
     assert.ok(sectionNames.includes('ANSWER_REFINEMENT'));
     assert.ok(sectionNames.includes('QUERY_PLANNING'));
+    assert.ok(sectionNames.includes('RAG_STRATEGIES'));
   });
 
   // T-FF11: getStatus — effective reflects override
@@ -121,13 +122,13 @@ describe('FeatureFlags', () => {
     assert.strictEqual(hs.effective, true);      // resolved: override wins
   });
 
-  // T-FF12: counts — returns correct structure (Phase 81: 14 sections)
+  // T-FF12: counts — returns correct structure (Phase 85: 15 sections)
   it('T-FF12: counts returns correct structure', () => {
     featureFlags.setOverride('FEEDBACK', true);
     const c = featureFlags.counts();
     assert.strictEqual(typeof c.totalOverrides, 'number');
     assert.ok(c.totalOverrides >= 1);
-    assert.strictEqual(c.sections, 14);
+    assert.strictEqual(c.sections, 15);
     assert.strictEqual(typeof c.persisted, 'boolean');
   });
 

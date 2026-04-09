@@ -26,7 +26,7 @@ function createMockRes() {
 }
 
 // ── Cleanup ───────────────────────────────────────────────────
-const SECTIONS = ['ADMIN_INTELLIGENCE', 'FEEDBACK', 'SUGGESTIONS', 'CONTENT_GAPS', 'QUALITY', 'HEALTH_SCORE', 'RETRIEVAL', 'QUERY_COMPLEXITY', 'GROUNDING', 'CITATION', 'SEMANTIC_MATCHING', 'ANSWER_REFINEMENT', 'QUERY_PLANNING'];
+const SECTIONS = ['ADMIN_INTELLIGENCE', 'FEEDBACK', 'SUGGESTIONS', 'CONTENT_GAPS', 'QUALITY', 'HEALTH_SCORE', 'RETRIEVAL', 'QUERY_COMPLEXITY', 'GROUNDING', 'CITATION', 'SEMANTIC_MATCHING', 'ANSWER_REFINEMENT', 'QUERY_PLANNING', 'RAG_STRATEGIES'];
 
 describe('handleConfigFeatures()', () => {
 
@@ -42,8 +42,8 @@ describe('handleConfigFeatures()', () => {
     assert.strictEqual(res.headers['Content-Type'], 'application/json');
   });
 
-  // T-CF02: returns all 14 feature sections (Phase 81: was 13, +QUERY_PLANNING)
-  it('T-CF02: returns all 14 feature sections', async () => {
+  // T-CF02: returns all 15 feature sections (Phase 85: was 14, +RAG_STRATEGIES)
+  it('T-CF02: returns all 15 feature sections', async () => {
     const res = createMockRes();
     await handleConfigFeatures({}, res);
     const data = res.json;
@@ -61,7 +61,8 @@ describe('handleConfigFeatures()', () => {
     assert.ok('COST_GOVERNANCE' in data);
     assert.ok('ANSWER_REFINEMENT' in data);
     assert.ok('QUERY_PLANNING' in data);
-    assert.strictEqual(Object.keys(data).length, 14, 'should have exactly 14 feature fields');
+    assert.ok('RAG_STRATEGIES' in data);
+    assert.strictEqual(Object.keys(data).length, 15, 'should have exactly 15 feature fields');
   });
 
   // T-CF03: all values are booleans

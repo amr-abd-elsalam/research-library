@@ -97,6 +97,15 @@ class ConfigValidator {
           return { ok: true };
         },
       },
+      {
+        name: 'RAG_STRATEGIES_requires_QUERY_COMPLEXITY',
+        check: () => {
+          if (config.RAG_STRATEGIES?.enabled === true && config.QUERY_COMPLEXITY?.enabled !== true) {
+            return { ok: false, message: 'RAG_STRATEGIES.enabled is true but QUERY_COMPLEXITY.enabled is not true — strategy selection uses complexity type as primary input', severity: 'warning' };
+          }
+          return { ok: true };
+        },
+      },
     ];
   }
 

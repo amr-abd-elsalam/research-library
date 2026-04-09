@@ -18,6 +18,7 @@ import {
   stageBudgetCheck,
   stageRouteQuery,
   stageComplexityAnalysis,
+  stageStrategySelect,
   stageQueryPlan,
   stageRewriteQuery,
   stageEmbed,
@@ -64,6 +65,11 @@ class PipelineComposer {
       // ── 4. Conditional: Complexity Analysis ────────────────
       if (featureFlags.isEnabled('QUERY_COMPLEXITY')) {
         stages.push(stageComplexityAnalysis);
+      }
+
+      // ── 4.5. Conditional: RAG Strategy Selection ───────────
+      if (featureFlags.isEnabled('RAG_STRATEGIES')) {
+        stages.push(stageStrategySelect);
       }
 
       // ── 5. Conditional: Query Planning ─────────────────────

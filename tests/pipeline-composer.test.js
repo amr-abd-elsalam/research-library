@@ -21,6 +21,7 @@ import {
   stageStream,
   stageBudgetCheck,
   stageComplexityAnalysis,
+  stageStrategySelect,
   stageQueryPlan,
   stageRewriteQuery,
   stageRerank,
@@ -38,6 +39,7 @@ afterEach(() => {
   featureFlags.clearOverride('ANSWER_REFINEMENT');
   featureFlags.clearOverride('CITATION');
   featureFlags.clearOverride('COST_GOVERNANCE');
+  featureFlags.clearOverride('RAG_STRATEGIES');
   pipelineComposer.reset();
   conversationContext.reset();
 });
@@ -263,21 +265,22 @@ describe('PipelineComposer Stage Ordering', () => {
     const minStages = pipelineComposer.compose({});
     const minCount = minStages.length;
 
-    // All enabled + structured mode — should be up to 15 (minus budgetCheck if enforcement off)
+    // All enabled + structured mode — should be up to 16 (minus budgetCheck if enforcement off)
     featureFlags.setOverride('QUERY_COMPLEXITY', true);
     featureFlags.setOverride('QUERY_PLANNING', true);
     featureFlags.setOverride('RETRIEVAL', true);
     featureFlags.setOverride('GROUNDING', true);
     featureFlags.setOverride('ANSWER_REFINEMENT', true);
     featureFlags.setOverride('CITATION', true);
+    featureFlags.setOverride('RAG_STRATEGIES', true);
 
     const maxStages = pipelineComposer.compose({ responseMode: 'structured' });
     const maxCount = maxStages.length;
 
     assert.ok(maxCount > minCount, `max (${maxCount}) should be > min (${minCount})`);
-    // maxCount = 7 core + rewrite + complexity + plan + rerank + grounding + refinement + citation = 14
+    // maxCount = 7 core + rewrite + complexity + strategy + plan + rerank + grounding + refinement + citation = 15
     // (budgetCheck not included because enforcementEnabled=false)
-    assert.strictEqual(maxCount, 14, `expected 14 with all features on (no budget enforcement), got ${maxCount}`);
+    assert.strictEqual(maxCount, 15, `expected 15 with all features on (no budget enforcement), got ${maxCount}`);
   });
 });
 
@@ -338,5 +341,61 @@ describe('PipelineComposer Stats', () => {
     const c = pipelineComposer.counts();
     assert.strictEqual(c.totalComposed, 3);
     assert.strictEqual(c.totalFallbacks, 0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Block 7: RAG Strategy Stage (Phase 85)
+// ═══════════════════════════════════════════════════════════════
+describe('PipelineComposer RAG Strategy Stage', () => {
+
+  // T-PCO30: stageStrategySelect NOT in composed stages when RAG_STRATEGIES disabled
+  it('T-PCO30: stageStrategySelect NOT included when RAG_STRATEGIES disabled', () => {
+    const stages = pipelineComposer.compose({});
+    assert.ok(!stages.includes(stageStrategySelect), 'should NOT include stageStrategySelect');
+  });
+
+  // T-PCO31: stageStrategySelect IN composed stages when RAG_STRATEGIES enabled
+  it('T-PCO31: stageStrategySelect included when RAG_STRATEGIES enabled', () => {
+    featureFlags.setOverride('RAG_STRATEGIES', true);
+    const stages = pipelineComposer.compose({});
+    assert.ok(stages.includes(stageStrategySelect), 'should include stageStrategySelect');
+  });
+
+  // T-PCO32: stageStrategySelect comes after stageComplexityAnalysis
+  it('T-PCO32: stageStrategySelect comes after stageComplexityAnalysis', () => {
+    featureFlags.setOverride('RAG_STRATEGIES', true);
+    featureFlags.setOverride('QUERY_COMPLEXITY', true);
+    const stages = pipelineComposer.compose({});
+    const idxComplexity = stages.indexOf(stageComplexityAnalysis);
+    const idxStrategy = stages.indexOf(stageStrategySelect);
+    assert.ok(idxComplexity >= 0, 'should include stageComplexityAnalysis');
+    assert.ok(idxStrategy >= 0, 'should include stageStrategySelect');
+    assert.ok(idxComplexity < idxStrategy, 'complexity should come before strategy');
+  });
+
+  // T-PCO33: stageStrategySelect comes before stageQueryPlan
+  it('T-PCO33: stageStrategySelect comes before stageQueryPlan', () => {
+    featureFlags.setOverride('RAG_STRATEGIES', true);
+    featureFlags.setOverride('QUERY_PLANNING', true);
+    const stages = pipelineComposer.compose({});
+    const idxStrategy = stages.indexOf(stageStrategySelect);
+    const idxPlan = stages.indexOf(stageQueryPlan);
+    assert.ok(idxStrategy >= 0, 'should include stageStrategySelect');
+    assert.ok(idxPlan >= 0, 'should include stageQueryPlan');
+    assert.ok(idxStrategy < idxPlan, 'strategy should come before plan');
+  });
+
+  // T-PCO34: Total composed stages increases by 1 when RAG_STRATEGIES enabled
+  it('T-PCO34: stage count increases by 1 when RAG_STRATEGIES enabled', () => {
+    const withoutStrategy = pipelineComposer.compose({});
+    const countWithout = withoutStrategy.length;
+
+    pipelineComposer.reset();
+    featureFlags.setOverride('RAG_STRATEGIES', true);
+    const withStrategy = pipelineComposer.compose({});
+    const countWith = withStrategy.length;
+
+    assert.strictEqual(countWith, countWithout + 1, `expected ${countWithout + 1} with strategy, got ${countWith}`);
   });
 });

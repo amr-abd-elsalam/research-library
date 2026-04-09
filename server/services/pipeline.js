@@ -28,6 +28,7 @@ import { citationMapper }                     from './citationMapper.js';
 import { costGovernor }                       from './costGovernor.js';
 import { featureFlags }                       from './featureFlags.js';
 import { queryPlanner }                       from './queryPlanner.js';
+import { ragStrategySelector }                from './ragStrategySelector.js';
 
 // ── Singleton ContextManager (same as previous chat.js) ────────
 const contextManager = new ContextManager();
@@ -230,6 +231,43 @@ async function stageQueryPlan(ctx, _trace) {
   ctx._subQueries = plan.subQueries;
   ctx._mergeStrategy = plan.strategy;
   ctx._planSkipped = false;
+  return ctx;
+}
+
+// ── Stage 5.5: Strategy Selection (Phase 85) ──────────────────
+async function stageStrategySelect(ctx, _trace) {
+  if (!ragStrategySelector.enabled) {
+    ctx._strategySkipped = true;
+    ctx._selectedStrategy = null;
+    return ctx;
+  }
+
+  const turnNumber = conversationContext.getTurnCount(ctx.sessionId);
+  const convCtx = conversationContext.getContext(ctx.sessionId);
+
+  const result = ragStrategySelector.select({
+    complexityType:   ctx._complexity?.type ?? 'factual',
+    turnNumber,
+    lastAvgScore:     convCtx?.lastAvgScore ?? 0,
+    isFollowUp:       ctx.queryRoute?.isFollowUp ?? false,
+    messageWordCount: ctx.message.trim().split(/\s+/).length,
+  });
+
+  if (!result) {
+    ctx._strategySkipped = true;
+    ctx._selectedStrategy = null;
+    return ctx;
+  }
+
+  // Apply strategy overrides
+  if (result.topK) ctx._complexityTopK = result.topK;
+  if (result.promptSuffix) ctx._complexityPromptSuffix = result.promptSuffix;
+  if (result.skipStages && result.skipStages.length > 0) {
+    ctx._strategySkipStages = new Set(result.skipStages);
+  }
+
+  ctx._strategySkipped = false;
+  ctx._selectedStrategy = result.name;
   return ctx;
 }
 
@@ -751,6 +789,13 @@ class PipelineRunner {
         continue;
       }
 
+      // ── Strategy gating (Phase 85) — skip stages based on RAG strategy ──
+      if (ctx._strategySkipStages && ctx._strategySkipStages.has(stage.name)) {
+        trace.record(stage.name, 0, 'skip', { reason: 'strategy_gating' });
+        if (this.#hooks) await this.#hooks.run('afterStage', stage.name, ctx, trace);
+        continue;
+      }
+
       // ── beforeStage hooks ───────────────────────────────
       if (this.#hooks) await this.#hooks.run('beforeStage', stage.name, ctx, trace);
 
@@ -846,6 +891,19 @@ function buildStageRecord(stageName, ctx, _elapsed) {
           type: ctx._complexity?.type ?? 'factual',
           score: ctx._complexity?.score ?? 1,
           indicators: ctx._complexity?.indicators ?? [],
+        },
+      };
+
+    case 'stageStrategySelect':
+      if (ctx._strategySkipped) {
+        return { status: 'skip', detail: { reason: 'disabled' } };
+      }
+      return {
+        status: 'ok',
+        detail: {
+          selectedStrategy: ctx._selectedStrategy,
+          topKOverride: ctx._complexityTopK ?? null,
+          skipStagesCount: ctx._strategySkipStages?.size ?? 0,
         },
       };
 
@@ -975,6 +1033,7 @@ const chatPipeline = new PipelineRunner([
   stageBudgetCheck,           // Phase 77 — actual token budget enforcement
   stageRouteQuery,
   stageComplexityAnalysis,  // Phase 64 — query complexity analysis
+  stageStrategySelect,      // Phase 85 — adaptive RAG strategy selection
   stageQueryPlan,           // Phase 81 — multi-step query decomposition
   stageRewriteQuery,
   stageEmbed,
@@ -1156,6 +1215,10 @@ if (config.PIPELINE?.enableHooks !== false) {
       // ── Pipeline composition (Phase 82) ──────────────────────
       _turnNumber: _ctx._turnNumber ?? 0,
       _composedStageCount: _ctx._composedStageCount ?? null,
+
+      // ── RAG Strategy (Phase 85) ──────────────────────────────
+      _selectedStrategy: _ctx._selectedStrategy ?? null,
+      _strategySkipped: _ctx._strategySkipped ?? true,
     });
   });
 }
@@ -1164,4 +1227,4 @@ if (config.PIPELINE?.enableHooks !== false) {
 // Exports
 // ═══════════════════════════════════════════════════════════════
 
-export { PipelineContext, PipelineRunner, chatPipeline, writeChunk, buildContext, buildSources, attemptLocalRewrite, buildDynamicSystemPrompt, stageTranscriptInit, stageBudgetCheck, stageRouteQuery, stageComplexityAnalysis, stageQueryPlan, stageRewriteQuery, stageEmbed, stageSearch, stageRerank, stageConfidenceCheck, stageBuildContext, stageStream, stageGroundingCheck, stageAnswerRefinement, stageCitationMapping, extractKeyPoints, calculateConfidence };
+export { PipelineContext, PipelineRunner, chatPipeline, writeChunk, buildContext, buildSources, attemptLocalRewrite, buildDynamicSystemPrompt, stageTranscriptInit, stageBudgetCheck, stageRouteQuery, stageComplexityAnalysis, stageStrategySelect, stageQueryPlan, stageRewriteQuery, stageEmbed, stageSearch, stageRerank, stageConfidenceCheck, stageBuildContext, stageStream, stageGroundingCheck, stageAnswerRefinement, stageCitationMapping, extractKeyPoints, calculateConfidence };

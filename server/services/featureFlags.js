@@ -48,6 +48,7 @@ class FeatureFlags {
     COST_GOVERNANCE:    () => config.COST_GOVERNANCE?.enabled === true,
     ANSWER_REFINEMENT:  () => config.ANSWER_REFINEMENT?.enabled === true,
     QUERY_PLANNING:     () => config.QUERY_PLANNING?.enabled === true,
+    RAG_STRATEGIES:     () => config.RAG_STRATEGIES?.enabled === true,
   };
 
   /**

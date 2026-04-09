@@ -44,10 +44,10 @@ describe('ConfigValidator Structure', () => {
     assert.ok('lastResult' in counts, 'should have lastResult key');
   });
 
-  // T-CV04: counts().totalRules is 8 (Phase 81: was 7, +QUERY_PLANNING_requires_QUERY_COMPLEXITY)
-  it('T-CV04: counts().totalRules is 8', () => {
+  // T-CV04: counts().totalRules is 9 (Phase 85: was 8, +RAG_STRATEGIES_requires_QUERY_COMPLEXITY)
+  it('T-CV04: counts().totalRules is 9', () => {
     const counts = configValidator.counts();
-    assert.strictEqual(counts.totalRules, 8, 'should have 8 validation rules');
+    assert.strictEqual(counts.totalRules, 9, 'should have 9 validation rules');
   });
 
   // T-CV05: reset() clears lastResult to null
@@ -139,11 +139,11 @@ describe('Validation Rules Detail', () => {
     assert.ok(fresh.checkedAt > 0, 'fresh result should have valid checkedAt');
   });
 
-  // T-CV15: New ConfigValidator instances have null lastResult (Phase 81: 8 rules)
+  // T-CV15: New ConfigValidator instances have null lastResult (Phase 85: 9 rules)
   it('T-CV15: new instances have null lastResult', () => {
     const instance = new ConfigValidator();
     assert.strictEqual(instance.counts().lastResult, null);
-    assert.strictEqual(instance.counts().totalRules, 8);
+    assert.strictEqual(instance.counts().totalRules, 9);
   });
 });
 
@@ -207,12 +207,26 @@ describe('QUERY_PLANNING Validation Rule', () => {
     assert.strictEqual(hasQPWarning, false, 'should not have QUERY_PLANNING warning when both disabled');
   });
 
-  // T-CV22: QUERY_PLANNING rule exists in rules (8 total)
-  it('T-CV22: rule count is 8 and includes QUERY_PLANNING rule', () => {
-    assert.strictEqual(configValidator.counts().totalRules, 8);
+  // T-CV22: QUERY_PLANNING rule exists in rules (9 total)
+  it('T-CV22: rule count is 9 and includes QUERY_PLANNING rule', () => {
+    assert.strictEqual(configValidator.counts().totalRules, 9);
     // Validate runs all rules — with default config, no errors or warnings expected
     const result = configValidator.validate();
     assert.strictEqual(result.valid, true);
     assert.strictEqual(result.errors.length, 0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Block 6: RAG_STRATEGIES Rule (Phase 85)
+// ═══════════════════════════════════════════════════════════════
+describe('RAG_STRATEGIES Validation Rule', () => {
+
+  // T-CV23: RAG_STRATEGIES_requires_QUERY_COMPLEXITY — no warning with default config
+  it('T-CV23: no warning when both disabled (default config)', () => {
+    // Both RAG_STRATEGIES and QUERY_COMPLEXITY are disabled by default
+    const result = configValidator.validate();
+    const hasRSWarning = result.warnings.some(w => w.includes('RAG_STRATEGIES'));
+    assert.strictEqual(hasRSWarning, false, 'should not have RAG_STRATEGIES warning when both disabled');
   });
 });

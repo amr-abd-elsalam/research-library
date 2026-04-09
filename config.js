@@ -918,6 +918,50 @@ const config = {
     budgetPerSubQuery:     0.6,            // نسبة الـ topK لكل sub-query (0.3-1.0). 0.6 = كل sub-query يأخذ 60% من الـ topK الأصلي
   },
 
+  // ═══════════════════════════════════════════════════════════════
+  // 46. استراتيجيات البحث التكيّفية (RAG_STRATEGIES)
+  //    — اختيار استراتيجية البحث والتوليد ديناميكياً
+  //    — بناءً على نوع السؤال + موقعه في المحادثة + جودة النتائج
+  //    — معطّل افتراضياً — فعّله من هنا
+  //    — يتطلب: QUERY_COMPLEXITY.enabled: true
+  //    — بدون استدعاء API — zero cost
+  // ═══════════════════════════════════════════════════════════════
+  RAG_STRATEGIES: {
+    enabled:        false,    // true = تفعيل اختيار الاستراتيجية التكيّفي | false = معطّل (zero overhead — السلوك الحالي بالظبط)
+    includeInTrace: true,     // true = تسجيل الاستراتيجية المختارة في الـ trace | false = لا تسجيل
+    strategies: {
+      quick_factual: {
+        topK: 3,
+        skipStages: ['stageRerank', 'stageGroundingCheck', 'stageCitationMapping'],
+        promptSuffix: '',
+        preferLocalRewrite: true,
+      },
+      deep_analytical: {
+        topK: 10,
+        skipStages: [],
+        promptSuffix: 'حلّل الموضوع بعمق واستند إلى كل المصادر المتاحة.',
+        preferLocalRewrite: false,
+      },
+      conversational_followup: {
+        topK: 5,
+        skipStages: ['stageQueryPlan'],
+        promptSuffix: '',
+        preferLocalRewrite: true,
+      },
+      exploratory_scan: {
+        topK: 8,
+        skipStages: [],
+        promptSuffix: 'قدّم نظرة شاملة ومتنوعة حول الموضوع.',
+        preferLocalRewrite: false,
+      },
+    },
+    selectionRules: {
+      turnThresholdForConversational: 3,   // أقل عدد turns لتفعيل استراتيجية المحادثة
+      lowScoreThresholdForDeep:       0.5, // scores أقل من كده تُصعِّد لـ deep_analytical
+      maxQuickFactualWords:           10,  // أسئلة أقصر من كده + factual → quick_factual
+    },
+  },
+
 };
 
 export default deepFreeze(config);

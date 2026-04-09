@@ -48,6 +48,7 @@ import { actionRegistry }   from '../services/actionRegistry.js';
 import { queryPlanner }      from '../services/queryPlanner.js';
 import { pipelineComposer }          from '../services/pipelineComposer.js';
 import { sessionReplaySerializer }   from '../services/sessionReplaySerializer.js';
+import { ragStrategySelector }       from '../services/ragStrategySelector.js';
 import config                        from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -238,6 +239,9 @@ export async function handleInspect(_req, res) {
 
       // ── Session Replay Serializer (Phase 84) ─────────────────
       sessionReplaySerializer: sessionReplaySerializer.counts(),
+
+      // ── RAG Strategy Selector (Phase 85) ─────────────────────
+      ragStrategySelector: ragStrategySelector.counts(),
 
       // ── Observability (Phase 65) ──────────────────────────────
       observability: {

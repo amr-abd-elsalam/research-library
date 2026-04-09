@@ -155,6 +155,7 @@ export async function handleConfigFeatures(_req, res) {
     COST_GOVERNANCE:    featureFlags.isEnabled('COST_GOVERNANCE'),
     ANSWER_REFINEMENT:  featureFlags.isEnabled('ANSWER_REFINEMENT'),
     QUERY_PLANNING:     featureFlags.isEnabled('QUERY_PLANNING'),
+    RAG_STRATEGIES:     featureFlags.isEnabled('RAG_STRATEGIES'),
   };
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(payload));
