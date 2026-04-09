@@ -163,10 +163,10 @@ describe('Feature Flag Integration', () => {
     assert.ok(names.includes('ANSWER_REFINEMENT'), 'should include ANSWER_REFINEMENT');
   });
 
-  // T-AR17: ANSWER_REFINEMENT section count is 14 (Phase 81: was 13, +QUERY_PLANNING)
-  it('T-AR17: featureFlags has 14 managed sections', () => {
+  // T-AR17: ANSWER_REFINEMENT section count is 15 (Phase 85: was 14, +RAG_STRATEGIES)
+  it('T-AR17: featureFlags has 15 managed sections', () => {
     const status = featureFlags.getStatus();
-    assert.strictEqual(status.length, 14, `expected 14 sections, got ${status.length}`);
+    assert.strictEqual(status.length, 15, `expected 15 sections, got ${status.length}`);
   });
 });
 
