@@ -239,6 +239,7 @@ async function stageStrategySelect(ctx, _trace) {
   if (!ragStrategySelector.enabled) {
     ctx._strategySkipped = true;
     ctx._selectedStrategy = null;
+    ctx._strategyQualitySource = null;
     return ctx;
   }
 
@@ -249,6 +250,7 @@ async function stageStrategySelect(ctx, _trace) {
     complexityType:   ctx._complexity?.type ?? 'factual',
     turnNumber,
     lastAvgScore:     convCtx?.lastAvgScore ?? 0,
+    rollingAvgScore:  convCtx?.rollingAvgScore ?? null,
     isFollowUp:       ctx.queryRoute?.isFollowUp ?? false,
     messageWordCount: ctx.message.trim().split(/\s+/).length,
   });
@@ -256,6 +258,7 @@ async function stageStrategySelect(ctx, _trace) {
   if (!result) {
     ctx._strategySkipped = true;
     ctx._selectedStrategy = null;
+    ctx._strategyQualitySource = null;
     return ctx;
   }
 
@@ -268,6 +271,7 @@ async function stageStrategySelect(ctx, _trace) {
 
   ctx._strategySkipped = false;
   ctx._selectedStrategy = result.name;
+  ctx._strategyQualitySource = result.qualitySource ?? 'none';
   return ctx;
 }
 
@@ -916,6 +920,7 @@ function buildStageRecord(stageName, ctx, _elapsed) {
           selectedStrategy: ctx._selectedStrategy,
           topKOverride: ctx._complexityTopK ?? null,
           skipStagesCount: ctx._strategySkipStages?.size ?? 0,
+          qualitySource: ctx._strategyQualitySource ?? 'none',
         },
       };
 
@@ -1229,9 +1234,10 @@ if (config.PIPELINE?.enableHooks !== false) {
       _turnNumber: _ctx._turnNumber ?? 0,
       _composedStageCount: _ctx._composedStageCount ?? null,
 
-      // ── RAG Strategy (Phase 85) ──────────────────────────────
+      // ── RAG Strategy (Phase 85, Phase 88: quality source) ────
       _selectedStrategy: _ctx._selectedStrategy ?? null,
       _strategySkipped: _ctx._strategySkipped ?? true,
+      _strategyQualitySource: _ctx._strategyQualitySource ?? null,
     });
   });
 }

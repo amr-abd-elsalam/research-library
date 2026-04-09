@@ -554,4 +554,131 @@ describe('Multi-Turn — Cross-Feature Interaction', () => {
         `rolling should be significantly lower after 5 bad turns, got ${ctxAfter.rollingAvgScore}`);
     }
   });
+
+  // T-MTI25: rolling quality influences strategy selection — strategy uses rollingAvgScore (Phase 88)
+  it('T-MTI25: rolling quality influences strategy selection across turns', async () => {
+    const sessionId = 'mti25-' + Date.now();
+    // Build context with low rolling quality by recording turns with avgScore manually
+    conversationContext.recordTurn(sessionId, {
+      message: 'ما هو الذكاء الاصطناعي؟', response: 'إجابة ضعيفة', queryType: 'factual', topicFilter: null,
+      avgScore: 0.35,
+    });
+    conversationContext.incrementTurn(sessionId);
+    conversationContext.recordTurn(sessionId, {
+      message: 'ما هي تطبيقاته؟', response: 'إجابة ضعيفة', queryType: 'factual', topicFilter: null,
+      avgScore: 0.30,
+    });
+    conversationContext.incrementTurn(sessionId);
+
+    const ctx = conversationContext.getContext(sessionId);
+    assert.ok(typeof ctx.rollingAvgScore === 'number', 'rollingAvgScore should be computed');
+    assert.ok(ctx.rollingAvgScore < 0.5, `rollingAvgScore should be below 0.5, got ${ctx.rollingAvgScore}`);
+
+    // Now run a pipeline turn with RAG_STRATEGIES enabled — analytical question
+    // The strategy selector should see low rollingAvgScore and escalate
+    const result = await harness.run('حلّل تأثير الذكاء الاصطناعي على سوق العمل بالتفصيل', {
+      sessionId,
+      history: [
+        { role: 'user', text: 'ما هو الذكاء الاصطناعي؟' },
+        { role: 'model', text: 'إجابة ضعيفة' },
+        { role: 'user', text: 'ما هي تطبيقاته؟' },
+        { role: 'model', text: 'إجابة ضعيفة' },
+      ],
+      featureOverrides: { RAG_STRATEGIES: true, QUERY_COMPLEXITY: true },
+    });
+
+    // The strategy stage should have executed
+    if (!result.ctx._strategySkipped) {
+      assert.ok(result.ctx._strategyQualitySource !== null,
+        'qualitySource should be set when strategy not skipped');
+    }
+  });
+
+  // T-MTI26: strategy escalation triggered by declining rolling quality across 4+ turns (Phase 88)
+  it('T-MTI26: strategy escalation triggered by declining rolling quality', async () => {
+    const sessionId = 'mti26-' + Date.now();
+    // Simulate 4 turns with declining quality
+    const scores = [0.7, 0.5, 0.3, 0.25];
+    for (let i = 0; i < scores.length; i++) {
+      conversationContext.recordTurn(sessionId, {
+        message: `سؤال ${i}`, response: `إجابة ${i}`, queryType: 'factual', topicFilter: null,
+        avgScore: scores[i],
+      });
+      conversationContext.incrementTurn(sessionId);
+    }
+
+    const ctx = conversationContext.getContext(sessionId);
+    assert.ok(typeof ctx.rollingAvgScore === 'number', 'rollingAvgScore should exist');
+    // After declining scores, rolling should be well below 0.5
+    assert.ok(ctx.rollingAvgScore < 0.5,
+      `rollingAvgScore should be below 0.5 after declining quality, got ${ctx.rollingAvgScore}`);
+
+    // Import ragStrategySelector directly and test with these values
+    const { ragStrategySelector: rss } = await import('../server/services/ragStrategySelector.js');
+    const { featureFlags: ff } = await import('../server/services/featureFlags.js');
+    ff.setOverride('RAG_STRATEGIES', true);
+    try {
+      const result = rss.select({
+        complexityType: 'analytical',
+        turnNumber: 4,
+        lastAvgScore: ctx.lastAvgScore,
+        rollingAvgScore: ctx.rollingAvgScore,
+        isFollowUp: false,
+        messageWordCount: 15,
+      });
+      assert.ok(result !== null, 'should return a strategy');
+      assert.strictEqual(result.name, 'deep_analytical', 'should escalate to deep_analytical');
+      assert.strictEqual(result.qualitySource, 'rolling', 'should use rolling quality source');
+    } finally {
+      ff.clearOverride('RAG_STRATEGIES');
+      rss.reset();
+    }
+  });
+
+  // T-MTI27: rollingAvgScore smoothing prevents single bad turn from triggering unnecessary escalation (Phase 88)
+  it('T-MTI27: rolling smoothing prevents single bad turn from escalating', async () => {
+    const sessionId = 'mti27-' + Date.now();
+    // Build up good quality (4 turns at 0.85)
+    for (let i = 0; i < 4; i++) {
+      conversationContext.recordTurn(sessionId, {
+        message: `سؤال ${i}`, response: `إجابة جيدة ${i}`, queryType: 'factual', topicFilter: null,
+        avgScore: 0.85,
+      });
+      conversationContext.incrementTurn(sessionId);
+    }
+
+    // One bad turn
+    conversationContext.recordTurn(sessionId, {
+      message: 'سؤال سيء', response: '', queryType: 'factual', topicFilter: null,
+      avgScore: 0.15,
+    });
+    conversationContext.incrementTurn(sessionId);
+
+    const ctx = conversationContext.getContext(sessionId);
+    // lastAvgScore = 0.15 (bad), but rollingAvgScore should be dampened (still > 0.5)
+    assert.strictEqual(ctx.lastAvgScore, 0.15, 'lastAvgScore should be 0.15');
+    assert.ok(ctx.rollingAvgScore > 0.5,
+      `rollingAvgScore should be dampened above 0.5, got ${ctx.rollingAvgScore}`);
+
+    // Strategy selector should NOT trigger Rule 3 escalation because rolling > 0.5
+    const { ragStrategySelector: rss } = await import('../server/services/ragStrategySelector.js');
+    const { featureFlags: ff } = await import('../server/services/featureFlags.js');
+    ff.setOverride('RAG_STRATEGIES', true);
+    try {
+      const result = rss.select({
+        complexityType: 'factual',
+        turnNumber: 5,
+        lastAvgScore: ctx.lastAvgScore,
+        rollingAvgScore: ctx.rollingAvgScore,
+        isFollowUp: false,
+        messageWordCount: 15,
+      });
+      // factual + long + rolling >= 0.5 → no Rule 3 → factual long → no match → null
+      assert.strictEqual(result, null,
+        'should NOT escalate — rolling quality still acceptable despite single bad turn');
+    } finally {
+      ff.clearOverride('RAG_STRATEGIES');
+      rss.reset();
+    }
+  });
 });

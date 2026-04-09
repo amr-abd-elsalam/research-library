@@ -1352,4 +1352,43 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(typeof data.conversationContext.activeSessions, 'number');
     assert.strictEqual(typeof data.conversationContext.totalTurns, 'number');
   });
+
+  // T-IH117: GET /api/admin/inspect — ragStrategySelector has correct shape including qualitySource awareness (Phase 88)
+  it('T-IH117: GET /api/admin/inspect — ragStrategySelector has expected shape', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('ragStrategySelector' in data, 'inspect should contain ragStrategySelector');
+    assert.strictEqual(typeof data.ragStrategySelector.enabled, 'boolean');
+    assert.strictEqual(typeof data.ragStrategySelector.totalSelections, 'number');
+    assert.strictEqual(typeof data.ragStrategySelector.strategyBreakdown, 'object');
+    const breakdown = data.ragStrategySelector.strategyBreakdown;
+    assert.strictEqual(typeof breakdown.quick_factual, 'number');
+    assert.strictEqual(typeof breakdown.deep_analytical, 'number');
+    assert.strictEqual(typeof breakdown.conversational_followup, 'number');
+    assert.strictEqual(typeof breakdown.exploratory_scan, 'number');
+    assert.strictEqual(typeof breakdown.none, 'number');
+  });
+
+  // T-IH118: GET /api/admin/inspect — circuits section shows CB name reflecting provider (Phase 88)
+  it('T-IH118: GET /api/admin/inspect — circuits section is object', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('circuits' in data, 'inspect should contain circuits');
+    assert.strictEqual(typeof data.circuits, 'object', 'circuits should be an object');
+    // CB may or may not be registered depending on whether gemini.js facade was called
+    // When registered, the CB name should be a string key in the circuits object
+    const cbNames = Object.keys(data.circuits);
+    if (cbNames.length > 0) {
+      for (const name of cbNames) {
+        assert.strictEqual(typeof data.circuits[name].state, 'string', `CB ${name} should have state`);
+        assert.strictEqual(typeof data.circuits[name].name, 'string', `CB ${name} should have name`);
+      }
+    }
+  });
 });

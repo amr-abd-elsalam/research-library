@@ -37,10 +37,10 @@ class RAGStrategySelector {
    * Selects the optimal RAG strategy based on multi-dimensional input signals.
    * Returns null when disabled or no matching rule.
    *
-   * @param {{ complexityType: string, turnNumber: number, lastAvgScore: number, isFollowUp: boolean, messageWordCount: number }} params
-   * @returns {{ name: string, topK: number, skipStages: string[], promptSuffix: string, preferLocalRewrite: boolean }|null}
+   * @param {{ complexityType: string, turnNumber: number, lastAvgScore: number, rollingAvgScore?: number|null, isFollowUp: boolean, messageWordCount: number }} params
+   * @returns {{ name: string, topK: number, skipStages: string[], promptSuffix: string, preferLocalRewrite: boolean, qualitySource: string }|null}
    */
-  select({ complexityType, turnNumber, lastAvgScore, isFollowUp, messageWordCount }) {
+  select({ complexityType, turnNumber, lastAvgScore, rollingAvgScore, isFollowUp, messageWordCount }) {
     if (!this.enabled) return null;
 
     this.#stats.totalSelections++;
@@ -51,6 +51,15 @@ class RAGStrategySelector {
     const turnThreshold   = rules.turnThresholdForConversational ?? 3;
     const lowScoreThresh  = rules.lowScoreThresholdForDeep ?? 0.5;
     const maxQuickWords   = rules.maxQuickFactualWords ?? 10;
+
+    // ── Phase 88: resolve quality score for Rule 3 ──
+    const useRolling = rules.useRollingScore !== false;  // default true
+    const qualityScore = (useRolling && typeof rollingAvgScore === 'number' && rollingAvgScore > 0)
+      ? rollingAvgScore
+      : lastAvgScore;
+    const qualitySource = (useRolling && typeof rollingAvgScore === 'number' && rollingAvgScore > 0)
+      ? 'rolling'
+      : (lastAvgScore > 0 ? 'last' : 'none');
 
     let selectedName = null;
 
@@ -65,8 +74,8 @@ class RAGStrategySelector {
     }
 
     // ── Rule 3: Low previous score + complex type → deep_analytical ──
-    // lastAvgScore === 0 means "no previous scores" → skip this rule
-    if (!selectedName && lastAvgScore > 0 && lastAvgScore < lowScoreThresh
+    // qualityScore === 0 means "no previous scores" → skip this rule
+    if (!selectedName && qualityScore > 0 && qualityScore < lowScoreThresh
         && (complexityType === 'analytical' || complexityType === 'comparative' || complexityType === 'multi_part')) {
       selectedName = 'deep_analytical';
     }
@@ -106,6 +115,7 @@ class RAGStrategySelector {
       skipStages:         Array.isArray(strategyDef.skipStages) ? strategyDef.skipStages : [],
       promptSuffix:       strategyDef.promptSuffix ?? '',
       preferLocalRewrite: strategyDef.preferLocalRewrite ?? false,
+      qualitySource,
     };
   }
 

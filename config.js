@@ -963,6 +963,7 @@ const config = {
       turnThresholdForConversational: 3,   // أقل عدد turns لتفعيل استراتيجية المحادثة
       lowScoreThresholdForDeep:       0.5, // scores أقل من كده تُصعِّد لـ deep_analytical
       maxQuickFactualWords:           10,  // أسئلة أقصر من كده + factual → quick_factual
+      useRollingScore:                true, // Phase 88: true = use rollingAvgScore for quality escalation (Rule 3) when available, false = use lastAvgScore only (backward compat)
     },
   },
 

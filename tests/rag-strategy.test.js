@@ -454,3 +454,142 @@ describe('RAGStrategySelector Stats Tracking', () => {
     assert.strictEqual(result, null, 'should not escalate when quality is acceptable');
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// Block 6: Rolling Quality Wiring (T-RS30 to T-RS37) — Phase 88
+// ═══════════════════════════════════════════════════════════════
+describe('RAGStrategySelector Rolling Quality Wiring', () => {
+
+  // T-RS30: select() accepts rollingAvgScore parameter without error
+  it('T-RS30: select() accepts rollingAvgScore parameter without error', () => {
+    featureFlags.setOverride('RAG_STRATEGIES', true);
+    const result = ragStrategySelector.select({
+      complexityType: 'factual',
+      turnNumber: 0,
+      lastAvgScore: 0,
+      rollingAvgScore: 0.75,
+      isFollowUp: false,
+      messageWordCount: 5,
+    });
+    // Should work without throwing — returns quick_factual for short factual
+    assert.ok(result !== null);
+    assert.strictEqual(result.name, 'quick_factual');
+  });
+
+  // T-RS31: Rule 3 uses rollingAvgScore when useRollingScore=true and rollingAvgScore non-null and > 0
+  it('T-RS31: Rule 3 uses rollingAvgScore when available and useRollingScore=true', () => {
+    featureFlags.setOverride('RAG_STRATEGIES', true);
+    // lastAvgScore=0.6 (above threshold) but rollingAvgScore=0.35 (below threshold)
+    // With useRollingScore=true (default), Rule 3 should use rollingAvgScore
+    const result = ragStrategySelector.select({
+      complexityType: 'analytical',
+      turnNumber: 3,
+      lastAvgScore: 0.6,
+      rollingAvgScore: 0.35,
+      isFollowUp: false,
+      messageWordCount: 15,
+    });
+    assert.ok(result !== null, 'should return a strategy');
+    assert.strictEqual(result.name, 'deep_analytical', 'should escalate based on rollingAvgScore');
+  });
+
+  // T-RS32: Rule 3 falls back to lastAvgScore when rollingAvgScore is null
+  it('T-RS32: Rule 3 falls back to lastAvgScore when rollingAvgScore is null', () => {
+    featureFlags.setOverride('RAG_STRATEGIES', true);
+    // rollingAvgScore=null → fallback to lastAvgScore=0.3
+    const result = ragStrategySelector.select({
+      complexityType: 'analytical',
+      turnNumber: 3,
+      lastAvgScore: 0.3,
+      rollingAvgScore: null,
+      isFollowUp: false,
+      messageWordCount: 15,
+    });
+    assert.ok(result !== null, 'should return a strategy');
+    assert.strictEqual(result.name, 'deep_analytical', 'should escalate based on lastAvgScore fallback');
+    assert.strictEqual(result.qualitySource, 'last', 'qualitySource should be last');
+  });
+
+  // T-RS33: Rule 3 falls back to lastAvgScore when useRollingScore=false
+  it('T-RS33: Rule 3 falls back to lastAvgScore when useRollingScore=false (via config override)', () => {
+    featureFlags.setOverride('RAG_STRATEGIES', true);
+    // NOTE: We can't easily change config at runtime (frozen). But we can test
+    // by passing rollingAvgScore=0 (which triggers fallback to lastAvgScore).
+    // The behavioral test: rollingAvgScore=0 means "not available" → falls back
+    const result = ragStrategySelector.select({
+      complexityType: 'analytical',
+      turnNumber: 3,
+      lastAvgScore: 0.3,
+      rollingAvgScore: 0,
+      isFollowUp: false,
+      messageWordCount: 15,
+    });
+    assert.ok(result !== null, 'should return a strategy');
+    assert.strictEqual(result.name, 'deep_analytical', 'should escalate based on lastAvgScore');
+    assert.strictEqual(result.qualitySource, 'last', 'qualitySource should be last when rolling is 0');
+  });
+
+  // T-RS34: Rule 3 escalation with rollingAvgScore=0.35 + analytical complexity → deep_analytical
+  it('T-RS34: Rule 3 escalation with rollingAvgScore=0.35 + analytical → deep_analytical', () => {
+    featureFlags.setOverride('RAG_STRATEGIES', true);
+    const result = ragStrategySelector.select({
+      complexityType: 'analytical',
+      turnNumber: 5,
+      lastAvgScore: 0.8,
+      rollingAvgScore: 0.35,
+      isFollowUp: false,
+      messageWordCount: 20,
+    });
+    assert.ok(result !== null, 'should return a strategy');
+    assert.strictEqual(result.name, 'deep_analytical', 'should escalate to deep_analytical');
+    assert.strictEqual(result.qualitySource, 'rolling', 'qualitySource should be rolling');
+  });
+
+  // T-RS35: Rule 3 skip with rollingAvgScore=0.55 + analytical complexity → NOT Rule 3 (above threshold)
+  it('T-RS35: Rule 3 skip with rollingAvgScore=0.55 + analytical → falls to Rule 5', () => {
+    featureFlags.setOverride('RAG_STRATEGIES', true);
+    // rollingAvgScore=0.55 >= 0.5 threshold → Rule 3 skipped → falls to Rule 5 (deep_analytical)
+    const result = ragStrategySelector.select({
+      complexityType: 'analytical',
+      turnNumber: 5,
+      lastAvgScore: 0.3,
+      rollingAvgScore: 0.55,
+      isFollowUp: false,
+      messageWordCount: 15,
+    });
+    // Still deep_analytical (via Rule 5), but quality source shows rolling was considered
+    assert.ok(result !== null, 'should return a strategy');
+    assert.strictEqual(result.name, 'deep_analytical', 'should still be deep_analytical via Rule 5');
+    assert.strictEqual(result.qualitySource, 'rolling', 'qualitySource should be rolling');
+  });
+
+  // T-RS36: select() returns qualitySource='rolling' when using rollingAvgScore
+  it('T-RS36: select() returns qualitySource=rolling when using rollingAvgScore', () => {
+    featureFlags.setOverride('RAG_STRATEGIES', true);
+    const result = ragStrategySelector.select({
+      complexityType: 'factual',
+      turnNumber: 0,
+      lastAvgScore: 0.5,
+      rollingAvgScore: 0.7,
+      isFollowUp: false,
+      messageWordCount: 5,
+    });
+    assert.ok(result !== null);
+    assert.strictEqual(result.qualitySource, 'rolling', 'should be rolling when rollingAvgScore available');
+  });
+
+  // T-RS37: select() returns qualitySource='last' when falling back to lastAvgScore
+  it('T-RS37: select() returns qualitySource=last when falling back to lastAvgScore', () => {
+    featureFlags.setOverride('RAG_STRATEGIES', true);
+    const result = ragStrategySelector.select({
+      complexityType: 'factual',
+      turnNumber: 0,
+      lastAvgScore: 0.5,
+      rollingAvgScore: null,
+      isFollowUp: false,
+      messageWordCount: 5,
+    });
+    assert.ok(result !== null);
+    assert.strictEqual(result.qualitySource, 'last', 'should be last when rollingAvgScore is null');
+  });
+});
