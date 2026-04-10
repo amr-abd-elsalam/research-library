@@ -2787,6 +2787,79 @@
   }
 
   // ══════════════════════════════════════════════════════════
+  //  SEARCH INTELLIGENCE (Phase 98)
+  // ══════════════════════════════════════════════════════════
+  async function loadSearchIntelligence() {
+    var container = document.getElementById('admin-search-intel-content');
+    if (!container) return;
+
+    container.innerHTML = '<p class="admin-empty-msg">\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u062D\u0645\u064A\u0644...</p>';
+
+    try {
+      var data = await adminFetch('/api/admin/inspect');
+      if (!data) {
+        container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623 \u0641\u064A \u062A\u062D\u0645\u064A\u0644 \u0628\u064A\u0627\u0646\u0627\u062A \u0630\u0643\u0627\u0621 \u0627\u0644\u0628\u062D\u062B</p>';
+        return;
+      }
+
+      var reranker = data.searchReranker || {};
+      var complexity = data.queryComplexityAnalyzer || {};
+
+      var html = '';
+
+      // Stats cards
+      html += '<div class="search-intel-stats">';
+      html += '<div class="search-intel-stat-card"><div class="search-intel-stat-value">' + (reranker.enabled ? '\u0645\u0641\u0639\u0651\u0644' : '\u0645\u0639\u0637\u0651\u0644') + '</div><div class="search-intel-stat-label">\u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u062A\u0631\u062A\u064A\u0628 (Re-ranking)</div></div>';
+      html += '<div class="search-intel-stat-card"><div class="search-intel-stat-value">' + (complexity.enabled ? '\u0645\u0641\u0639\u0651\u0644' : '\u0645\u0639\u0637\u0651\u0644') + '</div><div class="search-intel-stat-label">\u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u062A\u0639\u0642\u064A\u062F (Complexity)</div></div>';
+      html += '</div>';
+
+      // Re-ranker details
+      html += '<div style="margin-top:12px;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);font-size:0.85rem;color:var(--text-muted);line-height:1.6;">';
+      if (reranker.enabled) {
+        html += '\u2705 \u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u062A\u0631\u062A\u064A\u0628 \u0645\u0641\u0639\u0651\u0644\u0629 \u2014 \u0646\u062A\u0627\u0626\u062C \u0627\u0644\u0628\u062D\u062B \u064A\u0639\u0627\u062F \u062A\u0631\u062A\u064A\u0628\u0647\u0627 \u0628\u0646\u0627\u0621\u064B \u0639\u0644\u0649 \u062A\u0637\u0627\u0628\u0642 \u0627\u0644\u0643\u0644\u0645\u0627\u062A \u0627\u0644\u0645\u0641\u062A\u0627\u062D\u064A\u0629 + \u062A\u0646\u0648\u0639 \u0627\u0644\u0645\u0635\u0627\u062F\u0631 (keyword overlap + source diversity). \u0628\u062F\u0648\u0646 \u062A\u0643\u0644\u0641\u0629 API \u0625\u0636\u0627\u0641\u064A\u0629.';
+      } else {
+        html += '\u26A0\uFE0F \u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u062A\u0631\u062A\u064A\u0628 \u0645\u0639\u0637\u0651\u0644\u0629 \u2014 \u0646\u062A\u0627\u0626\u062C \u0627\u0644\u0628\u062D\u062B \u062A\u0623\u062A\u064A \u0628\u062A\u0631\u062A\u064A\u0628 Qdrant \u0627\u0644\u062E\u0627\u0645. \u0641\u0639\u0651\u0644\u0647\u0627 \u0645\u0646 <code>RETRIEVAL.rerankEnabled: true</code>';
+      }
+      html += '</div>';
+
+      // Complexity details
+      html += '<div style="margin-top:8px;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);font-size:0.85rem;color:var(--text-muted);line-height:1.6;">';
+      if (complexity.enabled) {
+        html += '\u2705 \u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u062A\u0639\u0642\u064A\u062F \u0645\u0641\u0639\u0651\u0644 \u2014 \u0627\u0644\u0623\u0633\u0626\u0644\u0629 \u062A\u064F\u0635\u0646\u0651\u0641 \u062A\u0644\u0642\u0627\u0626\u064A\u0627\u064B (factual / comparative / analytical / multi_part / exploratory) \u0648\u0627\u0644\u0640 pipeline \u064A\u062A\u0643\u064A\u0651\u0641 \u0645\u0639 \u0643\u0644 \u0646\u0648\u0639 (topK + prompt suffix). \u0628\u062F\u0648\u0646 \u062A\u0643\u0644\u0641\u0629 API \u0625\u0636\u0627\u0641\u064A\u0629.';
+      } else {
+        html += '\u26A0\uFE0F \u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u062A\u0639\u0642\u064A\u062F \u0645\u0639\u0637\u0651\u0644 \u2014 \u0643\u0644 \u0627\u0644\u0623\u0633\u0626\u0644\u0629 \u062A\u064F\u0639\u0627\u0645\u064E\u0644 \u0643\u0640 factual. \u0641\u0639\u0651\u0644\u0647 \u0645\u0646 <code>QUERY_COMPLEXITY.enabled: true</code>';
+      }
+      html += '</div>';
+
+      // Pipeline stage info
+      html += '<div class="search-intel-stages">';
+      html += '<h3 style="font-size:13px;color:var(--text-muted);margin:16px 0 8px;">\u0645\u0631\u0627\u062D\u0644 \u0627\u0644\u0640 Pipeline \u0627\u0644\u0645\u062A\u0623\u062B\u0631\u0629</h3>';
+
+      var stages = [
+        { name: 'stageComplexityAnalysis', label: '\u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u062A\u0639\u0642\u064A\u062F', active: complexity.enabled },
+        { name: 'stageRerank', label: '\u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u062A\u0631\u062A\u064A\u0628', active: reranker.enabled },
+      ];
+
+      for (var i = 0; i < stages.length; i++) {
+        var st = stages[i];
+        html += '<div class="search-intel-stage-row">';
+        html += '<span class="search-intel-stage-dot ' + (st.active ? 'active' : 'inactive') + '"></span>';
+        html += '<span class="search-intel-stage-name">' + st.name + '</span>';
+        html += '<span class="search-intel-stage-label">' + st.label + '</span>';
+        html += '<span class="search-intel-stage-status">' + (st.active ? '\u0646\u0634\u0637' : '\u0645\u062A\u062C\u0627\u0648\u064E\u0632') + '</span>';
+        html += '</div>';
+      }
+
+      html += '</div>';
+
+      container.innerHTML = html;
+
+    } catch (err) {
+      container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623: ' + err.message + '</p>';
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
   //  COST GOVERNANCE DASHBOARD (Phase 77)
   // ══════════════════════════════════════════════════════════
   async function loadCostDashboard() {
@@ -2878,6 +2951,7 @@
 
   async function loadOperationsTab() {
     loadCostDashboard();
+    loadSearchIntelligence();
     showHealthSkeleton();
     showSessionsSkeleton();
     showMetricsSkeleton();

@@ -709,7 +709,7 @@ const config = {
   //    — لا يحتاج أي dependency خارجية
   // ═══════════════════════════════════════════════════════════
   RETRIEVAL: {
-    rerankEnabled:    false,    // true = تفعيل re-ranking لنتائج البحث | false = استخدام ترتيب Qdrant كما هو (zero overhead)
+    rerankEnabled:    true,     // true = تفعيل re-ranking لنتائج البحث | false = استخدام ترتيب Qdrant كما هو (zero overhead)
     diversityWeight:  0.3,      // 0-1: وزن تنوع المصادر في حساب الـ score (يؤثر على vector weight allocation)
     keywordWeight:    0.3,      // 0-1: وزن تطابق الكلمات المفتاحية في حساب الـ combined score (0 = بدون keyword scoring)
     maxPerFile:       3,        // أقصى عدد نتائج من نفس الملف (الباقي يتأخر لآخر القائمة — لا يُحذف)
@@ -725,7 +725,7 @@ const config = {
   //    — لا يحتاج أي dependency خارجية (in-memory regex فقط)
   // ═══════════════════════════════════════════════════════════
   QUERY_COMPLEXITY: {
-    enabled:        false,    // true = تفعيل تحليل تعقيد الاستعلام | false = كل الأسئلة تُعامل كـ factual (zero overhead)
+    enabled:        true,     // true = تفعيل تحليل تعقيد الاستعلام | false = كل الأسئلة تُعامل كـ factual (zero overhead)
     includeInTrace: true,     // true = تسجيل complexity type + score في الـ trace | false = لا تسجيل
     strategies: {
       factual:     { maxTopK: 5,  promptSuffix: '' },

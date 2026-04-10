@@ -52,6 +52,16 @@ describe('Admin Feature Defaults — Config (Phase 97)', () => {
   it('T-AD07: config.ADMIN_INTELLIGENCE.enabled is true', () => {
     assert.strictEqual(config.ADMIN_INTELLIGENCE.enabled, true);
   });
+
+  // T-AD26: config.RETRIEVAL.rerankEnabled === true (Phase 98)
+  it('T-AD26: config.RETRIEVAL.rerankEnabled is true', () => {
+    assert.strictEqual(config.RETRIEVAL.rerankEnabled, true);
+  });
+
+  // T-AD27: config.QUERY_COMPLEXITY.enabled === true (Phase 98)
+  it('T-AD27: config.QUERY_COMPLEXITY.enabled is true', () => {
+    assert.strictEqual(config.QUERY_COMPLEXITY.enabled, true);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -245,5 +255,34 @@ describe('Admin Feature Defaults — API Endpoints (Phase 97)', () => {
     const data = await res.json();
     assert.ok(['healthy', 'warning', 'critical'].includes(data.level),
       `level should be healthy/warning/critical, got ${data.level}`);
+  });
+
+  // T-AD28: Inspect shows searchReranker.enabled true (Phase 98)
+  it('T-AD28: inspect shows searchReranker.enabled true', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.searchReranker.enabled, true, 'searchReranker should be enabled by default');
+  });
+
+  // T-AD29: Inspect shows queryComplexityAnalyzer.enabled true (Phase 98)
+  it('T-AD29: inspect shows queryComplexityAnalyzer.enabled true', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.queryComplexityAnalyzer.enabled, true, 'queryComplexityAnalyzer should be enabled by default');
+  });
+
+  // T-AD30: Config features returns RETRIEVAL + QUERY_COMPLEXITY as true (Phase 98)
+  it('T-AD30: config features — RETRIEVAL + QUERY_COMPLEXITY true', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.RETRIEVAL, true, 'RETRIEVAL should be true');
+    assert.strictEqual(data.QUERY_COMPLEXITY, true, 'QUERY_COMPLEXITY should be true');
   });
 });

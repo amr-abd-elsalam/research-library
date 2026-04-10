@@ -624,20 +624,22 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.ok(Array.isArray(data.insights), 'insights should be an array');
   });
 
-  // T-IH50: GET /api/config/features — response includes RETRIEVAL field (Phase 63)
+  // T-IH50: GET /api/config/features — response includes RETRIEVAL field (Phase 63, Phase 98: true by default)
   it('T-IH50: GET /api/config/features includes RETRIEVAL field', async () => {
     const res = await fetch(`${ts.baseUrl}/api/config/features`);
     assert.strictEqual(res.status, 200);
     const data = await res.json();
     assert.strictEqual(typeof data.RETRIEVAL, 'boolean');
+    assert.strictEqual(data.RETRIEVAL, true, 'RETRIEVAL should be true by default (Phase 98)');
   });
 
-  // T-IH51: GET /api/config/features — response includes QUERY_COMPLEXITY field (Phase 64)
+  // T-IH51: GET /api/config/features — response includes QUERY_COMPLEXITY field (Phase 64, Phase 98: true by default)
   it('T-IH51: GET /api/config/features includes QUERY_COMPLEXITY field', async () => {
     const res = await fetch(`${ts.baseUrl}/api/config/features`);
     assert.strictEqual(res.status, 200);
     const data = await res.json();
     assert.strictEqual(typeof data.QUERY_COMPLEXITY, 'boolean');
+    assert.strictEqual(data.QUERY_COMPLEXITY, true, 'QUERY_COMPLEXITY should be true by default (Phase 98)');
   });
 
   // T-IH53: GET /api/config/features includes ADMIN_INTELLIGENCE boolean (Phase 97: true by default)

@@ -86,9 +86,9 @@ describe('handleConfigFeatures()', () => {
     assert.strictEqual(data.CONTENT_GAPS, true);         // Phase 97: enabled by default
     assert.strictEqual(data.QUALITY, true);              // Phase 97: enabled by default
     assert.strictEqual(data.HEALTH_SCORE, true);         // Phase 97: enabled by default
-    assert.strictEqual(data.RETRIEVAL, false);
-    assert.strictEqual(data.QUERY_COMPLEXITY, false);
-    assert.strictEqual(data.GROUNDING, true);            // Phase 90: enabled by default
+    assert.strictEqual(data.RETRIEVAL, true);             // Phase 98: enabled by default
+    assert.strictEqual(data.QUERY_COMPLEXITY, true);      // Phase 98: enabled by default
+    assert.strictEqual(data.GROUNDING, true);             // Phase 90: enabled by default
     assert.strictEqual(data.CITATION, true);             // Phase 90: enabled by default
     assert.strictEqual(data.SEMANTIC_MATCHING, false);
   });
