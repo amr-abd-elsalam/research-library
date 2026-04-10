@@ -145,6 +145,7 @@ describe('PipelineComposer Conditional Stages', () => {
 
   // T-PCO12: stageComplexityAnalysis NOT included when QUERY_COMPLEXITY disabled
   it('T-PCO12: stageComplexityAnalysis NOT included when QUERY_COMPLEXITY disabled', () => {
+    featureFlags.setOverride('QUERY_COMPLEXITY', false);  // Phase 98: config default is now true — explicitly disable
     const stages = pipelineComposer.compose({});
     assert.ok(!stages.includes(stageComplexityAnalysis), 'should NOT include stageComplexityAnalysis');
   });

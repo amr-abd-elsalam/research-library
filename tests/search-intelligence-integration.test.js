@@ -161,12 +161,12 @@ describe('Search Intelligence — Complexity Strategy (Phase 98)', () => {
     assert.strictEqual(strategy.topK, 10);
   });
 
-  // T-SI16: getStrategy returns null topK for factual (uses default pipeline topK)
+  // T-SI16: getStrategy returns topK 5 for factual with null promptSuffix (empty string → null via || null)
   it('T-SI16: getStrategy returns topK 5 for factual', () => {
     const complexity = { type: 'factual', score: 1 };
     const strategy = queryComplexityAnalyzer.getStrategy(complexity);
     assert.strictEqual(strategy.topK, 5);
-    assert.strictEqual(strategy.promptSuffix, '');
+    assert.strictEqual(strategy.promptSuffix, null, 'empty string promptSuffix becomes null via || null');
   });
 });
 

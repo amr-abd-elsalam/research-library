@@ -32,7 +32,7 @@ describe('SearchReranker', () => {
 
   // T-SR01: disabled → returns original hits unchanged
   it('T-SR01: disabled — returns original hits unchanged', () => {
-    // RETRIEVAL defaults to rerankEnabled: false in config → featureFlags returns false
+    featureFlags.setOverride('RETRIEVAL', false);  // Phase 98: config default is now true — explicitly disable
     assert.strictEqual(reranker.enabled, false);
     const hits = [mockHit(0.9, 'a.pdf', 'hello'), mockHit(0.8, 'b.pdf', 'world')];
     const result = reranker.rerank(hits, 'test query');
@@ -161,9 +161,10 @@ describe('SearchReranker', () => {
 
   // T-SR12: counts() — returns { enabled: boolean }
   it('T-SR12: counts returns { enabled: boolean }', () => {
+    featureFlags.setOverride('RETRIEVAL', false);  // Phase 98: config default is now true — explicitly disable for first check
     const c = reranker.counts();
     assert.strictEqual(typeof c.enabled, 'boolean');
-    assert.strictEqual(c.enabled, false); // config default
+    assert.strictEqual(c.enabled, false); // overridden to false
 
     featureFlags.setOverride('RETRIEVAL', true);
     const c2 = reranker.counts();

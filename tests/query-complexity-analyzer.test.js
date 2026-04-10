@@ -21,7 +21,7 @@ describe('QueryComplexityAnalyzer', () => {
 
   // T-QCA01: disabled → analyze() returns factual defaults
   it('T-QCA01: returns factual defaults when disabled', () => {
-    // Config default is enabled: false, no override set
+    featureFlags.setOverride('QUERY_COMPLEXITY', false);  // Phase 98: config default is now true — explicitly disable
     const result = analyzer.analyze('ما الفرق بين X وY؟');
     assert.strictEqual(result.type, 'factual');
     assert.strictEqual(result.score, 1);
@@ -127,7 +127,7 @@ describe('QueryComplexityAnalyzer', () => {
 
   // T-QCA13: disabled + getStrategy() → returns null values
   it('T-QCA13: getStrategy returns null values when disabled', () => {
-    // No override — default disabled
+    featureFlags.setOverride('QUERY_COMPLEXITY', false);  // Phase 98: config default is now true — explicitly disable
     const strategy = analyzer.getStrategy({ type: 'comparative', score: 3 });
     assert.strictEqual(strategy.topK, null);
     assert.strictEqual(strategy.promptSuffix, null);
@@ -135,9 +135,10 @@ describe('QueryComplexityAnalyzer', () => {
 
   // T-QCA14: counts() → returns { enabled: boolean }
   it('T-QCA14: counts returns correct structure', () => {
+    featureFlags.setOverride('QUERY_COMPLEXITY', false);  // Phase 98: config default is now true — explicitly disable for first check
     const c1 = analyzer.counts();
     assert.strictEqual(typeof c1.enabled, 'boolean');
-    assert.strictEqual(c1.enabled, false); // default
+    assert.strictEqual(c1.enabled, false); // overridden to false
 
     featureFlags.setOverride('QUERY_COMPLEXITY', true);
     const c2 = analyzer.counts();

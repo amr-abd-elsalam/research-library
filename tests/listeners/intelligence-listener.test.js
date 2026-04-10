@@ -91,8 +91,7 @@ describe('IntelligenceListener', () => {
 
   // T-INT05: intelligence disabled — _record methods are no-op
   it('T-INT05: intelligence disabled — no accumulation', () => {
-    featureFlags.clearOverride('ADMIN_INTELLIGENCE');
-    // By default ADMIN_INTELLIGENCE is disabled in config
+    featureFlags.setOverride('ADMIN_INTELLIGENCE', false);  // Phase 97: config default is now true — explicitly disable
 
     eventBus.emit('pipeline:complete', { totalMs: 100 });
     eventBus.emit('feedback:submitted', { rating: 'positive' });
