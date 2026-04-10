@@ -151,6 +151,16 @@ class ConfigValidator {
           return { ok: true };
         },
       },
+      // ── Rule #15 (Phase 95) ───────────────────────────────
+      {
+        name: 'EXECUTION_REGISTRY_coverage_check',
+        check: () => {
+          if (config.EXECUTION_REGISTRY?.enabled !== false && config.ACTION_REGISTRY?.enabled !== true) {
+            return { ok: false, message: 'EXECUTION_REGISTRY is enabled but ACTION_REGISTRY is disabled — unified registry will only contain commands, not admin actions', severity: 'warning' };
+          }
+          return { ok: true };
+        },
+      },
     ];
   }
 

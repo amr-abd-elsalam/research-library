@@ -11,6 +11,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import config from '../../config.js';
+import { sessionMetadataIndex } from './sessionMetadataIndex.js';
 
 // ── Paths ──────────────────────────────────────────────────────
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -71,6 +72,17 @@ function getClientIP(req) {
 async function resolveSessionPath(sessionId) {
   if (!sessionId || !UUID_RE.test(sessionId)) return null;
 
+  // Phase 95: Try cached path first (O(1))
+  const cachedPath = sessionMetadataIndex.getPath(sessionId);
+  if (cachedPath) {
+    try {
+      await fsp.access(cachedPath, fs.constants.F_OK);
+      return cachedPath;
+    } catch {
+      // Cache stale — fall through to directory scan
+    }
+  }
+
   // Sanitize — only allow uuid chars in the filename
   const fileName = `${sessionId}.json`;
 
@@ -86,6 +98,8 @@ async function resolveSessionPath(sessionId) {
       const filePath = path.join(SESSIONS_DIR, dir, fileName);
       try {
         await fsp.access(filePath, fs.constants.F_OK);
+        // Phase 95: Update cache for next time
+        sessionMetadataIndex.upsert(sessionId, { filePath });
         return filePath;
       } catch {
         // File not in this date folder — continue
@@ -158,6 +172,15 @@ export async function createSession(ipHash, topicFilter = null) {
 
   const filePath = path.join(dirPath, `${sessionId}.json`);
   await writeSessionFile(filePath, session);
+
+  // Phase 95: Propagate file path to metadata index for O(1) future lookups
+  sessionMetadataIndex.upsert(sessionId, {
+    created_at: now,
+    last_active: now,
+    ip_hash: ipHash || 'unknown',
+    topic_filter: topicFilter,
+    filePath,
+  });
 
   return { session_id: sessionId, created_at: now };
 }

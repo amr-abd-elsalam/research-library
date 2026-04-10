@@ -224,3 +224,67 @@ describe('UnifiedExecutionRegistry — counts + reset', () => {
     assert.strictEqual(unifiedRegistry.resolve('/y'), null);
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// Block 6: executeResolved (T-UR21 to T-UR25) — Phase 95
+// ═══════════════════════════════════════════════════════════════
+describe('UnifiedExecutionRegistry — executeResolved', () => {
+
+  // T-UR21: executeResolved with valid entry → executed: true + result
+  it('T-UR21: executeResolved with valid entry — executed: true + result', async () => {
+    unifiedRegistry.reset();
+    const mockResult = { cleaned: 5 };
+    unifiedRegistry.register({
+      name: 'test-action', type: 'action', category: 'admin',
+      aliases: [], permissions: {}, execute: async () => mockResult, description: 'test action',
+    });
+    const result = await unifiedRegistry.executeResolved('test-action', {}, {});
+    assert.strictEqual(result.executed, true);
+    assert.deepStrictEqual(result.result, mockResult);
+  });
+
+  // T-UR22: executeResolved with unknown name → executed: false, reason: not_found
+  it('T-UR22: executeResolved with unknown name — not_found', async () => {
+    unifiedRegistry.reset();
+    const result = await unifiedRegistry.executeResolved('nonexistent', {}, {});
+    assert.strictEqual(result.executed, false);
+    assert.strictEqual(result.reason, 'not_found');
+  });
+
+  // T-UR23: executeResolved with denied tier → executed: false, reason: permission_denied
+  it('T-UR23: executeResolved with denied tier — permission_denied', async () => {
+    unifiedRegistry.reset();
+    unifiedRegistry.register({
+      name: 'restricted-action', type: 'action', category: 'admin',
+      aliases: [], permissions: { denyTiers: ['free'] }, execute: async () => 'ok', description: 'restricted',
+    });
+    const result = await unifiedRegistry.executeResolved('restricted-action', {}, { tier: 'free' });
+    assert.strictEqual(result.executed, false);
+    assert.strictEqual(result.reason, 'permission_denied');
+  });
+
+  // T-UR24: executeResolved with execute: null → executed: false, reason: no_execute_function
+  it('T-UR24: executeResolved with null execute — no_execute_function', async () => {
+    unifiedRegistry.reset();
+    unifiedRegistry.register({
+      name: 'no-exec', type: 'command', category: 'builtin',
+      aliases: [], permissions: {}, execute: null, description: 'no execute',
+    });
+    const result = await unifiedRegistry.executeResolved('no-exec', {}, {});
+    assert.strictEqual(result.executed, false);
+    assert.strictEqual(result.reason, 'no_execute_function');
+  });
+
+  // T-UR25: executeResolved with throwing execute → executed: false, reason starts with execute_error
+  it('T-UR25: executeResolved with throwing execute — execute_error', async () => {
+    unifiedRegistry.reset();
+    unifiedRegistry.register({
+      name: 'failing-action', type: 'action', category: 'admin',
+      aliases: [], permissions: {}, execute: async () => { throw new Error('boom'); }, description: 'fails',
+    });
+    const result = await unifiedRegistry.executeResolved('failing-action', {}, {});
+    assert.strictEqual(result.executed, false);
+    assert.ok(result.reason.startsWith('execute_error'));
+    assert.ok(result.reason.includes('boom'));
+  });
+});

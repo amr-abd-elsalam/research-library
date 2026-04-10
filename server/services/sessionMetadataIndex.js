@@ -99,6 +99,7 @@ class SessionMetadataIndex {
                 ip_hash:       data.ip_hash || null,
                 custom_title:  data.custom_title || null,
                 pinned:        data.pinned || false,
+                file_path:     join(dateDirPath, file),
               });
 
               loaded++;
@@ -135,6 +136,7 @@ class SessionMetadataIndex {
               ip_hash:       data.ip_hash || null,
               custom_title:  data.custom_title || null,
               pinned:        data.pinned || false,
+              file_path:     join(sessionDir, entry),
             });
 
             loaded++;
@@ -195,6 +197,9 @@ class SessionMetadataIndex {
       if (metadata.pinned !== undefined) {
         existing.pinned = metadata.pinned;
       }
+      if (metadata.filePath !== undefined) {
+        existing.file_path = metadata.filePath;
+      }
     } else {
       // New entry
       const now = new Date().toISOString();
@@ -214,6 +219,7 @@ class SessionMetadataIndex {
         ip_hash:       metadata.ip_hash || null,
         custom_title:  metadata.custom_title || null,
         pinned:        metadata.pinned || false,
+        file_path:     metadata.filePath || null,
       });
 
       // Enforce max after adding new entry
@@ -256,6 +262,19 @@ class SessionMetadataIndex {
     });
 
     return entries.slice(0, Math.max(limit, 1));
+  }
+
+  /**
+   * Returns cached file path for a session. O(1) lookup.
+   * Used by resolveSessionPath() for fast path resolution.
+   * Returns null if session not in index or no path cached.
+   * @param {string} sessionId
+   * @returns {string|null}
+   */
+  getPath(sessionId) {
+    if (!this.enabled || !sessionId) return null;
+    const entry = this.#index.get(sessionId);
+    return entry?.file_path || null;
   }
 
   /**

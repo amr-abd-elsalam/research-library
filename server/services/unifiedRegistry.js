@@ -191,6 +191,41 @@ class UnifiedExecutionRegistry {
   }
 
   /**
+   * Resolves and executes an entry by name or alias.
+   * Returns { executed: true, result } on success.
+   * Returns { executed: false, reason } on failure.
+   * Backward compatible: callers can check result.executed before using result.
+   * @param {string} nameOrAlias
+   * @param {object} context — execution context (passed to execute function)
+   * @param {{ tier?: string }} permissionContext
+   * @returns {Promise<{ executed: boolean, result?: any, reason?: string }>}
+   */
+  async executeResolved(nameOrAlias, context = {}, permissionContext = {}) {
+    const entry = this.resolve(nameOrAlias);
+    if (!entry) return { executed: false, reason: 'not_found' };
+
+    if (!this.isPermitted(nameOrAlias, permissionContext)) {
+      return { executed: false, reason: 'permission_denied' };
+    }
+
+    if (!entry.execute) return { executed: false, reason: 'no_execute_function' };
+
+    try {
+      const result = await entry.execute(context);
+      if (config.EXECUTION_REGISTRY?.logResolutions) {
+        logger.info('unifiedRegistry', `executed: ${entry.name} (${entry.type})`, {
+          nameOrAlias,
+          type: entry.type,
+          category: entry.category,
+        });
+      }
+      return { executed: true, result };
+    } catch (err) {
+      return { executed: false, reason: `execute_error: ${err.message}` };
+    }
+  }
+
+  /**
    * Summary for inspect endpoint.
    */
   counts() {

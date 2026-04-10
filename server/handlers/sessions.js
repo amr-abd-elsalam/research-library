@@ -369,6 +369,8 @@ async function _resolveAndWrite(sessionId, session) {
         const tmpPath = filePath + '.tmp';
         await fsp.writeFile(tmpPath, JSON.stringify(session, null, 2), 'utf8');
         await fsp.rename(tmpPath, filePath);
+        // Phase 95: Propagate file path to metadata index
+        sessionMetadataIndex.upsert(sessionId, { filePath });
         return true;
       } catch { continue; }
     }

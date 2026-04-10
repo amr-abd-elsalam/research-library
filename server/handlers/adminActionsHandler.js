@@ -17,6 +17,7 @@ import { gapPersister } from '../services/gapPersister.js';
 import { libraryHealthScorer } from '../services/libraryHealthScorer.js';
 import config from '../../config.js';
 import { featureFlags } from '../services/featureFlags.js';
+import { unifiedRegistry } from '../services/unifiedRegistry.js';
 
 // ── Per-action-type cooldown tracking (Phase 43) ───────────────
 const lastActionTime = new Map();
@@ -79,6 +80,30 @@ export async function handleAdminAction(req, res) {
     const segments = pathname.split('/');
     // segments: ['', 'api', 'admin', 'actions', '{action}']
     const action = segments[4] || '';
+
+    // ── Phase 95: Try unified registry first (backward compatible) ──
+    if (unifiedRegistry.enabled && unifiedRegistry.isPopulated) {
+      const uniResult = await unifiedRegistry.executeResolved(action, {}, { tier: 'admin' });
+      if (uniResult.executed) {
+        recordCooldown(action);
+        const durationMs = Date.now() - t0;
+        emitAction(action, {}, uniResult.result, durationMs);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true, action, result: uniResult.result ?? null }));
+        return;
+      }
+      if (uniResult.reason === 'permission_denied') {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Permission denied', code: 'FORBIDDEN' }));
+        return;
+      }
+      if (uniResult.reason.startsWith('execute_error')) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: uniResult.reason, code: 'EXECUTION_ERROR' }));
+        return;
+      }
+      // 'not_found' or 'no_execute_function' → fall through to existing logic
+    }
 
     // ── Cooldown check (Phase 43) ────────────────────────────
     const cooldownResult = checkCooldown(action);
