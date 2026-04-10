@@ -1170,6 +1170,11 @@ const ChatModule = (() => {
       setTimeout(function() {
         confirmEl.classList.add('feedback-auto-dismiss');
       }, 100);
+
+      // Phase 94: Remove DOM element after fade-out animation to prevent memory leak
+      confirmEl.addEventListener('animationend', function() {
+        confirmEl.remove();
+      });
     }
 
     btnUp.addEventListener('click', function() { handleFeedback('positive'); });

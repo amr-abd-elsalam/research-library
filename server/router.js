@@ -12,7 +12,7 @@ import { handleMetrics }    from './handlers/metricsHandler.js';
 import { handleAdminLog }   from './handlers/adminLogHandler.js';
 import { handleInspect }    from './handlers/inspectHandler.js';
 import { handleAuthVerify }  from './handlers/authHandler.js';
-import { handleCreateSession, handleGetSession, handleDeleteSession, handleListSessions, handleListUserSessions, handleSessionStream, extractSessionId, extractSessionAction, handleResumeSession, handleExportSession, handleSessionReplay } from './handlers/sessions.js';
+import { handleCreateSession, handleGetSession, handleDeleteSession, handleListSessions, handleListUserSessions, handleSessionStream, extractSessionId, extractSessionAction, handleResumeSession, handleExportSession, handleSessionReplay, handleUpdateSessionTitle, handleTogglePin } from './handlers/sessions.js';
 import { handleCommands } from './handlers/commandsHandler.js';
 import { handleWhoami }   from './handlers/whoamiHandler.js';
 import { handleSubmitFeedback, handleAdminFeedback } from './handlers/feedbackHandler.js';
@@ -318,6 +318,24 @@ export async function router(req, res) {
     requireAccess(req, res);
     if (res.writableEnded) return;
     await handleCreateSession(req, res);
+    return;
+  }
+
+  // PATCH /api/sessions/:id/title (Phase 94 — update session custom title)
+  if (method === 'PATCH' && extractSessionAction(url)?.action === 'title') {
+    requireAccess(req, res);
+    if (res.writableEnded) return;
+    await validateBody(req, res);
+    if (res.writableEnded) return;
+    await handleUpdateSessionTitle(req, res);
+    return;
+  }
+
+  // POST /api/sessions/:id/pin (Phase 94 — toggle session pin state)
+  if (method === 'POST' && extractSessionAction(url)?.action === 'pin') {
+    requireAccess(req, res);
+    if (res.writableEnded) return;
+    await handleTogglePin(req, res);
     return;
   }
 

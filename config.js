@@ -1006,6 +1006,17 @@ const config = {
     sidebarAutoRefresh:  true,      // Phase 93: true = الـ sidebar يتحدث تلقائياً عند استقبال SSE event | false = manual refresh فقط
   },
 
+  // ═══════════════════════════════════════════════════════════
+  // 50. سجل التنفيذ الموحد (EXECUTION_REGISTRY) — Phase 94
+  //    — يجمع الأوامر والعمليات في واجهة واحدة موحدة
+  //    — يوفر introspection موحد لكل حاجة ممكن تتنفذ في النظام
+  //    — لا تحتاج تعديل عادةً
+  // ═══════════════════════════════════════════════════════════
+  EXECUTION_REGISTRY: {
+    enabled:          true,     // true = تفعيل الـ unified execution registry | false = معطّل (backward compatible — CommandRegistry + ActionRegistry يشتغلوا كما هم)
+    logResolutions:   false,    // true = تسجيل كل resolve() call في الـ operational log (للتصحيح) | false = بدون logging
+  },
+
 };
 
 export default deepFreeze(config);

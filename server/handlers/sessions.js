@@ -14,6 +14,7 @@ import {
   resumeSession,
   exportSession,
 } from '../services/sessions.js';
+import { eventBus } from '../services/eventBus.js';
 import { sessionBudget } from '../services/sessionBudget.js';
 import { conversationContext } from '../services/conversationContext.js';
 import { sessionQualityScorer } from '../services/sessionQualityScorer.js';
@@ -22,6 +23,13 @@ import { logger } from '../services/logger.js';
 import { sessionReplaySerializer } from '../services/sessionReplaySerializer.js';
 import { sessionMetadataIndex } from '../services/sessionMetadataIndex.js';
 import { addConnection } from '../services/listeners/sessionStreamListener.js';
+import fsp from 'node:fs/promises';
+import fs from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __handler_dirname = dirname(fileURLToPath(import.meta.url));
+const SESSIONS_DIR = join(__handler_dirname, '..', '..', 'data', 'sessions');
 
 // ── Custom Error ───────────────────────────────────────────────
 export class SessionHandlerError extends Error {
@@ -347,8 +355,134 @@ export async function handleSessionStream(req, res) {
   });
 }
 
+// ── Helper: resolve + write session file (Phase 94) ────────────
+async function _resolveAndWrite(sessionId, session) {
+  const fileName = `${sessionId}.json`;
+  try {
+    const dateDirs = await fsp.readdir(SESSIONS_DIR);
+    dateDirs.sort((a, b) => b.localeCompare(a));
+    for (const dir of dateDirs) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dir)) continue;
+      const filePath = join(SESSIONS_DIR, dir, fileName);
+      try {
+        await fsp.access(filePath, fs.constants.F_OK);
+        const tmpPath = filePath + '.tmp';
+        await fsp.writeFile(tmpPath, JSON.stringify(session, null, 2), 'utf8');
+        await fsp.rename(tmpPath, filePath);
+        return true;
+      } catch { continue; }
+    }
+  } catch { /* sessions dir missing */ }
+  return false;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PATCH /api/sessions/:id/title — Update session custom title (Phase 94)
+// ═══════════════════════════════════════════════════════════════
+export async function handleUpdateSessionTitle(req, res) {
+  if (!config.SESSIONS?.enabled) {
+    sessionsDisabledResponse(res);
+    return;
+  }
+
+  const body = req._validatedBody || {};
+  const title = body.title;
+  if (!title || typeof title !== 'string' || title.trim().length === 0 || title.trim().length > 100) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'العنوان مطلوب (1-100 حرف)', code: 'INVALID_TITLE' }));
+    return;
+  }
+
+  // Extract session ID from URL using extractSessionAction (defined below)
+  const actionInfo = extractSessionAction(req.url);
+  const sessionId = actionInfo?.id;
+  if (!sessionId) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'معرّف الجلسة مطلوب', code: 'MISSING_SESSION_ID' }));
+    return;
+  }
+
+  const session = await getSession(sessionId);
+  if (!session) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'الجلسة غير موجودة', code: 'SESSION_NOT_FOUND' }));
+    return;
+  }
+
+  const ipHash = hashIPFromRequest(req);
+  if (session.ip_hash && session.ip_hash !== ipHash) {
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'غير مسموح', code: 'FORBIDDEN' }));
+    return;
+  }
+
+  const trimmedTitle = title.trim();
+  session.custom_title = trimmedTitle;
+
+  const written = await _resolveAndWrite(sessionId, session);
+  if (!written) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'ملف الجلسة غير موجود', code: 'FILE_NOT_FOUND' }));
+    return;
+  }
+
+  sessionMetadataIndex.upsert(sessionId, { custom_title: trimmedTitle });
+  eventBus.emit('session:meta_updated', { sessionId, ipHash, field: 'title', timestamp: Date.now() });
+
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ ok: true, custom_title: trimmedTitle }));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// POST /api/sessions/:id/pin — Toggle session pin state (Phase 94)
+// ═══════════════════════════════════════════════════════════════
+export async function handleTogglePin(req, res) {
+  if (!config.SESSIONS?.enabled) {
+    sessionsDisabledResponse(res);
+    return;
+  }
+
+  const actionInfo = extractSessionAction(req.url);
+  const sessionId = actionInfo?.id;
+  if (!sessionId) {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'معرّف الجلسة مطلوب', code: 'MISSING_SESSION_ID' }));
+    return;
+  }
+
+  const session = await getSession(sessionId);
+  if (!session) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'الجلسة غير موجودة', code: 'SESSION_NOT_FOUND' }));
+    return;
+  }
+
+  const ipHash = hashIPFromRequest(req);
+  if (session.ip_hash && session.ip_hash !== ipHash) {
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'غير مسموح', code: 'FORBIDDEN' }));
+    return;
+  }
+
+  const newPinned = !(session.pinned || false);
+  session.pinned = newPinned;
+
+  const written = await _resolveAndWrite(sessionId, session);
+  if (!written) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'ملف الجلسة غير موجود', code: 'FILE_NOT_FOUND' }));
+    return;
+  }
+
+  sessionMetadataIndex.upsert(sessionId, { pinned: newPinned });
+  eventBus.emit('session:meta_updated', { sessionId, ipHash, field: 'pin', timestamp: Date.now() });
+
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ ok: true, pinned: newPinned }));
+}
+
 // ── Session action URL matcher ─────────────────────────────────
-const SESSION_ACTION_RE = /^\/api\/sessions\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/(resume|export|replay)\/?$/i;
+const SESSION_ACTION_RE = /^\/api\/sessions\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/(resume|export|replay|title|pin)\/?$/i;
 
 /**
  * Extracts session ID and action from URLs like /api/sessions/:id/resume

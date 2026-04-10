@@ -17,6 +17,8 @@ const SidebarModule = (() => {
   let _isOpen       = false;
   let _eventSource  = null;
   let _reconnectTimer = null;
+  let _searchInput    = null;
+  let _loadedSessions = [];
 
   /* ── Load sessions from API ────────────────── */
   async function _loadSessions() {
@@ -32,6 +34,7 @@ const SidebarModule = (() => {
       }
       var data = await res.json();
       var sessions = data.sessions || [];
+      _loadedSessions = sessions;
       _renderSessionList(sessions);
     } catch (_err) {
       _renderEmpty();
@@ -77,11 +80,46 @@ const SidebarModule = (() => {
         item.setAttribute('role', 'button');
         item.setAttribute('tabindex', '0');
 
-        // Title — first message or fallback
+        // Pinned visual class
+        if (session.pinned) {
+          item.classList.add('pinned');
+        }
+
+        // Title — custom_title or first message or fallback
         var title = document.createElement('div');
         title.className = 'sidebar-item-title';
-        title.textContent = session.first_message || 'محادثة بتاريخ ' + _formatDate(session.created_at);
+        title.textContent = session.custom_title || session.first_message || 'محادثة بتاريخ ' + _formatDate(session.created_at);
         item.appendChild(title);
+
+        // Double-click to edit title
+        title.addEventListener('dblclick', function(e) {
+          e.stopPropagation();
+          title.setAttribute('contenteditable', 'true');
+          title.focus();
+          var range = document.createRange();
+          range.selectNodeContents(title);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        });
+        title.addEventListener('blur', function() {
+          title.removeAttribute('contenteditable');
+          var newTitle = title.textContent.trim();
+          var originalTitle = session.custom_title || session.first_message || '';
+          if (newTitle && newTitle !== originalTitle) {
+            _handleTitleEdit(session.session_id, newTitle);
+          }
+        });
+        title.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            title.blur();
+          }
+          if (e.key === 'Escape') {
+            title.textContent = session.custom_title || session.first_message || '';
+            title.removeAttribute('contenteditable');
+          }
+        });
 
         // Meta — date + message count
         var meta = document.createElement('div');
@@ -101,6 +139,19 @@ const SidebarModule = (() => {
           _deleteSession(session.session_id);
         });
         item.appendChild(del);
+
+        // Pin button (Phase 94)
+        var pin = document.createElement('button');
+        pin.className = 'sidebar-item-pin' + (session.pinned ? ' pinned' : '');
+        pin.type = 'button';
+        pin.textContent = '\uD83D\uDCCC';
+        pin.title = session.pinned ? 'إلغاء التثبيت' : 'تثبيت المحادثة';
+        pin.setAttribute('aria-label', pin.title);
+        pin.addEventListener('click', function(e) {
+          e.stopPropagation();
+          _handleTogglePin(session.session_id);
+        });
+        item.appendChild(pin);
 
         // Click → switch to this session
         item.addEventListener('click', function() {
@@ -358,6 +409,47 @@ const SidebarModule = (() => {
     }
   }
 
+  /* ── Title edit + Pin toggle + Search (Phase 94) ── */
+  async function _handleTitleEdit(sessionId, newTitle) {
+    if (!sessionId || !newTitle) return;
+    try {
+      var res = await fetch('/api/sessions/' + sessionId + '/title', {
+        method: 'PATCH',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, AuthModule.getAccessHeaders()),
+        body: JSON.stringify({ title: newTitle }),
+      });
+      if (res.ok) {
+        _loadSessions();
+      }
+    } catch (_) {}
+  }
+
+  async function _handleTogglePin(sessionId) {
+    if (!sessionId) return;
+    try {
+      var res = await fetch('/api/sessions/' + sessionId + '/pin', {
+        method: 'POST',
+        headers: AuthModule.getAccessHeaders(),
+      });
+      if (res.ok) {
+        _loadSessions();
+      }
+    } catch (_) {}
+  }
+
+  function _filterSessions(query) {
+    if (!query || !query.trim()) {
+      _renderSessionList(_loadedSessions);
+      return;
+    }
+    var q = query.trim().toLowerCase();
+    var filtered = _loadedSessions.filter(function(s) {
+      var titleText = (s.custom_title || s.first_message || '').toLowerCase();
+      return titleText.indexOf(q) !== -1;
+    });
+    _renderSessionList(filtered);
+  }
+
   /* ── SSE auto-refresh (Phase 93) ───────────── */
   function _connectSSE() {
     if (_eventSource) return;
@@ -377,7 +469,7 @@ const SidebarModule = (() => {
       _eventSource.onmessage = function(event) {
         try {
           var data = JSON.parse(event.data);
-          if (data.type === 'session_updated') {
+          if (data.type === 'session_updated' || data.type === 'session_meta_updated') {
             _loadSessions();
           }
         } catch (_) {}
@@ -441,6 +533,14 @@ const SidebarModule = (() => {
       _newChatBtn.addEventListener('click', function() {
         _close();
         ChatModule.clear();
+      });
+    }
+
+    // Search input (Phase 94)
+    _searchInput = document.getElementById('sidebar-search');
+    if (_searchInput) {
+      _searchInput.addEventListener('input', function() {
+        _filterSessions(_searchInput.value);
       });
     }
 

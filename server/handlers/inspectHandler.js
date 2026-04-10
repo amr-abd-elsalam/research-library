@@ -53,6 +53,7 @@ import { refinementAnalytics }       from '../services/refinementAnalytics.js';
 import { strategyAnalytics }         from '../services/strategyAnalytics.js';
 import { sessionMetadataIndex }      from '../services/sessionMetadataIndex.js';
 import { counts as sessionStreamCounts } from '../services/listeners/sessionStreamListener.js';
+import { unifiedRegistry }               from '../services/unifiedRegistry.js';
 import config                        from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -235,6 +236,9 @@ export async function handleInspect(_req, res) {
 
       // ── Action Registry (Phase 80) ───────────────────────────
       actionRegistry: actionRegistry.counts(),
+
+      // ── Unified Execution Registry (Phase 94) ────────────────
+      unifiedRegistry: unifiedRegistry.counts(),
 
       // ── Query Planner (Phase 81) ─────────────────────────────
       queryPlanner: queryPlanner.counts(),

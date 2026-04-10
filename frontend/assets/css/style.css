@@ -1489,6 +1489,81 @@ img { max-width: 100%; display: block; }
   animation: feedbackFadeIn 0.3s ease forwards, feedbackFadeOut 0.5s ease 2.5s forwards;
 }
 
+/* ══════════════════════════════════════════════════════════
+   Phase 94: Sidebar Search + Pin + Title Edit
+══════════════════════════════════════════════════════════ */
+
+/* ── Sidebar Search Input ─────────────────────────────── */
+.sidebar-search-input {
+  width:         calc(100% - 16px);
+  margin:        8px;
+  padding:       8px 12px;
+  border:        1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size:     12px;
+  font-family:   inherit;
+  outline:       none;
+  background:    var(--bg-input);
+  color:         var(--text-primary);
+  direction:     rtl;
+}
+
+.sidebar-search-input:focus {
+  border-color: var(--accent-border);
+  box-shadow:   0 0 0 2px var(--accent-dim);
+}
+
+.sidebar-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ── Sidebar Pin Button ───────────────────────────────── */
+.sidebar-item-pin {
+  position:   absolute;
+  top:        8px;
+  left:       32px;
+  width:      24px;
+  height:     24px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border:     none;
+  cursor:     pointer;
+  font-size:  12px;
+  display:    flex;
+  align-items: center;
+  justify-content: center;
+  opacity:    0;
+  transition: all var(--speed) var(--ease);
+  color:      var(--text-muted);
+}
+
+.sidebar-item:hover .sidebar-item-pin,
+.sidebar-item-pin.pinned {
+  opacity: 1;
+}
+
+.sidebar-item-pin.pinned {
+  color: var(--accent-light);
+}
+
+.sidebar-item-pin:hover {
+  background: var(--accent-dim);
+}
+
+/* ── Sidebar Item Pinned Indicator ────────────────────── */
+.sidebar-item.pinned {
+  border-inline-end: 3px solid var(--accent);
+}
+
+/* ── Sidebar Title Editable ───────────────────────────── */
+.sidebar-item-title[contenteditable="true"] {
+  outline:       1px solid var(--accent-border);
+  border-radius: 4px;
+  padding:       2px 4px;
+  background:    var(--bg-input);
+  cursor:        text;
+}
+
 @keyframes feedbackFadeOut {
   from { opacity: 1; transform: translateY(0); }
   to   { opacity: 0; transform: translateY(-8px); pointer-events: none; }

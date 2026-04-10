@@ -94,7 +94,34 @@ export function reset() {
   connections.clear();
 }
 
+/**
+ * Handler for session:meta_updated events (Phase 94).
+ * Pushes SSE event when session title/pin changes.
+ * Exported for unit testing.
+ */
+export function handleSessionMetaUpdated(data) {
+  if (config.SESSION_INDEX?.sseEnabled === false) return;
+  if (!data.ipHash || !data.sessionId) return;
+
+  const clients = connections.get(data.ipHash);
+  if (!clients || clients.size === 0) return;
+
+  const payload = JSON.stringify({
+    type:      'session_meta_updated',
+    sessionId: data.sessionId,
+    field:     data.field || null,
+    timestamp: Date.now(),
+  });
+
+  for (const res of clients) {
+    try {
+      res.write(`data: ${payload}\n\n`);
+    } catch { /* client disconnected */ }
+  }
+}
+
 export function register() {
   eventBus.on('pipeline:complete', handlePipelineComplete);
   eventBus.on('pipeline:cacheHit', handlePipelineCacheHit);
+  eventBus.on('session:meta_updated', handleSessionMetaUpdated);
 }

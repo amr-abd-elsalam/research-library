@@ -97,6 +97,8 @@ class SessionMetadataIndex {
                 topic_filter:  data.topic_filter || null,
                 first_message: firstMessage,
                 ip_hash:       data.ip_hash || null,
+                custom_title:  data.custom_title || null,
+                pinned:        data.pinned || false,
               });
 
               loaded++;
@@ -131,6 +133,8 @@ class SessionMetadataIndex {
               topic_filter:  data.topic_filter || null,
               first_message: firstMessage,
               ip_hash:       data.ip_hash || null,
+              custom_title:  data.custom_title || null,
+              pinned:        data.pinned || false,
             });
 
             loaded++;
@@ -185,6 +189,12 @@ class SessionMetadataIndex {
       if (metadata.topic_filter !== undefined) {
         existing.topic_filter = metadata.topic_filter;
       }
+      if (metadata.custom_title !== undefined) {
+        existing.custom_title = metadata.custom_title;
+      }
+      if (metadata.pinned !== undefined) {
+        existing.pinned = metadata.pinned;
+      }
     } else {
       // New entry
       const now = new Date().toISOString();
@@ -202,6 +212,8 @@ class SessionMetadataIndex {
               : metadata.first_message)
           : null,
         ip_hash:       metadata.ip_hash || null,
+        custom_title:  metadata.custom_title || null,
+        pinned:        metadata.pinned || false,
       });
 
       // Enforce max after adding new entry
@@ -233,8 +245,11 @@ class SessionMetadataIndex {
       entries = entries.filter(e => e.ip_hash === ipHash);
     }
 
-    // Sort by last_active DESC (most recent first)
+    // Sort: pinned first, then by last_active DESC (most recent first)
     entries.sort((a, b) => {
+      const pinA = a.pinned ? 1 : 0;
+      const pinB = b.pinned ? 1 : 0;
+      if (pinA !== pinB) return pinB - pinA;
       const tA = a.last_active ? new Date(a.last_active).getTime() : 0;
       const tB = b.last_active ? new Date(b.last_active).getTime() : 0;
       return tB - tA;

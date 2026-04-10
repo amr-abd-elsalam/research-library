@@ -142,6 +142,15 @@ class ConfigValidator {
           return { ok: true };
         },
       },
+      {
+        name: 'EXECUTION_REGISTRY_requires_COMMANDS',
+        check: () => {
+          if (config.EXECUTION_REGISTRY?.enabled === true && config.COMMANDS?.enabled !== true) {
+            return { ok: false, message: 'EXECUTION_REGISTRY.enabled is true but COMMANDS.enabled is false — unified registry has no commands to import', severity: 'warning' };
+          }
+          return { ok: true };
+        },
+      },
     ];
   }
 

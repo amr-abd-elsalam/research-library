@@ -38,6 +38,7 @@ import { actionRegistry } from './services/actionRegistry.js';
 import { refinementAnalytics } from './services/refinementAnalytics.js';
 import { strategyAnalytics } from './services/strategyAnalytics.js';
 import { sessionMetadataIndex } from './services/sessionMetadataIndex.js';
+import { unifiedRegistry } from './services/unifiedRegistry.js';
 
 // ── Timeout helper (for bootstrap-specific timeouts) ──────────
 function raceTimeout(promise, ms) {
@@ -223,6 +224,11 @@ class BootstrapManager {
     if (actionRegistry.enabled) {
       const importedCount = actionRegistry.importFromCommandRegistry();
       logger.info('bootstrap', `ActionRegistry: imported ${importedCount} command(s) from CommandRegistry`);
+    }
+
+    // ── Unified Execution Registry (Phase 94) ────────────────
+    if (unifiedRegistry.enabled) {
+      unifiedRegistry.populateFromRegistries(commandRegistry, actionRegistry);
     }
 
     // ── Stages 3+4: qdrant + gemini (parallel) ───────────────

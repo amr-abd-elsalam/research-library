@@ -44,10 +44,10 @@ describe('ConfigValidator Structure', () => {
     assert.ok('lastResult' in counts, 'should have lastResult key');
   });
 
-  // T-CV04: counts().totalRules is 13 (Phase 93: was 12, +SIDEBAR_SSE_requires_SESSIONS)
-  it('T-CV04: counts().totalRules is 13', () => {
+  // T-CV04: counts().totalRules is 14 (Phase 94: was 13, +EXECUTION_REGISTRY_requires_COMMANDS)
+  it('T-CV04: counts().totalRules is 14', () => {
     const counts = configValidator.counts();
-    assert.strictEqual(counts.totalRules, 13, 'should have 13 validation rules');
+    assert.strictEqual(counts.totalRules, 14, 'should have 14 validation rules');
   });
 
   // T-CV05: reset() clears lastResult to null
@@ -139,11 +139,11 @@ describe('Validation Rules Detail', () => {
     assert.ok(fresh.checkedAt > 0, 'fresh result should have valid checkedAt');
   });
 
-  // T-CV15: New ConfigValidator instances have null lastResult (Phase 93: 13 rules)
+  // T-CV15: New ConfigValidator instances have null lastResult (Phase 94: 14 rules)
   it('T-CV15: new instances have null lastResult', () => {
     const instance = new ConfigValidator();
     assert.strictEqual(instance.counts().lastResult, null);
-    assert.strictEqual(instance.counts().totalRules, 13);
+    assert.strictEqual(instance.counts().totalRules, 14);
   });
 });
 
@@ -207,9 +207,9 @@ describe('QUERY_PLANNING Validation Rule', () => {
     assert.strictEqual(hasQPWarning, false, 'should not have QUERY_PLANNING warning when both disabled');
   });
 
-  // T-CV22: QUERY_PLANNING rule exists in rules (13 total after Phase 93)
-  it('T-CV22: rule count is 13 and includes QUERY_PLANNING rule', () => {
-    assert.strictEqual(configValidator.counts().totalRules, 13);
+  // T-CV22: QUERY_PLANNING rule exists in rules (14 total after Phase 94)
+  it('T-CV22: rule count is 14 and includes QUERY_PLANNING rule', () => {
+    assert.strictEqual(configValidator.counts().totalRules, 14);
     // Validate runs all rules — with default config, no errors or warnings expected
     const result = configValidator.validate();
     assert.strictEqual(result.valid, true);
@@ -258,9 +258,9 @@ describe('SESSION_INDEX Validation Rule', () => {
     assert.strictEqual(hasSIWarning, false, 'should not have SESSION_INDEX warning when both enabled');
   });
 
-  // T-CV26: rule count is 13 and rule exists (Phase 93: was 12)
-  it('T-CV26: rule count is 13 after Phase 93', () => {
-    assert.strictEqual(configValidator.counts().totalRules, 13);
+  // T-CV26: rule count is 14 and rule exists (Phase 94: was 13)
+  it('T-CV26: rule count is 14 after Phase 94', () => {
+    assert.strictEqual(configValidator.counts().totalRules, 14);
     const result = configValidator.validate();
     assert.strictEqual(result.valid, true);
   });
@@ -280,8 +280,8 @@ describe('PER_USER_ISOLATION Validation Rule', () => {
   });
 
   // T-CV28: rule count includes PER_USER_ISOLATION rule
-  it('T-CV28: rule count is 13 including PER_USER_ISOLATION and SIDEBAR_SSE', () => {
-    assert.strictEqual(configValidator.counts().totalRules, 13);
+  it('T-CV28: rule count is 14 including PER_USER_ISOLATION and SIDEBAR_SSE and EXECUTION_REGISTRY', () => {
+    assert.strictEqual(configValidator.counts().totalRules, 14);
     // Validate with default config — should pass cleanly
     const result = configValidator.validate();
     assert.strictEqual(result.valid, true);
@@ -302,11 +302,29 @@ describe('SIDEBAR_SSE Validation Rule', () => {
     assert.strictEqual(hasWarning, false, 'should not have sseEnabled warning when SESSIONS enabled');
   });
 
-  // T-CV30: rule count is 13 including SIDEBAR_SSE rule
-  it('T-CV30: rule count is 13 including SIDEBAR_SSE', () => {
-    assert.strictEqual(configValidator.counts().totalRules, 13);
+  // T-CV30: rule count is 14 including SIDEBAR_SSE and EXECUTION_REGISTRY rules (Phase 94: was 13)
+  it('T-CV30: rule count is 14 including SIDEBAR_SSE and EXECUTION_REGISTRY', () => {
+    assert.strictEqual(configValidator.counts().totalRules, 14);
     const result = configValidator.validate();
     assert.strictEqual(result.valid, true);
     assert.strictEqual(result.errors.length, 0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Block 11: EXECUTION_REGISTRY Rule (Phase 94)
+// ═══════════════════════════════════════════════════════════════
+describe('EXECUTION_REGISTRY Validation Rule', () => {
+
+  // T-CV31: EXECUTION_REGISTRY_requires_COMMANDS — no warning with default config (both enabled)
+  it('T-CV31: no warning when both EXECUTION_REGISTRY and COMMANDS enabled (default)', () => {
+    const result = configValidator.validate();
+    const hasWarning = result.warnings.some(w => w.includes('EXECUTION_REGISTRY'));
+    assert.strictEqual(hasWarning, false, 'should not have EXECUTION_REGISTRY warning when COMMANDS enabled');
+  });
+
+  // T-CV32: rule count is 14 including EXECUTION_REGISTRY rule
+  it('T-CV32: rule count is 14', () => {
+    assert.strictEqual(configValidator.counts().totalRules, 14);
   });
 });
