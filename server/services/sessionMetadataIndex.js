@@ -25,6 +25,7 @@ class SessionMetadataIndex {
   #maxCached;
   #refreshOnStartup;
   #firstMessageMaxLen;
+  #perUserIsolation;
   #warmedUp = false;
 
   constructor() {
@@ -33,6 +34,7 @@ class SessionMetadataIndex {
     this.#maxCached          = Math.max(cfg.maxCachedSessions ?? 1000, 10);
     this.#refreshOnStartup   = cfg.refreshOnStartup !== false;
     this.#firstMessageMaxLen = Math.max(cfg.firstMessageMaxLen ?? 50, 10);
+    this.#perUserIsolation   = cfg.perUserIsolation !== false;  // Phase 92: default true (secure by default)
   }
 
   get enabled()    { return this.#enabled && config.SESSIONS?.enabled === true; }
@@ -219,11 +221,17 @@ class SessionMetadataIndex {
   /**
    * Returns sorted session list (by last_active DESC).
    * Replaces O(n) disk reads in handleListUserSessions().
-   * @param {{ limit?: number }} options
+   * Phase 92: supports ipHash filtering for per-user isolation.
+   * @param {{ limit?: number, ipHash?: string|null }} options
    * @returns {Array<object>}
    */
-  list({ limit = 50 } = {}) {
-    const entries = [...this.#index.values()];
+  list({ limit = 50, ipHash = null } = {}) {
+    let entries = [...this.#index.values()];
+
+    // Phase 92: Per-user isolation — filter by ip_hash when enabled
+    if (this.#perUserIsolation && ipHash) {
+      entries = entries.filter(e => e.ip_hash === ipHash);
+    }
 
     // Sort by last_active DESC (most recent first)
     entries.sort((a, b) => {
@@ -237,7 +245,7 @@ class SessionMetadataIndex {
 
   /**
    * Summary for inspect endpoint.
-   * @returns {{ enabled: boolean, warmedUp: boolean, cachedSessions: number, maxCached: number, firstMessageMaxLen: number }}
+   * @returns {{ enabled: boolean, warmedUp: boolean, cachedSessions: number, maxCached: number, firstMessageMaxLen: number, perUserIsolation: boolean }}
    */
   counts() {
     return {
@@ -246,6 +254,7 @@ class SessionMetadataIndex {
       cachedSessions:     this.#index.size,
       maxCached:          this.#maxCached,
       firstMessageMaxLen: this.#firstMessageMaxLen,
+      perUserIsolation:   this.#perUserIsolation,
     };
   }
 

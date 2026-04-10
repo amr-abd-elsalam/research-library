@@ -16,6 +16,7 @@ import config              from '../../config.js';
 import { buildPermissionContext } from '../services/permissionContext.js';
 import { suggestionsEngine }     from '../services/suggestionsEngine.js';
 import { conversationContext }   from '../services/conversationContext.js';
+import { hashIPFromRequest }     from '../services/sessions.js';
 
 // ── Active requests counter (for gauge) ────────────────────────
 let activeRequests = 0;
@@ -61,6 +62,7 @@ async function streamCachedResponse(res, cached, req, message, topic_filter, ses
     sessionId:   session_id,
     topicFilter: topic_filter,
     correlationId,
+    ipHash:      hashIPFromRequest(req),
     _requestId:  req._requestId || null,
     _analytics: {
       event_type:       'chat',
@@ -245,6 +247,14 @@ async function _handleChat(req, res) {
       // Pass intent classification to pipeline (Phase 21 — for stage gating + observability)
       if (queryIntent) ctx._queryIntent = queryIntent;
 
+      // Phase 92: Increment turn BEFORE pipeline so afterPipeline hook
+      // emits correct _turnNumber in pipeline:complete event.
+      // Also attach ipHash so it propagates to listeners via event payload.
+      if (session_id) {
+        ctx._turnNumber = conversationContext.incrementTurn(session_id);
+      }
+      ctx._ipHash = hashIPFromRequest(req);
+
       // Phase 82: Dynamic pipeline composition
       const composedStages = pipelineComposer.compose({
         isFollowUp: !!(history && history.length > 0),
@@ -263,10 +273,7 @@ async function _handleChat(req, res) {
       try {
         await runner.run(ctx, trace);
 
-        // Phase 82: Track turn after pipeline execution
-        if (session_id) {
-          ctx._turnNumber = conversationContext.incrementTurn(session_id);
-        }
+        // Phase 92: incrementTurn moved before pipeline execution (see above)
 
         // ── Generate suggestions (Phase 29 — zero cost, template-based) ──
         let suggestions = [];

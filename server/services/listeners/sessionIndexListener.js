@@ -27,6 +27,7 @@ export function handlePipelineComplete(data) {
     message_count_delta: 2,   // user message + assistant response
     first_message:       data.message || null,
     topic_filter:        data.topicFilter ?? undefined,
+    ip_hash:             data.ipHash || null,   // Phase 92: propagate for per-user isolation
   });
 }
 
@@ -43,6 +44,7 @@ export function handlePipelineCacheHit(data) {
     message_count_delta: 2,
     first_message:       data.message || null,
     topic_filter:        data.topicFilter ?? undefined,
+    ip_hash:             data.ipHash || null,   // Phase 92: propagate for per-user isolation
   });
 }
 

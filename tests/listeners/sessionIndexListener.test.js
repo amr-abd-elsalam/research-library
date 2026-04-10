@@ -110,4 +110,67 @@ describe('sessionIndexListener', () => {
 
     assert.strictEqual(sessionMetadataIndex.list().length, 0);
   });
+
+  // T-SIL09: handlePipelineComplete propagates ipHash from event data to upsert
+  it('T-SIL09: pipeline:complete propagates ipHash to index', () => {
+    handlePipelineComplete({
+      sessionId: 'sil-sess-09',
+      message: 'سؤال اختباري',
+      ipHash: 'hash-abc123',
+    });
+
+    const list = sessionMetadataIndex.list();
+    assert.strictEqual(list.length, 1);
+    assert.strictEqual(list[0].ip_hash, 'hash-abc123', 'ip_hash should be propagated from event data');
+  });
+
+  // T-SIL10: handlePipelineCacheHit propagates ipHash from event data to upsert
+  it('T-SIL10: pipeline:cacheHit propagates ipHash to index', () => {
+    handlePipelineCacheHit({
+      sessionId: 'sil-sess-10',
+      message: 'سؤال مكرر',
+      ipHash: 'hash-def456',
+    });
+
+    const list = sessionMetadataIndex.list();
+    assert.strictEqual(list.length, 1);
+    assert.strictEqual(list[0].ip_hash, 'hash-def456', 'ip_hash should be propagated from cache hit event');
+  });
+
+  // T-SIL11: handlePipelineComplete with missing ipHash passes null
+  it('T-SIL11: pipeline:complete with missing ipHash stores null', () => {
+    handlePipelineComplete({
+      sessionId: 'sil-sess-11',
+      message: 'سؤال بدون ip',
+    });
+
+    const list = sessionMetadataIndex.list();
+    assert.strictEqual(list.length, 1);
+    assert.strictEqual(list[0].ip_hash, null, 'ip_hash should be null when not provided');
+  });
+
+  // T-SIL12: ip_hash preserved on subsequent upserts (existing entry not overwritten with null)
+  it('T-SIL12: ip_hash preserved on subsequent upserts', () => {
+    // First call sets ip_hash
+    handlePipelineComplete({
+      sessionId: 'sil-sess-12',
+      message: 'السؤال الأول',
+      ipHash: 'hash-persist',
+    });
+
+    // Second call without ipHash — ip_hash should not be overwritten
+    // Note: upsert() for existing entries doesn't overwrite ip_hash (only sets on new entries)
+    // But the listener always passes ip_hash from data, which may be null
+    // The behavior depends on upsert() implementation for existing entries
+    handlePipelineComplete({
+      sessionId: 'sil-sess-12',
+      message: 'السؤال الثاني',
+      // ipHash not provided → null
+    });
+
+    const list = sessionMetadataIndex.list();
+    assert.strictEqual(list.length, 1);
+    // ip_hash on existing entries is not updated by upsert() (only new entries set it)
+    assert.strictEqual(list[0].ip_hash, 'hash-persist', 'ip_hash should be preserved from first upsert');
+  });
 });

@@ -1238,6 +1238,9 @@ if (config.PIPELINE?.enableHooks !== false) {
       _selectedStrategy: _ctx._selectedStrategy ?? null,
       _strategySkipped: _ctx._strategySkipped ?? true,
       _strategyQualitySource: _ctx._strategyQualitySource ?? null,
+
+      // ── Per-user isolation (Phase 92) ────────────────────────
+      ipHash: _ctx._ipHash || null,
     });
   });
 }

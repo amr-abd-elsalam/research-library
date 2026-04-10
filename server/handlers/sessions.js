@@ -241,9 +241,12 @@ export async function handleListUserSessions(req, res) {
   }
 
   try {
-    // Phase 91: use metadata index if available (O(1) vs O(n) disk reads)
+    // Phase 92: extract IP hash for per-user isolation
+    const ipHash = hashIPFromRequest(req);
+
+    // Phase 91+92: use metadata index with per-user isolation
     if (sessionMetadataIndex.enabled && sessionMetadataIndex.isWarmedUp) {
-      const sessions = sessionMetadataIndex.list({ limit: 50 });
+      const sessions = sessionMetadataIndex.list({ limit: 50, ipHash });
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ sessions }));
       return;
@@ -251,7 +254,7 @@ export async function handleListUserSessions(req, res) {
 
     // Fallback: original Phase 90 O(n) implementation
     const result = await listSessions({ limit: '50', offset: '0', since: '0' });
-    const sessions = (result.sessions || []).map(s => {
+    let sessions = (result.sessions || []).map(s => {
       return {
         session_id:    s.session_id,
         created_at:    s.created_at,
@@ -259,8 +262,14 @@ export async function handleListUserSessions(req, res) {
         message_count: s.message_count || 0,
         topic_filter:  s.topic_filter,
         first_message: null,
+        ip_hash:       s.ip_hash || null,
       };
     });
+
+    // Phase 92: filter by ip_hash in fallback path
+    if (ipHash && config.SESSION_INDEX?.perUserIsolation !== false) {
+      sessions = sessions.filter(s => s.ip_hash === ipHash);
+    }
 
     // Enrich each session with first user message (truncated)
     for (const s of sessions) {

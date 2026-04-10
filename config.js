@@ -1001,6 +1001,7 @@ const config = {
     maxCachedSessions:   1000,      // أقصى عدد جلسات في الفهرس — الأقدم يتحذف أولاً (حسب last_active)
     refreshOnStartup:    true,      // true = مسح مجلد الجلسات عند بدء التشغيل | false = الفهرس يتبنى تدريجياً من الأحداث فقط
     firstMessageMaxLen:  50,        // أقصى طول لأول رسالة محفوظة في الفهرس (بالأحرف)
+    perUserIsolation:    true,      // Phase 92: true = الـ sidebar يعرض جلسات المستخدم الحالي فقط (حسب IP hash) — آمن افتراضياً. false = عرض كل الجلسات (السلوك القديم)
   },
 
 };

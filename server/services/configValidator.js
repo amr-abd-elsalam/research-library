@@ -124,6 +124,15 @@ class ConfigValidator {
           return { ok: true };
         },
       },
+      {
+        name: 'PER_USER_ISOLATION_requires_SESSIONS',
+        check: () => {
+          if (config.SESSION_INDEX?.perUserIsolation === true && config.SESSIONS?.enabled !== true) {
+            return { ok: false, message: 'SESSION_INDEX.perUserIsolation is true but SESSIONS.enabled is false — isolation has no effect', severity: 'warning' };
+          }
+          return { ok: true };
+        },
+      },
     ];
   }
 

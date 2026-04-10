@@ -325,10 +325,83 @@ describe('SessionMetadataIndex — counts + reset', () => {
     assert.strictEqual(typeof counts.cachedSessions, 'number');
     assert.strictEqual(typeof counts.maxCached, 'number');
     assert.strictEqual(typeof counts.firstMessageMaxLen, 'number');
+    assert.strictEqual(typeof counts.perUserIsolation, 'boolean');
     assert.strictEqual(counts.cachedSessions, 1);
 
     sessionMetadataIndex.reset();
     assert.strictEqual(sessionMetadataIndex.counts().cachedSessions, 0);
     assert.strictEqual(sessionMetadataIndex.isWarmedUp, false);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Block 7: Per-User Isolation — list() with ipHash (T-SMI21 to T-SMI26)
+// ═══════════════════════════════════════════════════════════════
+describe('SessionMetadataIndex — Per-User Isolation', () => {
+
+  // T-SMI21: list({ ipHash }) returns only sessions matching ip_hash
+  it('T-SMI21: list with ipHash filters by ip_hash', () => {
+    sessionMetadataIndex.upsert('sess-user-a1', { last_active: Date.now(), ip_hash: 'hash-aaa', message_count_delta: 2 });
+    sessionMetadataIndex.upsert('sess-user-a2', { last_active: Date.now(), ip_hash: 'hash-aaa', message_count_delta: 2 });
+    sessionMetadataIndex.upsert('sess-user-b1', { last_active: Date.now(), ip_hash: 'hash-bbb', message_count_delta: 2 });
+
+    const listA = sessionMetadataIndex.list({ ipHash: 'hash-aaa' });
+    assert.strictEqual(listA.length, 2, 'should return 2 sessions for hash-aaa');
+    assert.ok(listA.every(s => s.ip_hash === 'hash-aaa'), 'all entries should have ip_hash hash-aaa');
+
+    const listB = sessionMetadataIndex.list({ ipHash: 'hash-bbb' });
+    assert.strictEqual(listB.length, 1, 'should return 1 session for hash-bbb');
+    assert.strictEqual(listB[0].session_id, 'sess-user-b1');
+  });
+
+  // T-SMI22: list({ ipHash: null }) returns all sessions (backward compat)
+  it('T-SMI22: list with ipHash null returns all sessions', () => {
+    sessionMetadataIndex.upsert('sess-22a', { ip_hash: 'hash-x', message_count_delta: 2 });
+    sessionMetadataIndex.upsert('sess-22b', { ip_hash: 'hash-y', message_count_delta: 2 });
+
+    const list = sessionMetadataIndex.list({ ipHash: null });
+    assert.strictEqual(list.length, 2, 'should return all sessions when ipHash is null');
+  });
+
+  // T-SMI23: list({ ipHash: 'unknown' }) returns empty array when no match
+  it('T-SMI23: list with non-matching ipHash returns empty', () => {
+    sessionMetadataIndex.upsert('sess-23', { ip_hash: 'hash-known', message_count_delta: 2 });
+
+    const list = sessionMetadataIndex.list({ ipHash: 'hash-unknown' });
+    assert.strictEqual(list.length, 0, 'should return 0 sessions for unknown hash');
+  });
+
+  // T-SMI24: list() without ipHash returns all (backward compat — no param)
+  it('T-SMI24: list without ipHash param returns all sessions', () => {
+    sessionMetadataIndex.upsert('sess-24a', { ip_hash: 'hash-1', message_count_delta: 2 });
+    sessionMetadataIndex.upsert('sess-24b', { ip_hash: 'hash-2', message_count_delta: 2 });
+    sessionMetadataIndex.upsert('sess-24c', { ip_hash: 'hash-3', message_count_delta: 2 });
+
+    const list = sessionMetadataIndex.list();
+    assert.strictEqual(list.length, 3, 'should return all 3 sessions');
+  });
+
+  // T-SMI25: upsert() stores ip_hash correctly for new and existing entries
+  it('T-SMI25: upsert stores ip_hash on new entry and preserves on update', () => {
+    sessionMetadataIndex.upsert('sess-25', { ip_hash: 'hash-first', message_count_delta: 2 });
+    const list1 = sessionMetadataIndex.list();
+    assert.strictEqual(list1[0].ip_hash, 'hash-first');
+
+    // Second upsert without ip_hash — should not overwrite
+    sessionMetadataIndex.upsert('sess-25', { message_count_delta: 2 });
+    const list2 = sessionMetadataIndex.list();
+    assert.strictEqual(list2[0].ip_hash, 'hash-first', 'ip_hash should be preserved on update without ip_hash');
+  });
+
+  // T-SMI26: list({ ipHash, limit: 2 }) respects both ipHash filter AND limit
+  it('T-SMI26: list respects both ipHash and limit', () => {
+    for (let i = 0; i < 5; i++) {
+      sessionMetadataIndex.upsert(`sess-26-${i}`, { last_active: Date.now() + i, ip_hash: 'hash-same', message_count_delta: 2 });
+    }
+    sessionMetadataIndex.upsert('sess-26-other', { last_active: Date.now() + 10, ip_hash: 'hash-other', message_count_delta: 2 });
+
+    const list = sessionMetadataIndex.list({ ipHash: 'hash-same', limit: 2 });
+    assert.strictEqual(list.length, 2, 'should respect limit after filtering');
+    assert.ok(list.every(s => s.ip_hash === 'hash-same'), 'all should match ip_hash');
   });
 });

@@ -44,10 +44,10 @@ describe('ConfigValidator Structure', () => {
     assert.ok('lastResult' in counts, 'should have lastResult key');
   });
 
-  // T-CV04: counts().totalRules is 11 (Phase 91: was 10, +SESSIONS_without_SESSION_INDEX)
-  it('T-CV04: counts().totalRules is 11', () => {
+  // T-CV04: counts().totalRules is 12 (Phase 92: was 11, +PER_USER_ISOLATION_requires_SESSIONS)
+  it('T-CV04: counts().totalRules is 12', () => {
     const counts = configValidator.counts();
-    assert.strictEqual(counts.totalRules, 11, 'should have 11 validation rules');
+    assert.strictEqual(counts.totalRules, 12, 'should have 12 validation rules');
   });
 
   // T-CV05: reset() clears lastResult to null
@@ -139,11 +139,11 @@ describe('Validation Rules Detail', () => {
     assert.ok(fresh.checkedAt > 0, 'fresh result should have valid checkedAt');
   });
 
-  // T-CV15: New ConfigValidator instances have null lastResult (Phase 91: 11 rules)
+  // T-CV15: New ConfigValidator instances have null lastResult (Phase 92: 12 rules)
   it('T-CV15: new instances have null lastResult', () => {
     const instance = new ConfigValidator();
     assert.strictEqual(instance.counts().lastResult, null);
-    assert.strictEqual(instance.counts().totalRules, 11);
+    assert.strictEqual(instance.counts().totalRules, 12);
   });
 });
 
@@ -207,9 +207,9 @@ describe('QUERY_PLANNING Validation Rule', () => {
     assert.strictEqual(hasQPWarning, false, 'should not have QUERY_PLANNING warning when both disabled');
   });
 
-  // T-CV22: QUERY_PLANNING rule exists in rules (11 total after Phase 91)
-  it('T-CV22: rule count is 11 and includes QUERY_PLANNING rule', () => {
-    assert.strictEqual(configValidator.counts().totalRules, 11);
+  // T-CV22: QUERY_PLANNING rule exists in rules (12 total after Phase 92)
+  it('T-CV22: rule count is 12 and includes QUERY_PLANNING rule', () => {
+    assert.strictEqual(configValidator.counts().totalRules, 12);
     // Validate runs all rules — with default config, no errors or warnings expected
     const result = configValidator.validate();
     assert.strictEqual(result.valid, true);
@@ -258,10 +258,33 @@ describe('SESSION_INDEX Validation Rule', () => {
     assert.strictEqual(hasSIWarning, false, 'should not have SESSION_INDEX warning when both enabled');
   });
 
-  // T-CV26: rule count is 11 and rule exists
-  it('T-CV26: rule count is 11 after Phase 91', () => {
-    assert.strictEqual(configValidator.counts().totalRules, 11);
+  // T-CV26: rule count is 12 and rule exists (Phase 92: was 11)
+  it('T-CV26: rule count is 12 after Phase 92', () => {
+    assert.strictEqual(configValidator.counts().totalRules, 12);
     const result = configValidator.validate();
     assert.strictEqual(result.valid, true);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Block 9: PER_USER_ISOLATION Rule (Phase 92)
+// ═══════════════════════════════════════════════════════════════
+describe('PER_USER_ISOLATION Validation Rule', () => {
+
+  // T-CV27: PER_USER_ISOLATION_requires_SESSIONS — no warning with default config (both enabled)
+  it('T-CV27: no warning when both perUserIsolation and SESSIONS enabled (default)', () => {
+    // perUserIsolation defaults to true, SESSIONS.enabled defaults to true
+    const result = configValidator.validate();
+    const hasWarning = result.warnings.some(w => w.includes('perUserIsolation'));
+    assert.strictEqual(hasWarning, false, 'should not have perUserIsolation warning when SESSIONS enabled');
+  });
+
+  // T-CV28: rule count includes PER_USER_ISOLATION rule
+  it('T-CV28: rule count is 12 including PER_USER_ISOLATION', () => {
+    assert.strictEqual(configValidator.counts().totalRules, 12);
+    // Validate with default config — should pass cleanly
+    const result = configValidator.validate();
+    assert.strictEqual(result.valid, true);
+    assert.strictEqual(result.errors.length, 0);
   });
 });
