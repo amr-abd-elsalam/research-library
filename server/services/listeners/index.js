@@ -30,6 +30,7 @@ import { register as registerCost }            from './costListener.js';
 import { register as registerRefinement }      from './refinementListener.js';
 import { registerConfigRevalidationListener }  from './configRevalidationListener.js';
 import { register as registerStrategyAnalytics } from './strategyAnalyticsListener.js';
+import { register as registerSessionIndex }      from './sessionIndexListener.js';
 import { logger }                            from '../logger.js';
 
 /**
@@ -64,6 +65,7 @@ export function registerAllListeners() {
   registerRefinement();      // #24 — answer refinement metrics (Phase 78)
   registerConfigRevalidationListener();  // #25 — config re-validation on feature:toggled (Phase 80)
   registerStrategyAnalytics();           // #26 — strategy analytics feed (Phase 87)
+  registerSessionIndex();                // #27 — session metadata index feed (Phase 91)
 
-  logger.info('listeners', '26 EventBus listeners registered (analytics, cache, session, metrics, command, log, circuit, sessionStats, analyticsDigest, routing, context, suggestions, eviction, feedback, correlation, auditTrail, contentGap, quality, intelligence, configCache, grounding, citation, cost, refinement, configRevalidation, strategyAnalytics)');
+  logger.info('listeners', '27 EventBus listeners registered (analytics, cache, session, metrics, command, log, circuit, sessionStats, analyticsDigest, routing, context, suggestions, eviction, feedback, correlation, auditTrail, contentGap, quality, intelligence, configCache, grounding, citation, cost, refinement, configRevalidation, strategyAnalytics, sessionIndex)');
 }

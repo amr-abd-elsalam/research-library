@@ -51,6 +51,7 @@ import { sessionReplaySerializer }   from '../services/sessionReplaySerializer.j
 import { ragStrategySelector }       from '../services/ragStrategySelector.js';
 import { refinementAnalytics }       from '../services/refinementAnalytics.js';
 import { strategyAnalytics }         from '../services/strategyAnalytics.js';
+import { sessionMetadataIndex }      from '../services/sessionMetadataIndex.js';
 import config                        from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -251,6 +252,9 @@ export async function handleInspect(_req, res) {
 
       // ── Strategy Analytics (Phase 87) ────────────────────────
       strategyAnalytics: strategyAnalytics.counts(),
+
+      // ── Session Metadata Index (Phase 91) ────────────────────
+      sessionMetadataIndex: sessionMetadataIndex.counts(),
 
       // ── Observability (Phase 65) ──────────────────────────────
       observability: {

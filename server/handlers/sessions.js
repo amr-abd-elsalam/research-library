@@ -20,6 +20,7 @@ import { sessionQualityScorer } from '../services/sessionQualityScorer.js';
 import { contextPersister } from '../services/contextPersister.js';
 import { logger } from '../services/logger.js';
 import { sessionReplaySerializer } from '../services/sessionReplaySerializer.js';
+import { sessionMetadataIndex } from '../services/sessionMetadataIndex.js';
 
 // ── Custom Error ───────────────────────────────────────────────
 export class SessionHandlerError extends Error {
@@ -227,9 +228,11 @@ export async function handleListSessions(req, res) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// GET /api/sessions — User-scoped session list (Phase 90)
+// GET /api/sessions — User-scoped session list (Phase 90, optimized Phase 91)
 // Returns last 50 sessions sorted by last_activity DESC.
 // Each session includes first_message (truncated to 50 chars).
+// Phase 91: uses in-memory SessionMetadataIndex when available (O(1)).
+// Falls back to O(n) disk reads when index is disabled or not warmed up.
 // ═══════════════════════════════════════════════════════════════
 export async function handleListUserSessions(req, res) {
   if (!config.SESSIONS.enabled) {
@@ -238,6 +241,15 @@ export async function handleListUserSessions(req, res) {
   }
 
   try {
+    // Phase 91: use metadata index if available (O(1) vs O(n) disk reads)
+    if (sessionMetadataIndex.enabled && sessionMetadataIndex.isWarmedUp) {
+      const sessions = sessionMetadataIndex.list({ limit: 50 });
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ sessions }));
+      return;
+    }
+
+    // Fallback: original Phase 90 O(n) implementation
     const result = await listSessions({ limit: '50', offset: '0', since: '0' });
     const sessions = (result.sessions || []).map(s => {
       return {

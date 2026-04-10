@@ -115,6 +115,15 @@ class ConfigValidator {
           return { ok: true };
         },
       },
+      {
+        name: 'SESSIONS_without_SESSION_INDEX',
+        check: () => {
+          if (config.SESSIONS?.enabled === true && config.SESSION_INDEX?.enabled === false) {
+            return { ok: false, message: 'SESSIONS enabled without SESSION_INDEX — sidebar will use slower disk reads for session list', severity: 'warning' };
+          }
+          return { ok: true };
+        },
+      },
     ];
   }
 

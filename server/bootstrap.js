@@ -37,6 +37,7 @@ import { configValidator } from './services/configValidator.js';
 import { actionRegistry } from './services/actionRegistry.js';
 import { refinementAnalytics } from './services/refinementAnalytics.js';
 import { strategyAnalytics } from './services/strategyAnalytics.js';
+import { sessionMetadataIndex } from './services/sessionMetadataIndex.js';
 
 // ── Timeout helper (for bootstrap-specific timeouts) ──────────
 function raceTimeout(promise, ms) {
@@ -127,6 +128,15 @@ class BootstrapManager {
     if (featureFlags.persistEnabled) {
       await featureFlags.ensureDir();
       await featureFlags.restore();
+    }
+
+    // ── Session Metadata Index warm-up (Phase 91) ────────────
+    if (sessionMetadataIndex.enabled && config.SESSION_INDEX?.refreshOnStartup !== false) {
+      try {
+        await sessionMetadataIndex.warmUp('./data/sessions');
+      } catch (err) {
+        logger.warn('bootstrap', 'session metadata index warm-up failed (non-fatal)', { error: err.message });
+      }
     }
 
     // ── LLM Provider Registration (Phase 74) ─────────────────

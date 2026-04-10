@@ -44,10 +44,10 @@ describe('ConfigValidator Structure', () => {
     assert.ok('lastResult' in counts, 'should have lastResult key');
   });
 
-  // T-CV04: counts().totalRules is 10 (Phase 86: was 9, +STREAMING_REVISION_requires_GROUNDING)
-  it('T-CV04: counts().totalRules is 10', () => {
+  // T-CV04: counts().totalRules is 11 (Phase 91: was 10, +SESSIONS_without_SESSION_INDEX)
+  it('T-CV04: counts().totalRules is 11', () => {
     const counts = configValidator.counts();
-    assert.strictEqual(counts.totalRules, 10, 'should have 10 validation rules');
+    assert.strictEqual(counts.totalRules, 11, 'should have 11 validation rules');
   });
 
   // T-CV05: reset() clears lastResult to null
@@ -139,11 +139,11 @@ describe('Validation Rules Detail', () => {
     assert.ok(fresh.checkedAt > 0, 'fresh result should have valid checkedAt');
   });
 
-  // T-CV15: New ConfigValidator instances have null lastResult (Phase 86: 10 rules)
+  // T-CV15: New ConfigValidator instances have null lastResult (Phase 91: 11 rules)
   it('T-CV15: new instances have null lastResult', () => {
     const instance = new ConfigValidator();
     assert.strictEqual(instance.counts().lastResult, null);
-    assert.strictEqual(instance.counts().totalRules, 10);
+    assert.strictEqual(instance.counts().totalRules, 11);
   });
 });
 
@@ -242,5 +242,26 @@ describe('STREAMING_REVISION Validation Rule', () => {
     const result = configValidator.validate();
     const hasSRWarning = result.warnings.some(w => w.includes('streamingRevisionEnabled'));
     assert.strictEqual(hasSRWarning, false, 'should not have streaming revision warning when disabled');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Block 8: SESSION_INDEX Rule (Phase 91)
+// ═══════════════════════════════════════════════════════════════
+describe('SESSION_INDEX Validation Rule', () => {
+
+  // T-CV25: SESSIONS_without_SESSION_INDEX — no warning with default config (both enabled)
+  it('T-CV25: no warning when both SESSIONS and SESSION_INDEX enabled (default)', () => {
+    // Both SESSIONS.enabled (true) and SESSION_INDEX.enabled (true) by default
+    const result = configValidator.validate();
+    const hasSIWarning = result.warnings.some(w => w.includes('SESSION_INDEX'));
+    assert.strictEqual(hasSIWarning, false, 'should not have SESSION_INDEX warning when both enabled');
+  });
+
+  // T-CV26: rule count is 11 and rule exists
+  it('T-CV26: rule count is 11 after Phase 91', () => {
+    assert.strictEqual(configValidator.counts().totalRules, 11);
+    const result = configValidator.validate();
+    assert.strictEqual(result.valid, true);
   });
 });
