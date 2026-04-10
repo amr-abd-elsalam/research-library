@@ -28,7 +28,8 @@ describe('SuggestionsEngine.generate()', () => {
 
   // T-SE02: generate when feature disabled → empty array
   it('T-SE02: generate when feature disabled → empty array', () => {
-    // featureFlags default: SUGGESTIONS = false (no override)
+    // Phase 90: SUGGESTIONS now enabled by default — explicitly disable
+    featureFlags.setOverride('SUGGESTIONS', false);
     const convCtx = {
       turns: 5,
       entities: ['الذكاء الاصطناعي'],
@@ -148,7 +149,8 @@ describe('SuggestionsEngine.generate()', () => {
 
   // T-SE10: recordClick() when disabled → no-op
   it('T-SE10: recordClick when disabled is a no-op', () => {
-    // No setOverride — SUGGESTIONS defaults to false
+    // Phase 90: SUGGESTIONS now enabled by default — explicitly disable
+    featureFlags.setOverride('SUGGESTIONS', false);
     suggestionsEngine.recordClick('test suggestion');
     const counts = suggestionsEngine.getClickCounts();
     assert.strictEqual(counts.totalClicks, 0);
@@ -158,6 +160,7 @@ describe('SuggestionsEngine.generate()', () => {
   // T-SE11: getClickCounts() returns correct structure with top sorted
   it('T-SE11: getClickCounts returns sorted top suggestions', () => {
     featureFlags.setOverride('SUGGESTIONS', true);
+    suggestionsEngine.reset(); // Phase 90: clear any prior state since SUGGESTIONS now enabled by default
     suggestionsEngine.recordClick('A');
     suggestionsEngine.recordClick('B');
     suggestionsEngine.recordClick('A');
@@ -174,6 +177,7 @@ describe('SuggestionsEngine.generate()', () => {
   // T-SE12: reset() clears click data
   it('T-SE12: reset clears click data', () => {
     featureFlags.setOverride('SUGGESTIONS', true);
+    suggestionsEngine.reset(); // Phase 90: clear any prior state
     suggestionsEngine.recordClick('test');
     assert.strictEqual(suggestionsEngine.getClickCounts().totalClicks, 1);
     suggestionsEngine.reset();

@@ -22,7 +22,8 @@ describe('AnswerGroundingChecker', () => {
 
   // T-AGC01: disabled — check() returns score: 1, totalClaims: 0
   it('T-AGC01: returns score 1 and totalClaims 0 when disabled', async () => {
-    // Config default is enabled: false, no override set
+    // Phase 90: GROUNDING now enabled by default — explicitly disable via override
+    featureFlags.setOverride('GROUNDING', false);
     const result = await checker.check('المنصة توفر مساعد بحثي ذكي', 'بعض المحتوى');
     assert.strictEqual(result.score, 1);
     assert.strictEqual(result.totalClaims, 0);
@@ -132,11 +133,11 @@ describe('AnswerGroundingChecker', () => {
   it('T-AGC11: counts returns correct structure', () => {
     const c1 = checker.counts();
     assert.strictEqual(typeof c1.enabled, 'boolean');
-    assert.strictEqual(c1.enabled, false); // default
+    assert.strictEqual(c1.enabled, true); // Phase 90: GROUNDING enabled by default
 
-    featureFlags.setOverride('GROUNDING', true);
+    featureFlags.setOverride('GROUNDING', false);
     const c2 = checker.counts();
-    assert.strictEqual(c2.enabled, true);
+    assert.strictEqual(c2.enabled, false);
   });
 
   // T-AGC12: reset() is callable (no-op — no error thrown)
@@ -146,7 +147,8 @@ describe('AnswerGroundingChecker', () => {
 
   // T-AGC13: disabled — check() returns semanticUsed: false
   it('T-AGC13: disabled returns semanticUsed false', async () => {
-    // GROUNDING disabled + SEMANTIC_MATCHING disabled
+    // Phase 90: GROUNDING now enabled by default — explicitly disable
+    featureFlags.setOverride('GROUNDING', false);
     const result = await checker.check('بعض النص هنا', 'محتوى السياق');
     assert.strictEqual(result.semanticUsed, false);
   });

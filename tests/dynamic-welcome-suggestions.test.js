@@ -182,6 +182,9 @@ describe('DynamicWelcomeSuggestions', () => {
 
   // T-DWS11: enabled getter reflects combined state
   it('T-DWS11: enabled getter reflects SUGGESTIONS + libraryIndex state', () => {
+    // Phase 90: SUGGESTIONS now enabled by default — explicitly disable both first
+    featureFlags.setOverride('SUGGESTIONS', false);
+
     // Both off
     assert.strictEqual(dynamicWelcomeSuggestions.enabled, false);
 
@@ -194,7 +197,7 @@ describe('DynamicWelcomeSuggestions', () => {
     assert.strictEqual(dynamicWelcomeSuggestions.enabled, true);
 
     // SUGGESTIONS off, libraryIndex on
-    featureFlags.clearOverride('SUGGESTIONS');
+    featureFlags.setOverride('SUGGESTIONS', false);
     assert.strictEqual(dynamicWelcomeSuggestions.enabled, false);
   });
 

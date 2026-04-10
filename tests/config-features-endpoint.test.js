@@ -93,14 +93,14 @@ describe('handleConfigFeatures()', () => {
     assert.strictEqual(data.SEMANTIC_MATCHING, false);
   });
 
-  // T-CF05: reflects runtime override
+  // T-CF05: reflects runtime override (Phase 90: SUGGESTIONS now true by default)
   it('T-CF05: reflects runtime override', async () => {
-    featureFlags.setOverride('FEEDBACK', true);
+    featureFlags.setOverride('FEEDBACK', false);
     const res = createMockRes();
     await handleConfigFeatures({}, res);
     const data = res.json;
-    assert.strictEqual(data.FEEDBACK, true);
-    assert.strictEqual(data.SUGGESTIONS, false); // not overridden
+    assert.strictEqual(data.FEEDBACK, false);    // overridden to false
+    assert.strictEqual(data.SUGGESTIONS, true);  // Phase 90: config default is now true
   });
 
   // T-CF06: override removed — reverts to config value

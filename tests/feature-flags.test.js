@@ -36,11 +36,11 @@ describe('FeatureFlags', () => {
     assert.strictEqual(typeof result, 'boolean');
   });
 
-  // T-FF03: isEnabled — override true, config false → true (override wins)
-  it('T-FF03: override true wins over config false', () => {
-    assert.strictEqual(featureFlags.isEnabled('FEEDBACK'), false);
-    featureFlags.setOverride('FEEDBACK', true);
-    assert.strictEqual(featureFlags.isEnabled('FEEDBACK'), true);
+  // T-FF03: isEnabled — override false, config true → false (override wins)
+  it('T-FF03: override false wins over config true', () => {
+    assert.strictEqual(featureFlags.isEnabled('FEEDBACK'), true);  // Phase 90: config default is true
+    featureFlags.setOverride('FEEDBACK', false);
+    assert.strictEqual(featureFlags.isEnabled('FEEDBACK'), false); // override wins
   });
 
   // T-FF04: isEnabled — override false, config false → false (override wins, same value)

@@ -31,9 +31,10 @@ describe('FeedbackCollector', () => {
     feedbackCollector.reset();
   });
 
-  // T-FC01: submit() returns false when disabled (config default)
-  // submit() checks internal #enabled (static), which is false from config
-  it('T-FC01: submit returns false when disabled (config default)', async () => {
+  // T-FC01: submit() returns false when disabled via override
+  it('T-FC01: submit returns false when disabled via override', async () => {
+    // Phase 90: FEEDBACK now enabled by default — explicitly disable
+    featureFlags.setOverride('FEEDBACK', false);
     const result = await feedbackCollector.submit({
       correlationId: 'test-corr-001',
       rating: 'positive',
@@ -41,10 +42,10 @@ describe('FeedbackCollector', () => {
     assert.strictEqual(result, false);
   });
 
-  // T-FC02: counts() when disabled via featureFlags — shows enabled: false
-  it('T-FC02: counts shows enabled false with default config', () => {
+  // T-FC02: counts() shows enabled state (Phase 90: FEEDBACK now true by default)
+  it('T-FC02: counts shows enabled true with default config', () => {
     const c = feedbackCollector.counts();
-    assert.strictEqual(c.enabled, false);
+    assert.strictEqual(c.enabled, true);  // Phase 90: enabled by default
     assert.strictEqual(typeof c.totalPositive, 'number');
     assert.strictEqual(typeof c.totalNegative, 'number');
     assert.strictEqual(typeof c.recentCount, 'number');
@@ -52,9 +53,9 @@ describe('FeedbackCollector', () => {
 
   // T-FC03: enabled getter reflects featureFlags state after setOverride
   it('T-FC03: enabled getter reflects featureFlags state after setOverride', () => {
+    assert.strictEqual(feedbackCollector.enabled, true);  // Phase 90: enabled by default
+    featureFlags.setOverride('FEEDBACK', false);
     assert.strictEqual(feedbackCollector.enabled, false);
-    featureFlags.setOverride('FEEDBACK', true);
-    assert.strictEqual(feedbackCollector.enabled, true);
   });
 
   // T-FC04: submit() returns true after setOverride (BUG-3 fixed in Phase 51)
@@ -204,13 +205,13 @@ describe('FeedbackCollector', () => {
     assert.strictEqual(entries[0].comment.length, 200);
   });
 
-  // T-FC17: submit() still returns false when disabled (after BUG-3 fix)
-  it('T-FC17: submit returns false when feature disabled via clearOverride', async () => {
-    featureFlags.setOverride('FEEDBACK', true);
+  // T-FC17: submit() returns false when explicitly disabled via override
+  it('T-FC17: submit returns false when feature disabled via setOverride(false)', async () => {
+    // Phase 90: FEEDBACK now enabled by default — test disable via override
     const r1 = await feedbackCollector.submit({ correlationId: 'test-corr-017a', rating: 'positive' });
-    assert.strictEqual(r1, true, 'should succeed while enabled');
+    assert.strictEqual(r1, true, 'should succeed while enabled (default)');
 
-    featureFlags.clearOverride('FEEDBACK');
+    featureFlags.setOverride('FEEDBACK', false);
     const r2 = await feedbackCollector.submit({ correlationId: 'test-corr-017b', rating: 'positive' });
     assert.strictEqual(r2, false, 'should fail after disabling');
   });

@@ -22,7 +22,8 @@ describe('CitationMapper', () => {
 
   // T-CM01: disabled — map() returns empty citations + empty sourceRelevance
   it('T-CM01: returns empty when disabled', async () => {
-    // Config default is enabled: false, no override set
+    // Phase 90: CITATION now enabled by default — explicitly disable via override
+    featureFlags.setOverride('CITATION', false);
     const result = await mapper.map('بعض النص', [{ file: 'a.md', section: '', snippet: '', content: 'محتوى', score: 0.9 }], 'سياق');
     assert.deepStrictEqual(result.citations, []);
     assert.deepStrictEqual(result.sourceRelevance, []);
@@ -145,11 +146,11 @@ describe('CitationMapper', () => {
   it('T-CM11: counts returns correct structure', () => {
     const c1 = mapper.counts();
     assert.strictEqual(typeof c1.enabled, 'boolean');
-    assert.strictEqual(c1.enabled, false); // default
+    assert.strictEqual(c1.enabled, true); // Phase 90: CITATION enabled by default
 
-    featureFlags.setOverride('CITATION', true);
+    featureFlags.setOverride('CITATION', false);
     const c2 = mapper.counts();
-    assert.strictEqual(c2.enabled, true);
+    assert.strictEqual(c2.enabled, false);
   });
 
   // T-CM12: reset() callable — no-op (no error)
@@ -159,7 +160,8 @@ describe('CitationMapper', () => {
 
   // T-CM13: disabled — map() returns empty (no SEMANTIC_MATCHING effect)
   it('T-CM13: disabled returns empty regardless of SEMANTIC_MATCHING', async () => {
-    // CITATION disabled, SEMANTIC_MATCHING enabled — should still return empty
+    // Phase 90: CITATION now enabled by default — explicitly disable
+    featureFlags.setOverride('CITATION', false);
     featureFlags.setOverride('SEMANTIC_MATCHING', true);
     const result = await mapper.map('بعض النص', [{ file: 'a.md', section: '', snippet: '', content: 'محتوى', score: 0.9 }], 'سياق');
     assert.deepStrictEqual(result.citations, []);
