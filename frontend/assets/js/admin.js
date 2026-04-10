@@ -2309,7 +2309,8 @@
     try {
       // Fetch config to check if features are enabled
       var configData = await fetchConfig();
-      var qualityEnabled = configData && configData.QUALITY && configData.QUALITY.enabled;
+      // Phase 97: use effectiveEnabled (reflects runtime overrides) instead of enabled (config-only)
+      var qualityEnabled = configData && configData.QUALITY && (configData.QUALITY.effectiveEnabled === true || configData.QUALITY.enabled === true);
       var exportEnabled = configData && configData.EXPORT && configData.EXPORT.enabled;
 
       var html = '';
@@ -2741,6 +2742,7 @@
 
       var ga = data.groundingAnalytics;
       var agc = data.answerGroundingChecker || {};
+      var cm = data.citationMapper || {};
 
       if (!agc.enabled) {
         container.innerHTML = '<p class="admin-empty-msg">\u0641\u062D\u0635 \u062F\u0642\u0629 \u0627\u0644\u0625\u062C\u0627\u0628\u0627\u062A \u0645\u0639\u0637\u0651\u0644 \u2014 \u0641\u0639\u0651\u0644\u0647 \u0645\u0646 <code>GROUNDING.enabled: true</code></p>';
@@ -2754,13 +2756,27 @@
 
       var html = '';
 
-      // Stats cards
+      // Stats cards — Phase 97: enriched with grounding details + citation status
       var avgPct = Math.round(ga.avgScore * 100);
       var avgCls = avgPct >= 80 ? 'grounding-gauge--good' : avgPct >= 60 ? 'grounding-gauge--medium' : 'grounding-gauge--poor';
+      var statusLabel = avgPct >= 80 ? '\u062C\u064A\u062F\u0629' : avgPct >= 60 ? '\u0645\u062A\u0648\u0633\u0637\u0629' : '\u0636\u0639\u064A\u0641\u0629';
 
       html += '<div class="grounding-stats">';
       html += '<div class="grounding-stat-card"><div class="grounding-gauge ' + avgCls + '">' + avgPct + '%</div><div class="grounding-stat-label">\u0645\u0639\u062F\u0644 \u0627\u0644\u0627\u0633\u062A\u0646\u0627\u062F</div></div>';
       html += '<div class="grounding-stat-card"><div class="grounding-stat-value">' + ga.totalChecked + '</div><div class="grounding-stat-label">\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0641\u062D\u0648\u0635\u0627\u062A</div></div>';
+      html += '<div class="grounding-stat-card"><div class="grounding-stat-value">' + statusLabel + '</div><div class="grounding-stat-label">\u062D\u0627\u0644\u0629 \u0627\u0644\u062C\u0648\u062F\u0629</div></div>';
+      html += '<div class="grounding-stat-card"><div class="grounding-stat-value">' + (cm.enabled ? '\u0645\u0641\u0639\u0651\u0644' : '\u0645\u0639\u0637\u0651\u0644') + '</div><div class="grounding-stat-label">\u0625\u0633\u0646\u0627\u062F \u0627\u0644\u0645\u0635\u0627\u062F\u0631</div></div>';
+      html += '</div>';
+
+      // Grounding score interpretation
+      html += '<div style="margin-top:12px;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);font-size:0.85rem;color:var(--text-muted);line-height:1.6;">';
+      if (avgPct >= 80) {
+        html += '\u2705 \u0627\u0644\u0625\u062C\u0627\u0628\u0627\u062A \u0645\u0633\u062A\u0646\u062F\u0629 \u0628\u0634\u0643\u0644 \u062C\u064A\u062F \u0625\u0644\u0649 \u0645\u062D\u062A\u0648\u0649 \u0627\u0644\u0645\u0643\u062A\u0628\u0629. \u0645\u0639\u062F\u0644 \u0627\u0644\u0627\u0633\u062A\u0646\u0627\u062F ' + avgPct + '% \u064A\u0639\u0646\u064A \u0623\u0646 \u0627\u0644\u0646\u0645\u0648\u0630\u062C \u064A\u0644\u062A\u0632\u0645 \u0628\u0627\u0644\u0645\u062D\u062A\u0648\u0649 \u0627\u0644\u0645\u0642\u062F\u0651\u0645.';
+      } else if (avgPct >= 60) {
+        html += '\u26A0\uFE0F \u0645\u0639\u062F\u0644 \u0627\u0633\u062A\u0646\u0627\u062F \u0645\u062A\u0648\u0633\u0637 (' + avgPct + '%). \u0628\u0639\u0636 \u0627\u0644\u0625\u062C\u0627\u0628\u0627\u062A \u0642\u062F \u062A\u062A\u0636\u0645\u0646 \u0645\u0639\u0644\u0648\u0645\u0627\u062A \u063A\u064A\u0631 \u0645\u0648\u062C\u0648\u062F\u0629 \u0641\u064A \u0627\u0644\u0645\u0643\u062A\u0628\u0629. \u0631\u0627\u062C\u0639 \u0627\u0644\u0645\u062D\u062A\u0648\u0649 \u0648\u0623\u0636\u0641 \u0645\u0635\u0627\u062F\u0631 \u062C\u062F\u064A\u062F\u0629.';
+      } else {
+        html += '\uD83D\uDD34 \u0645\u0639\u062F\u0644 \u0627\u0633\u062A\u0646\u0627\u062F \u0636\u0639\u064A\u0641 (' + avgPct + '%). \u0627\u0644\u0625\u062C\u0627\u0628\u0627\u062A \u0642\u062F \u062A\u062A\u0636\u0645\u0646 \u0645\u0639\u0644\u0648\u0645\u0627\u062A \u0645\u0646 \u062E\u0627\u0631\u062C \u0627\u0644\u0645\u0643\u062A\u0628\u0629. \u0641\u0639\u0651\u0644 Answer Refinement \u0623\u0648 \u0623\u0636\u0641 \u0645\u062D\u062A\u0648\u0649 \u064A\u063A\u0637\u064A \u0627\u0644\u0645\u0648\u0627\u0636\u064A\u0639 \u0627\u0644\u0634\u0627\u0626\u0639\u0629.';
+      }
       html += '</div>';
 
       container.innerHTML = html;

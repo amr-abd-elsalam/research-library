@@ -352,7 +352,7 @@ const config = {
     // ── Adaptive Pipeline Analytics (Phase 22) ────────────────
     // يحلل بيانات الأداء المتراكمة ويقدم توصيات + تحسينات تلقائية
     // معطّل افتراضياً — فعّله بعد ما يكون عندك بيانات كافية (50+ request)
-    adaptiveEnabled:    false,    // true = تفعيل التحليل الذكي | false = معطّل (zero overhead)
+    adaptiveEnabled:    true,     // true = تفعيل التحليل الذكي | false = معطّل (zero overhead)
     adaptiveCooldownMs: 60000,    // مللي ثانية بين كل إعادة حساب (minimum 30000). 60000 = دقيقة
     adaptiveThresholds: {
       stageP95WarnMs:   2000,    // P95 أعلى من كده يطلع warning لأي stage
@@ -533,7 +533,7 @@ const config = {
   //    — لا يحتاج أي dependency خارجية
   // ═══════════════════════════════════════════════════════════
   LIBRARY_INDEX: {
-    enabled:           false,      // true = تفعيل فهرسة محتوى المكتبة من Qdrant | false = معطّل (zero overhead — السلوك الحالي بالظبط)
+    enabled:           true,       // true = تفعيل فهرسة محتوى المكتبة من Qdrant | false = معطّل (zero overhead)
     refreshIntervalMs: 3600000,    // مللي ثانية بين كل تحديث تلقائي (minimum 300000). 3600000 = ساعة واحدة
     includeFileList:   true,       // true = يحفظ قائمة أسماء الملفات في الفهرس (مفيد للعرض في لوحة التحكم) | false = إحصائيات فقط (عدد الملفات والمواضيع)
   },
@@ -569,7 +569,7 @@ const config = {
   //    — zero overhead عند التعطيل
   // ═══════════════════════════════════════════════════════════
   CONTENT_GAPS: {
-    enabled:            false,     // true = تفعيل اكتشاف فجوات المحتوى | false = معطّل بالكامل (zero overhead — السلوك الحالي بالظبط)
+    enabled:            true,      // true = تفعيل اكتشاف فجوات المحتوى | false = معطّل بالكامل (zero overhead)
     maxGapEntries:      200,       // أقصى عدد entries في الـ ring buffer (in-memory). الأقدم يتحذف أولاً
     minFrequencyToShow: 2,         // أقل تكرار لعرض gap في الأدمن (1 = كل سؤال بدون إجابة يظهر)
     clusterThreshold:   0.6,       // حد التشابه لتجميع الأسئلة في cluster واحد (0-1). 0.6 = متساهل — أسئلة بتشترك في 60%+ من الكلمات المفتاحية يتجمعوا مع بعض
@@ -589,7 +589,7 @@ const config = {
   //    — الـ endpoint: GET /api/admin/export?type=feedback,audit,gaps
   // ═══════════════════════════════════════════════════════════
   EXPORT: {
-    enabled:        false,       // true = تفعيل API التصدير | false = معطّل (404)
+    enabled:        true,        // true = تفعيل API التصدير | false = معطّل (404)
     allowedTypes:   ['feedback', 'audit', 'gaps', 'logs', 'grounding'],  // أنواع البيانات المسموح تصديرها (Phase 68: added 'logs', Phase 70: added 'grounding')
     maxExportRows:  10000,       // أقصى عدد صفوف لكل نوع بيانات في التصدير (حماية من exports كبيرة)
   },
@@ -602,7 +602,7 @@ const config = {
   //    — zero overhead عند التعطيل
   // ═══════════════════════════════════════════════════════════
   QUALITY: {
-    enabled:              false,       // true = تفعيل حساب جودة البحث per session | false = معطّل (zero overhead)
+    enabled:              true,        // true = تفعيل حساب جودة البحث per session | false = معطّل (zero overhead)
     weights: {
       avgScore:           0.35,        // وزن متوسط درجة البحث (0-1)
       feedbackPositive:   0.30,        // وزن نسبة التقييمات الإيجابية
@@ -619,7 +619,7 @@ const config = {
   //    — معطّل افتراضياً — فعّله بعد ما يكون عندك بيانات كافية
   // ═══════════════════════════════════════════════════════════
   HEALTH_SCORE: {
-    enabled:       false,      // true = تفعيل مؤشر صحة المكتبة | false = معطّل (zero overhead)
+    enabled:       true,       // true = تفعيل مؤشر صحة المكتبة | false = معطّل (zero overhead)
     weights: {
       qualityAvg:       0.25,  // وزن متوسط جودة الجلسات (من SessionQualityScorer)
       feedbackPositive: 0.20,  // وزن نسبة الفيدباك الإيجابي
@@ -672,7 +672,7 @@ const config = {
   //    — zero overhead عند التعطيل
   // ═══════════════════════════════════════════════════════════
   ADMIN_INTELLIGENCE: {
-    enabled:                 false,     // true = تحليل دوري للبيانات وتوليد insights | false = معطّل (zero overhead)
+    enabled:                 true,      // true = تحليل دوري للبيانات وتوليد insights | false = معطّل (zero overhead)
     analysisIntervalMs:      300000,    // مللي ثانية بين كل تحليل (minimum 60000). 300000 = 5 دقائق
     autoRemediationEnabled:  false,     // true = تنفيذ safe actions تلقائياً لما health score critical | false = insights فقط
     maxInsights:             10,        // أقصى عدد insights نشطة في الذاكرة

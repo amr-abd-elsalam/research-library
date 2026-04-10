@@ -602,15 +602,15 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.ok('recent' in data, 'should contain recent');
   });
 
-  // T-IH48: GET /api/admin/health-score?library_id=nonexistent — returns 200 or 404 (feature disabled)
-  it('T-IH48: GET /api/admin/health-score?library_id=nonexistent — returns valid response', async () => {
+  // T-IH48: GET /api/admin/health-score?library_id=nonexistent — returns 200 (Phase 97: HEALTH_SCORE enabled by default)
+  it('T-IH48: GET /api/admin/health-score?library_id=nonexistent — returns 200 with score', async () => {
     const res = await fetch(`${ts.baseUrl}/api/admin/health-score?library_id=nonexistent`, {
       headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
     });
-    // Health score is disabled by default → 404, OR enabled → 200 with score
-    assert.ok([200, 404].includes(res.status), `expected 200 or 404, got ${res.status}`);
+    assert.strictEqual(res.status, 200, 'should return 200 (HEALTH_SCORE enabled by default)');
     const data = await res.json();
     assert.ok(typeof data === 'object', 'should return JSON object');
+    assert.ok('score' in data, 'should contain score field');
   });
 
   // T-IH49: GET /api/admin/intelligence?library_id=nonexistent — returns 200 with insights array
@@ -640,12 +640,12 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(typeof data.QUERY_COMPLEXITY, 'boolean');
   });
 
-  // T-IH53: GET /api/config/features includes ADMIN_INTELLIGENCE boolean (Phase 65)
+  // T-IH53: GET /api/config/features includes ADMIN_INTELLIGENCE boolean (Phase 97: true by default)
   it('T-IH53: GET /api/config/features includes ADMIN_INTELLIGENCE boolean', async () => {
     const res = await fetch(`${ts.baseUrl}/api/config/features`);
     assert.strictEqual(res.status, 200);
     const data = await res.json();
-    assert.strictEqual(typeof data.ADMIN_INTELLIGENCE, 'boolean');
+    assert.strictEqual(data.ADMIN_INTELLIGENCE, true, 'ADMIN_INTELLIGENCE should be true by default');
   });
 
   // T-IH56: GET /api/admin/log — entries have requestId field (Phase 67)
@@ -716,22 +716,15 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.ok('limit' in data, 'should contain limit field');
   });
 
-  // T-IH61: GET /api/admin/export?type=logs — returns 200 with logs array
+  // T-IH61: GET /api/admin/export?type=logs — returns 200 with logs array (Phase 97: EXPORT enabled by default)
   it('T-IH61: GET /api/admin/export?type=logs — returns 200 with logs', async () => {
     const res = await fetch(`${ts.baseUrl}/api/admin/export?type=logs`, {
       headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
     });
-    // Export may be disabled by default (404) or enabled (200)
-    if (res.status === 404) {
-      // Export disabled — that's valid, just verify the error shape
-      const data = await res.json();
-      assert.strictEqual(data.code, 'EXPORT_DISABLED');
-    } else {
-      assert.strictEqual(res.status, 200);
-      const data = await res.json();
-      assert.ok('logs' in data, 'response should contain logs field');
-      assert.ok(Array.isArray(data.logs), 'logs should be an array');
-    }
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('logs' in data, 'response should contain logs field');
+    assert.ok(Array.isArray(data.logs), 'logs should be an array');
   });
 
   // T-IH62: GET /api/config/features includes GROUNDING boolean (Phase 69)
@@ -766,20 +759,15 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(typeof data.groundingAnalytics.avgScore, 'number');
   });
 
-  // T-IH65: GET /api/admin/export?type=grounding — returns 200 or 404 when export disabled
-  it('T-IH65: GET /api/admin/export?type=grounding — returns valid response', async () => {
+  // T-IH65: GET /api/admin/export?type=grounding — returns 200 (Phase 97: EXPORT enabled by default)
+  it('T-IH65: GET /api/admin/export?type=grounding — returns 200 with grounding', async () => {
     const res = await fetch(`${ts.baseUrl}/api/admin/export?type=grounding`, {
       headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
     });
-    if (res.status === 404) {
-      const data = await res.json();
-      assert.strictEqual(data.code, 'EXPORT_DISABLED');
-    } else {
-      assert.strictEqual(res.status, 200);
-      const data = await res.json();
-      assert.ok('grounding' in data, 'response should contain grounding field');
-      assert.ok(Array.isArray(data.grounding), 'grounding should be an array');
-    }
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('grounding' in data, 'response should contain grounding field');
+    assert.ok(Array.isArray(data.grounding), 'grounding should be an array');
   });
 
   // T-IH66: GET /api/admin/metrics — response parseable with metrics field (no regression)

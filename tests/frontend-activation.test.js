@@ -101,7 +101,67 @@ describe('Frontend Activation — Feature Flag Resolution', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════
-// Block 3: Config Shape Verification (T-FA11 to T-FA15)
+// Block 3: Phase 97 Features Default Verification (T-FA16 to T-FA22)
+// ═══════════════════════════════════════════════════════════════
+describe('Frontend Activation — Phase 97 Feature Defaults', () => {
+
+  // T-FA16: config.CONTENT_GAPS.enabled === true (Phase 97)
+  it('T-FA16: config.CONTENT_GAPS.enabled is true', () => {
+    assert.strictEqual(config.CONTENT_GAPS.enabled, true);
+  });
+
+  // T-FA17: config.QUALITY.enabled === true (Phase 97)
+  it('T-FA17: config.QUALITY.enabled is true', () => {
+    assert.strictEqual(config.QUALITY.enabled, true);
+  });
+
+  // T-FA18: config.HEALTH_SCORE.enabled === true (Phase 97)
+  it('T-FA18: config.HEALTH_SCORE.enabled is true', () => {
+    assert.strictEqual(config.HEALTH_SCORE.enabled, true);
+  });
+
+  // T-FA19: config.EXPORT.enabled === true (Phase 97)
+  it('T-FA19: config.EXPORT.enabled is true', () => {
+    assert.strictEqual(config.EXPORT.enabled, true);
+  });
+
+  // T-FA20: config.PIPELINE.adaptiveEnabled === true (Phase 97)
+  it('T-FA20: config.PIPELINE.adaptiveEnabled is true', () => {
+    assert.strictEqual(config.PIPELINE.adaptiveEnabled, true);
+  });
+
+  // T-FA21: config.LIBRARY_INDEX.enabled === true (Phase 97)
+  it('T-FA21: config.LIBRARY_INDEX.enabled is true', () => {
+    assert.strictEqual(config.LIBRARY_INDEX.enabled, true);
+  });
+
+  // T-FA22: config.ADMIN_INTELLIGENCE.enabled === true (Phase 97)
+  it('T-FA22: config.ADMIN_INTELLIGENCE.enabled is true', () => {
+    assert.strictEqual(config.ADMIN_INTELLIGENCE.enabled, true);
+  });
+
+  // T-FA23: featureFlags.isEnabled for Phase 97 features
+  it('T-FA23: featureFlags returns true for Phase 97 features', () => {
+    assert.strictEqual(featureFlags.isEnabled('CONTENT_GAPS'), true);
+    assert.strictEqual(featureFlags.isEnabled('QUALITY'), true);
+    assert.strictEqual(featureFlags.isEnabled('HEALTH_SCORE'), true);
+    assert.strictEqual(featureFlags.isEnabled('ADMIN_INTELLIGENCE'), true);
+  });
+
+  // T-FA24: handleConfigFeatures returns Phase 97 features as true
+  it('T-FA24: handleConfigFeatures returns Phase 97 features as true', async () => {
+    const res = createMockRes();
+    await handleConfigFeatures({}, res);
+    const data = res.json;
+    assert.strictEqual(data.CONTENT_GAPS, true);
+    assert.strictEqual(data.QUALITY, true);
+    assert.strictEqual(data.HEALTH_SCORE, true);
+    assert.strictEqual(data.ADMIN_INTELLIGENCE, true);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Block 4: Config Shape Verification (T-FA11 to T-FA15)
 // ═══════════════════════════════════════════════════════════════
 describe('Frontend Activation — Config Shape', () => {
 
