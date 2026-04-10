@@ -26,6 +26,9 @@ import { auditPersister } from './services/auditPersister.js';
 import { libraryIndex } from './services/libraryIndex.js';
 import { gapPersister } from './services/gapPersister.js';
 import { contentGapDetector } from './services/contentGapDetector.js';
+import { cache } from './services/cache.js';
+import { metrics } from './services/metrics.js';
+import { libraryHealthScorer } from './services/libraryHealthScorer.js';
 import { featureFlags } from './services/featureFlags.js';
 import { adminIntelligence } from './services/adminIntelligence.js';
 import { setConfigCacheInvalidator } from './services/listeners/configCacheListener.js';
@@ -224,6 +227,81 @@ class BootstrapManager {
     if (actionRegistry.enabled) {
       const importedCount = actionRegistry.importFromCommandRegistry();
       logger.info('bootstrap', `ActionRegistry: imported ${importedCount} command(s) from CommandRegistry`);
+
+      // ── Admin Action Registration (Phase 96) ───────────────
+      actionRegistry.register({
+        name: 'refresh-library',
+        kind: 'trigger',
+        description: 'Force refresh library index',
+        sourceHint: 'admin',
+        permissions: [],
+        execute: async () => {
+          if (!libraryIndex.enabled) throw new Error('Library index disabled');
+          await libraryIndex.refresh();
+          libraryHealthScorer.invalidateCache();
+          return { success: true, message: 'Library refreshed' };
+        },
+      });
+
+      actionRegistry.register({
+        name: 'clear-cache',
+        kind: 'trigger',
+        description: 'Clear all cached responses',
+        sourceHint: 'admin',
+        permissions: [],
+        execute: async () => {
+          const count = cache.invalidateAll();
+          libraryHealthScorer.invalidateCache();
+          return { success: true, cleared: count };
+        },
+      });
+
+      actionRegistry.register({
+        name: 'reset-metrics',
+        kind: 'trigger',
+        description: 'Reset pipeline metrics counters',
+        sourceHint: 'admin',
+        permissions: [],
+        execute: async () => {
+          metrics.reset();
+          libraryHealthScorer.invalidateCache();
+          return { success: true, message: 'Metrics counters reset' };
+        },
+      });
+
+      actionRegistry.register({
+        name: 'reanalyze-gaps',
+        kind: 'trigger',
+        description: 'Reanalyze content gaps from persisted data',
+        sourceHint: 'admin',
+        permissions: [],
+        execute: async () => {
+          if (!contentGapDetector.enabled) throw new Error('Content gap detection disabled');
+          let entriesProcessed = 0;
+          if (gapPersister.enabled) {
+            const entries = await gapPersister.read();
+            if (entries.length > 0) {
+              contentGapDetector.reset();
+              contentGapDetector.restoreFromEntries(entries);
+              entriesProcessed = entries.length;
+            }
+          }
+          libraryHealthScorer.invalidateCache();
+          return { success: true, message: 'Gap analysis refreshed', entriesProcessed };
+        },
+      });
+
+      // toggle-feature: body-dependent — execute: null → falls through to hardcoded handler
+      actionRegistry.register({
+        name: 'toggle-feature',
+        kind: 'trigger',
+        description: 'Toggle feature flag (requires body: { feature, enabled })',
+        sourceHint: 'admin',
+        permissions: [],
+        execute: null,
+      });
+
+      logger.info('bootstrap', 'ActionRegistry: registered 5 admin actions (4 executable + 1 body-dependent)');
     }
 
     // ── Unified Execution Registry (Phase 94) ────────────────

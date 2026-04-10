@@ -20,6 +20,18 @@ const SidebarModule = (() => {
   let _searchInput    = null;
   let _loadedSessions = [];
 
+  /* ── SSE Reconnect — Exponential Backoff (Phase 96) ──── */
+  var _reconnectAttempts = 0;
+  var _SSE_BASE_DELAY   = 1000;
+  var _SSE_MAX_DELAY    = 30000;
+  var _SSE_JITTER       = 0.3;
+
+  function _calcReconnectDelay() {
+    var exp = Math.min(_SSE_BASE_DELAY * Math.pow(2, _reconnectAttempts), _SSE_MAX_DELAY);
+    var jitter = exp * _SSE_JITTER * (Math.random() * 2 - 1);
+    return Math.max(_SSE_BASE_DELAY, Math.round(exp + jitter));
+  }
+
   /* ── Load sessions from API ────────────────── */
   async function _loadSessions() {
     if (!_sessionsEl) return;
@@ -466,6 +478,10 @@ const SidebarModule = (() => {
       // For PIN-protected mode, the session cookie or other mechanism handles auth.
       _eventSource = new EventSource(url);
 
+      _eventSource.onopen = function() {
+        _reconnectAttempts = 0;
+      };
+
       _eventSource.onmessage = function(event) {
         try {
           var data = JSON.parse(event.data);
@@ -481,7 +497,9 @@ const SidebarModule = (() => {
           _eventSource = null;
         }
         if (_reconnectTimer) clearTimeout(_reconnectTimer);
-        _reconnectTimer = setTimeout(_connectSSE, 5000);
+        var delay = _calcReconnectDelay();
+        _reconnectAttempts++;
+        _reconnectTimer = setTimeout(_connectSSE, delay);
       };
     } catch (_) {}
   }

@@ -81,6 +81,9 @@ export async function handleAdminAction(req, res) {
     // segments: ['', 'api', 'admin', 'actions', '{action}']
     const action = segments[4] || '';
 
+    // ── Phase 96: t0 declared early — used by unified registry + hardcoded paths ──
+    const t0 = Date.now();
+
     // ── Phase 95: Try unified registry first (backward compatible) ──
     if (unifiedRegistry.enabled && unifiedRegistry.isPopulated) {
       const uniResult = await unifiedRegistry.executeResolved(action, {}, { tier: 'admin' });
@@ -116,8 +119,6 @@ export async function handleAdminAction(req, res) {
       }));
       return;
     }
-
-    const t0 = Date.now();
 
     // ── refresh-library ──────────────────────────────────────
     if (action === 'refresh-library') {

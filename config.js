@@ -901,7 +901,7 @@ const config = {
   //    — معطّل افتراضياً — فعّله من هنا
   // ═══════════════════════════════════════════════════════════════
   ACTION_REGISTRY: {
-    enabled:          false,        // true = تفعيل السجل الموحد | false = معطّل (zero overhead)
+    enabled:          true,         // true = تفعيل السجل الموحد | false = معطّل (zero overhead). Phase 96: enabled by default — registers admin actions at bootstrap
     includeInInspect: true,         // true = عرض بيانات السجل في inspect endpoint | false = إخفاء
   },
 
@@ -1004,6 +1004,8 @@ const config = {
     perUserIsolation:    true,      // Phase 92: true = الـ sidebar يعرض جلسات المستخدم الحالي فقط (حسب IP hash) — آمن افتراضياً. false = عرض كل الجلسات (السلوك القديم)
     sseEnabled:          true,      // Phase 93: true = إرسال SSE events للـ sidebar عند تحديث sessions | false = معطّل (الـ sidebar يعمل بدون auto-refresh)
     sidebarAutoRefresh:  true,      // Phase 93: true = الـ sidebar يتحدث تلقائياً عند استقبال SSE event | false = manual refresh فقط
+    sseReconnectBackoff: true,      // Phase 96: true = exponential backoff for SSE reconnection | false = fixed 5s delay (legacy behavior)
+    sseMaxReconnectMs:   30000,     // Phase 96: maximum reconnection delay in ms (default 30000 = 30 seconds). Used when sseReconnectBackoff: true
   },
 
   // ═══════════════════════════════════════════════════════════

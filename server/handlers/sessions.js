@@ -355,8 +355,23 @@ export async function handleSessionStream(req, res) {
   });
 }
 
-// ── Helper: resolve + write session file (Phase 94) ────────────
+// ── Helper: resolve + write session file (Phase 94, Phase 96: path cache) ──
 async function _resolveAndWrite(sessionId, session) {
+  // Phase 96: Try cached path first (O(1) via sessionMetadataIndex)
+  const cachedPath = sessionMetadataIndex.getPath(sessionId);
+  if (cachedPath) {
+    try {
+      await fsp.access(cachedPath, fs.constants.F_OK);
+      const tmpPath = cachedPath + '.tmp';
+      await fsp.writeFile(tmpPath, JSON.stringify(session, null, 2), 'utf8');
+      await fsp.rename(tmpPath, cachedPath);
+      return true;
+    } catch {
+      // Cache stale — fall through to directory scan
+    }
+  }
+
+  // Fallback: O(n) directory scan (same logic as before)
   const fileName = `${sessionId}.json`;
   try {
     const dateDirs = await fsp.readdir(SESSIONS_DIR);
@@ -369,7 +384,7 @@ async function _resolveAndWrite(sessionId, session) {
         const tmpPath = filePath + '.tmp';
         await fsp.writeFile(tmpPath, JSON.stringify(session, null, 2), 'utf8');
         await fsp.rename(tmpPath, filePath);
-        // Phase 95: Propagate file path to metadata index
+        // Propagate file path to metadata index for future O(1) lookups
         sessionMetadataIndex.upsert(sessionId, { filePath });
         return true;
       } catch { continue; }

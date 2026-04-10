@@ -236,3 +236,22 @@ describe('Session Title/Pin — Per-user + Pinned', () => {
     assert.ok('pinned' in list[0], 'pinned field should exist');
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// Block 5: Path Cache Integration (T-STP16 to T-STP17) — Phase 96
+// ═══════════════════════════════════════════════════════════════
+describe('Session Title/Pin — Path Cache', () => {
+
+  // T-STP16: upsert with filePath stores path in index (getPath returns it)
+  it('T-STP16: upsert with filePath — getPath returns cached path', () => {
+    sessionMetadataIndex.upsert('sess-cache1', { filePath: '/data/sessions/2025-01-01/sess-cache1.json' });
+    const path = sessionMetadataIndex.getPath('sess-cache1');
+    assert.strictEqual(path, '/data/sessions/2025-01-01/sess-cache1.json');
+  });
+
+  // T-STP17: getPath returns null for unknown session
+  it('T-STP17: getPath returns null for unknown session', () => {
+    const path = sessionMetadataIndex.getPath('nonexistent-session-id');
+    assert.strictEqual(path, null);
+  });
+});

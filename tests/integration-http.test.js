@@ -1739,4 +1739,39 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(typeof data.sessionMetadataIndex.cachedSessions, 'number');
     assert.strictEqual(typeof data.sessionMetadataIndex.perUserIsolation, 'boolean');
   });
+
+  // T-IH146: POST /api/admin/actions/clear-cache with valid token — returns 200 (Phase 96)
+  it('T-IH146: POST /api/admin/actions/clear-cache — returns 200', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/actions/clear-cache`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok(data.ok === true || data.success === true, 'should return ok or success');
+  });
+
+  // T-IH147: GET /api/admin/inspect — configValidator reports 15 rules (Phase 96)
+  it('T-IH147: GET /api/admin/inspect — configValidator reports 15 rules', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.configValidator.totalRules, 15, 'should have 15 validation rules');
+  });
+
+  // T-IH148: GET /api/admin/inspect — unifiedRegistry shows action entries when ACTION_REGISTRY enabled (Phase 96)
+  it('T-IH148: GET /api/admin/inspect — unifiedRegistry shows action entries', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('unifiedRegistry' in data, 'inspect should contain unifiedRegistry');
+    assert.strictEqual(typeof data.unifiedRegistry.total, 'number');
+    assert.strictEqual(typeof data.unifiedRegistry.byType, 'object');
+    // With ACTION_REGISTRY enabled, unifiedRegistry should have action entries
+    assert.strictEqual(data.unifiedRegistry.enabled, true, 'unifiedRegistry should be enabled');
+  });
 });

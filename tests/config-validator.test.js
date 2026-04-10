@@ -71,11 +71,10 @@ describe('Default Config Validation', () => {
     assert.strictEqual(result.errors.length, 0, 'should have 0 errors');
   });
 
-  // T-CV07: Default config has 1 warning (Phase 95: EXECUTION_REGISTRY enabled + ACTION_REGISTRY disabled)
-  it('T-CV07: default config has 1 warning (EXECUTION_REGISTRY coverage)', () => {
+  // T-CV07: Default config has 0 warnings (Phase 96: ACTION_REGISTRY now enabled by default)
+  it('T-CV07: default config has 0 warnings', () => {
     const result = configValidator.validate();
-    assert.strictEqual(result.warnings.length, 1, 'default config should have 1 warning (EXECUTION_REGISTRY coverage)');
-    assert.ok(result.warnings[0].includes('ACTION_REGISTRY is disabled'), 'warning should mention ACTION_REGISTRY');
+    assert.strictEqual(result.warnings.length, 0, 'default config should have 0 warnings (ACTION_REGISTRY enabled since Phase 96)');
   });
 
   // T-CV08: validate() can be called multiple times (idempotent)
@@ -335,12 +334,12 @@ describe('EXECUTION_REGISTRY Validation Rule', () => {
 // ═══════════════════════════════════════════════════════════════
 describe('EXECUTION_REGISTRY Coverage Check Rule', () => {
 
-  // T-CV33: EXECUTION_REGISTRY_coverage_check — warning when ACTION_REGISTRY disabled (default config)
-  it('T-CV33: warns when EXECUTION_REGISTRY enabled but ACTION_REGISTRY disabled', () => {
-    // Default config: EXECUTION_REGISTRY.enabled is true (default), ACTION_REGISTRY.enabled is false (default)
+  // T-CV33: EXECUTION_REGISTRY_coverage_check — no warning when ACTION_REGISTRY enabled (Phase 96 default)
+  it('T-CV33: no warning when both EXECUTION_REGISTRY and ACTION_REGISTRY enabled (default)', () => {
+    // Phase 96: ACTION_REGISTRY.enabled is now true (default), EXECUTION_REGISTRY.enabled is true (default)
     const result = configValidator.validate();
     const hasWarning = result.warnings.some(w => w.includes('ACTION_REGISTRY is disabled'));
-    assert.strictEqual(hasWarning, true, 'should warn about ACTION_REGISTRY being disabled while EXECUTION_REGISTRY is enabled');
+    assert.strictEqual(hasWarning, false, 'should NOT warn about ACTION_REGISTRY when it is enabled');
   });
 
   // T-CV34: total rule count is 15

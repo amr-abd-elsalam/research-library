@@ -288,3 +288,83 @@ describe('UnifiedExecutionRegistry — executeResolved', () => {
     assert.ok(result.reason.includes('boom'));
   });
 });
+
+// ═══════════════════════════════════════════════════════════════
+// Block 7: executeResolved with admin-like actions (T-UR26 to T-UR30) — Phase 96
+// ═══════════════════════════════════════════════════════════════
+describe('UnifiedExecutionRegistry — Admin Action Resolution', () => {
+
+  // T-UR26: executable admin action resolves and executes
+  it('T-UR26: executeResolved with refresh-library-like action — executed: true', async () => {
+    unifiedRegistry.reset();
+    unifiedRegistry.register({
+      name: 'refresh-library', type: 'action', category: 'admin',
+      aliases: [], permissions: {}, execute: async () => ({ success: true, message: 'Library refreshed' }), description: 'Force refresh library index',
+    });
+    const result = await unifiedRegistry.executeResolved('refresh-library', {}, { tier: 'admin' });
+    assert.strictEqual(result.executed, true);
+    assert.deepStrictEqual(result.result, { success: true, message: 'Library refreshed' });
+  });
+
+  // T-UR27: clear-cache-like action returns count
+  it('T-UR27: executeResolved with clear-cache-like action — returns result with count', async () => {
+    unifiedRegistry.reset();
+    unifiedRegistry.register({
+      name: 'clear-cache', type: 'action', category: 'admin',
+      aliases: [], permissions: {}, execute: async () => ({ success: true, cleared: 42 }), description: 'Clear cache',
+    });
+    const result = await unifiedRegistry.executeResolved('clear-cache', {}, { tier: 'admin' });
+    assert.strictEqual(result.executed, true);
+    assert.strictEqual(result.result.cleared, 42);
+  });
+
+  // T-UR28: body-dependent action (execute: null) → no_execute_function
+  it('T-UR28: executeResolved with toggle-feature (execute: null) — no_execute_function', async () => {
+    unifiedRegistry.reset();
+    unifiedRegistry.register({
+      name: 'toggle-feature', type: 'action', category: 'admin',
+      aliases: [], permissions: {}, execute: null, description: 'Toggle feature flag',
+    });
+    const result = await unifiedRegistry.executeResolved('toggle-feature', {}, { tier: 'admin' });
+    assert.strictEqual(result.executed, false);
+    assert.strictEqual(result.reason, 'no_execute_function');
+  });
+
+  // T-UR29: all 5 admin action names resolvable after registration
+  it('T-UR29: all 5 admin action names resolvable', () => {
+    unifiedRegistry.reset();
+    const names = ['refresh-library', 'clear-cache', 'reset-metrics', 'reanalyze-gaps', 'toggle-feature'];
+    for (const name of names) {
+      unifiedRegistry.register({
+        name, type: 'action', category: 'admin',
+        aliases: [], permissions: {},
+        execute: name === 'toggle-feature' ? null : async () => ({ ok: true }),
+        description: name,
+      });
+    }
+    for (const name of names) {
+      const entry = unifiedRegistry.resolve(name);
+      assert.ok(entry, `${name} should be resolvable`);
+      assert.strictEqual(entry.type, 'action');
+      assert.strictEqual(entry.category, 'admin');
+    }
+    const counts = unifiedRegistry.counts();
+    assert.strictEqual(counts.total, 5);
+    assert.strictEqual(counts.byType.action, 5);
+  });
+
+  // T-UR30: action with throwing execute → execute_error reason
+  it('T-UR30: executeResolved with disabled-library action that throws — execute_error', async () => {
+    unifiedRegistry.reset();
+    unifiedRegistry.register({
+      name: 'refresh-library', type: 'action', category: 'admin',
+      aliases: [], permissions: {},
+      execute: async () => { throw new Error('Library index disabled'); },
+      description: 'Fails when disabled',
+    });
+    const result = await unifiedRegistry.executeResolved('refresh-library', {}, { tier: 'admin' });
+    assert.strictEqual(result.executed, false);
+    assert.ok(result.reason.startsWith('execute_error'));
+    assert.ok(result.reason.includes('Library index disabled'));
+  });
+});
