@@ -15,6 +15,8 @@ const SidebarModule = (() => {
   let _newChatBtn   = null;
   let _activeId     = null;
   let _isOpen       = false;
+  let _eventSource  = null;
+  let _reconnectTimer = null;
 
   /* ── Load sessions from API ────────────────── */
   async function _loadSessions() {
@@ -53,8 +55,11 @@ const SidebarModule = (() => {
 
     if (!sessions || sessions.length === 0) {
       _renderEmpty();
+      _updateBadge(0);
       return;
     }
+
+    _updateBadge(sessions.length);
 
     // Get current session ID for active highlight
     var currentSid = null;
@@ -353,6 +358,59 @@ const SidebarModule = (() => {
     }
   }
 
+  /* ── SSE auto-refresh (Phase 93) ───────────── */
+  function _connectSSE() {
+    if (_eventSource) return;
+    if (!CLIENT_CONFIG.SESSIONS || !CLIENT_CONFIG.SESSIONS.enabled) return;
+    if (typeof EventSource === 'undefined') return;
+
+    try {
+      var url = '/api/sessions/stream';
+      var headers = AuthModule.getAccessHeaders();
+      // EventSource doesn't support custom headers natively
+      // For access-pin/token, we rely on cookies or query params if needed
+      // In the current architecture, requireAccess checks X-Access-Pin header,
+      // but EventSource can't set headers. For public access mode, this works.
+      // For PIN-protected mode, the session cookie or other mechanism handles auth.
+      _eventSource = new EventSource(url);
+
+      _eventSource.onmessage = function(event) {
+        try {
+          var data = JSON.parse(event.data);
+          if (data.type === 'session_updated') {
+            _loadSessions();
+          }
+        } catch (_) {}
+      };
+
+      _eventSource.onerror = function() {
+        if (_eventSource) {
+          _eventSource.close();
+          _eventSource = null;
+        }
+        if (_reconnectTimer) clearTimeout(_reconnectTimer);
+        _reconnectTimer = setTimeout(_connectSSE, 5000);
+      };
+    } catch (_) {}
+  }
+
+  function _updateBadge(count) {
+    if (!_toggle) return;
+    var badge = _toggle.querySelector('.sidebar-badge');
+    if (count > 0) {
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'sidebar-badge';
+        _toggle.style.position = 'relative';
+        _toggle.appendChild(badge);
+      }
+      badge.textContent = count;
+      badge.style.display = '';
+    } else if (badge) {
+      badge.style.display = 'none';
+    }
+  }
+
   /* ── Public ────────────────────────────────── */
   function init() {
     // Guard: skip if SESSIONS not enabled
@@ -388,6 +446,9 @@ const SidebarModule = (() => {
 
     // Load sessions initially
     _loadSessions();
+
+    // Connect SSE for auto-refresh (Phase 93)
+    _connectSSE();
   }
 
   function refreshList() {

@@ -52,6 +52,7 @@ import { ragStrategySelector }       from '../services/ragStrategySelector.js';
 import { refinementAnalytics }       from '../services/refinementAnalytics.js';
 import { strategyAnalytics }         from '../services/strategyAnalytics.js';
 import { sessionMetadataIndex }      from '../services/sessionMetadataIndex.js';
+import { counts as sessionStreamCounts } from '../services/listeners/sessionStreamListener.js';
 import config                        from '../../config.js';
 
 export async function handleInspect(_req, res) {
@@ -255,6 +256,9 @@ export async function handleInspect(_req, res) {
 
       // ── Session Metadata Index (Phase 91) ────────────────────
       sessionMetadataIndex: sessionMetadataIndex.counts(),
+
+      // ── Session Stream SSE (Phase 93) ────────────────────────
+      sessionStream: sessionStreamCounts(),
 
       // ── Observability (Phase 65) ──────────────────────────────
       observability: {

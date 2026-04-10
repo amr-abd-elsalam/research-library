@@ -133,6 +133,15 @@ class ConfigValidator {
           return { ok: true };
         },
       },
+      {
+        name: 'SIDEBAR_SSE_requires_SESSIONS',
+        check: () => {
+          if (config.SESSION_INDEX?.sseEnabled === true && config.SESSIONS?.enabled !== true) {
+            return { ok: false, message: 'SESSION_INDEX.sseEnabled is true but SESSIONS.enabled is false — SSE sidebar updates have no sessions to stream', severity: 'warning' };
+          }
+          return { ok: true };
+        },
+      },
     ];
   }
 

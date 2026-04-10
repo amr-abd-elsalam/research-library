@@ -44,10 +44,10 @@ describe('ConfigValidator Structure', () => {
     assert.ok('lastResult' in counts, 'should have lastResult key');
   });
 
-  // T-CV04: counts().totalRules is 12 (Phase 92: was 11, +PER_USER_ISOLATION_requires_SESSIONS)
-  it('T-CV04: counts().totalRules is 12', () => {
+  // T-CV04: counts().totalRules is 13 (Phase 93: was 12, +SIDEBAR_SSE_requires_SESSIONS)
+  it('T-CV04: counts().totalRules is 13', () => {
     const counts = configValidator.counts();
-    assert.strictEqual(counts.totalRules, 12, 'should have 12 validation rules');
+    assert.strictEqual(counts.totalRules, 13, 'should have 13 validation rules');
   });
 
   // T-CV05: reset() clears lastResult to null
@@ -139,11 +139,11 @@ describe('Validation Rules Detail', () => {
     assert.ok(fresh.checkedAt > 0, 'fresh result should have valid checkedAt');
   });
 
-  // T-CV15: New ConfigValidator instances have null lastResult (Phase 92: 12 rules)
+  // T-CV15: New ConfigValidator instances have null lastResult (Phase 93: 13 rules)
   it('T-CV15: new instances have null lastResult', () => {
     const instance = new ConfigValidator();
     assert.strictEqual(instance.counts().lastResult, null);
-    assert.strictEqual(instance.counts().totalRules, 12);
+    assert.strictEqual(instance.counts().totalRules, 13);
   });
 });
 
@@ -207,9 +207,9 @@ describe('QUERY_PLANNING Validation Rule', () => {
     assert.strictEqual(hasQPWarning, false, 'should not have QUERY_PLANNING warning when both disabled');
   });
 
-  // T-CV22: QUERY_PLANNING rule exists in rules (12 total after Phase 92)
-  it('T-CV22: rule count is 12 and includes QUERY_PLANNING rule', () => {
-    assert.strictEqual(configValidator.counts().totalRules, 12);
+  // T-CV22: QUERY_PLANNING rule exists in rules (13 total after Phase 93)
+  it('T-CV22: rule count is 13 and includes QUERY_PLANNING rule', () => {
+    assert.strictEqual(configValidator.counts().totalRules, 13);
     // Validate runs all rules — with default config, no errors or warnings expected
     const result = configValidator.validate();
     assert.strictEqual(result.valid, true);
@@ -258,9 +258,9 @@ describe('SESSION_INDEX Validation Rule', () => {
     assert.strictEqual(hasSIWarning, false, 'should not have SESSION_INDEX warning when both enabled');
   });
 
-  // T-CV26: rule count is 12 and rule exists (Phase 92: was 11)
-  it('T-CV26: rule count is 12 after Phase 92', () => {
-    assert.strictEqual(configValidator.counts().totalRules, 12);
+  // T-CV26: rule count is 13 and rule exists (Phase 93: was 12)
+  it('T-CV26: rule count is 13 after Phase 93', () => {
+    assert.strictEqual(configValidator.counts().totalRules, 13);
     const result = configValidator.validate();
     assert.strictEqual(result.valid, true);
   });
@@ -280,9 +280,31 @@ describe('PER_USER_ISOLATION Validation Rule', () => {
   });
 
   // T-CV28: rule count includes PER_USER_ISOLATION rule
-  it('T-CV28: rule count is 12 including PER_USER_ISOLATION', () => {
-    assert.strictEqual(configValidator.counts().totalRules, 12);
+  it('T-CV28: rule count is 13 including PER_USER_ISOLATION and SIDEBAR_SSE', () => {
+    assert.strictEqual(configValidator.counts().totalRules, 13);
     // Validate with default config — should pass cleanly
+    const result = configValidator.validate();
+    assert.strictEqual(result.valid, true);
+    assert.strictEqual(result.errors.length, 0);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// Block 10: SIDEBAR_SSE Rule (Phase 93)
+// ═══════════════════════════════════════════════════════════════
+describe('SIDEBAR_SSE Validation Rule', () => {
+
+  // T-CV29: SIDEBAR_SSE_requires_SESSIONS — no warning with default config (both enabled)
+  it('T-CV29: no warning when both sseEnabled and SESSIONS enabled (default)', () => {
+    // sseEnabled defaults to true, SESSIONS.enabled defaults to true
+    const result = configValidator.validate();
+    const hasWarning = result.warnings.some(w => w.includes('sseEnabled'));
+    assert.strictEqual(hasWarning, false, 'should not have sseEnabled warning when SESSIONS enabled');
+  });
+
+  // T-CV30: rule count is 13 including SIDEBAR_SSE rule
+  it('T-CV30: rule count is 13 including SIDEBAR_SSE', () => {
+    assert.strictEqual(configValidator.counts().totalRules, 13);
     const result = configValidator.validate();
     assert.strictEqual(result.valid, true);
     assert.strictEqual(result.errors.length, 0);

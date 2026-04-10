@@ -1002,6 +1002,8 @@ const config = {
     refreshOnStartup:    true,      // true = مسح مجلد الجلسات عند بدء التشغيل | false = الفهرس يتبنى تدريجياً من الأحداث فقط
     firstMessageMaxLen:  50,        // أقصى طول لأول رسالة محفوظة في الفهرس (بالأحرف)
     perUserIsolation:    true,      // Phase 92: true = الـ sidebar يعرض جلسات المستخدم الحالي فقط (حسب IP hash) — آمن افتراضياً. false = عرض كل الجلسات (السلوك القديم)
+    sseEnabled:          true,      // Phase 93: true = إرسال SSE events للـ sidebar عند تحديث sessions | false = معطّل (الـ sidebar يعمل بدون auto-refresh)
+    sidebarAutoRefresh:  true,      // Phase 93: true = الـ sidebar يتحدث تلقائياً عند استقبال SSE event | false = manual refresh فقط
   },
 
 };

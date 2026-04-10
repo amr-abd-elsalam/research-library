@@ -46,13 +46,13 @@ async function ensureDir(dirPath) {
   }
 }
 
-// ── IP Hashing (SHA-256 + daily salt) — same as analytics.js ──
+// ── IP Hashing (SHA-256 + stable salt) — Phase 93: stable identity across days ──
 function hashIP(ip) {
   if (!ip) return 'unknown';
-  const today = new Date().toISOString().slice(0, 10);
+  const salt = process.env.SESSION_SALT || 'ai8v-session-identity-v1';
   return crypto
     .createHash('sha256')
-    .update(`${today}:${ip}`)
+    .update(`${salt}:${ip}`)
     .digest('hex')
     .slice(0, 16);
 }

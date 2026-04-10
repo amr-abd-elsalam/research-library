@@ -12,7 +12,7 @@ import { handleMetrics }    from './handlers/metricsHandler.js';
 import { handleAdminLog }   from './handlers/adminLogHandler.js';
 import { handleInspect }    from './handlers/inspectHandler.js';
 import { handleAuthVerify }  from './handlers/authHandler.js';
-import { handleCreateSession, handleGetSession, handleDeleteSession, handleListSessions, handleListUserSessions, extractSessionId, extractSessionAction, handleResumeSession, handleExportSession, handleSessionReplay } from './handlers/sessions.js';
+import { handleCreateSession, handleGetSession, handleDeleteSession, handleListSessions, handleListUserSessions, handleSessionStream, extractSessionId, extractSessionAction, handleResumeSession, handleExportSession, handleSessionReplay } from './handlers/sessions.js';
 import { handleCommands } from './handlers/commandsHandler.js';
 import { handleWhoami }   from './handlers/whoamiHandler.js';
 import { handleSubmitFeedback, handleAdminFeedback } from './handlers/feedbackHandler.js';
@@ -294,6 +294,14 @@ export async function router(req, res) {
     requireAdmin(req, res);
     if (res.writableEnded) return;
     await handleListSessions(req, res);
+    return;
+  }
+
+  // GET /api/sessions/stream (Phase 93 — SSE real-time sidebar updates)
+  if (method === 'GET' && matchRoute(url, '/api/sessions/stream')) {
+    requireAccess(req, res);
+    if (res.writableEnded) return;
+    await handleSessionStream(req, res);
     return;
   }
 

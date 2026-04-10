@@ -1052,14 +1052,14 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(typeof data.configValidator.totalRules, 'number');
   });
 
-  // T-IH89: GET /api/admin/inspect — configValidator.totalRules is 12 (Phase 92: was 11, +PER_USER_ISOLATION rule)
-  it('T-IH89: GET /api/admin/inspect — configValidator.totalRules is 12', async () => {
+  // T-IH89: GET /api/admin/inspect — configValidator.totalRules is 13 (Phase 93: was 12, +SIDEBAR_SSE rule)
+  it('T-IH89: GET /api/admin/inspect — configValidator.totalRules is 13', async () => {
     const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
       headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
     });
     assert.strictEqual(res.status, 200);
     const data = await res.json();
-    assert.strictEqual(data.configValidator.totalRules, 12, 'should have 12 validation rules');
+    assert.strictEqual(data.configValidator.totalRules, 13, 'should have 13 validation rules');
   });
 
   // T-IH90: GET /api/admin/inspect — configValidator.lastResult is null or object (Phase 79)
@@ -1270,14 +1270,14 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(Object.keys(data).length, 15, `expected 15 feature keys, got ${Object.keys(data).length}`);
   });
 
-  // T-IH110: GET /api/admin/inspect — configValidator.totalRules is 12 (Phase 92: was 11, +PER_USER_ISOLATION rule)
-  it('T-IH110: GET /api/admin/inspect — configValidator.totalRules is 12', async () => {
+  // T-IH110: GET /api/admin/inspect — configValidator.totalRules is 13 (Phase 93: was 12, +SIDEBAR_SSE rule)
+  it('T-IH110: GET /api/admin/inspect — configValidator.totalRules is 13', async () => {
     const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
       headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
     });
     assert.strictEqual(res.status, 200);
     const data = await res.json();
-    assert.strictEqual(data.configValidator.totalRules, 12, 'should have 12 validation rules');
+    assert.strictEqual(data.configValidator.totalRules, 13, 'should have 13 validation rules');
   });
 
   // T-IH111: GET /api/admin/inspect — answerRefinement includes streamingRevisionEnabled field (Phase 86)
@@ -1519,14 +1519,14 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(typeof data.sessionMetadataIndex.firstMessageMaxLen, 'number');
   });
 
-  // T-IH131: GET /api/admin/inspect — configValidator.totalRules is 12 (Phase 92: +1 PER_USER_ISOLATION rule)
-  it('T-IH131: GET /api/admin/inspect — configValidator.totalRules is 12', async () => {
+  // T-IH131: GET /api/admin/inspect — configValidator.totalRules is 13 (Phase 93: was 12, +SIDEBAR_SSE rule)
+  it('T-IH131: GET /api/admin/inspect — configValidator.totalRules is 13', async () => {
     const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
       headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
     });
     assert.strictEqual(res.status, 200);
     const data = await res.json();
-    assert.strictEqual(data.configValidator.totalRules, 12, 'should have 12 validation rules');
+    assert.strictEqual(data.configValidator.totalRules, 13, 'should have 13 validation rules');
   });
 
   // T-IH132: GET /api/sessions returns sessions array (per-user isolation active)
@@ -1552,18 +1552,65 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
       'perUserIsolation should default to true');
   });
 
-  // T-IH134: GET /api/admin/inspect — configValidator.totalRules is 12 (Phase 92)
-  it('T-IH134: GET /api/admin/inspect — configValidator.totalRules is 12', async () => {
+  // T-IH134: GET /api/admin/inspect — configValidator.totalRules is 13 (Phase 93: was 12, +SIDEBAR_SSE_requires_SESSIONS)
+  it('T-IH134: GET /api/admin/inspect — configValidator.totalRules is 13', async () => {
     const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
       headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
     });
     assert.strictEqual(res.status, 200);
     const data = await res.json();
-    assert.strictEqual(data.configValidator.totalRules, 12, 'should have 12 validation rules');
+    assert.strictEqual(data.configValidator.totalRules, 13, 'should have 13 validation rules');
   });
 
-  // T-IH123: GET /api/admin/inspect → all 45 singleton sections present (Phase 91: was 44, +sessionMetadataIndex)
-  it('T-IH123: GET /api/admin/inspect — all 45 singleton sections present', async () => {
+  // T-IH135: GET /api/sessions/stream — returns SSE response (Phase 93)
+  it('T-IH135: GET /api/sessions/stream — returns SSE Content-Type', async () => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2000);
+    try {
+      const res = await fetch(`${ts.baseUrl}/api/sessions/stream`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      const ct = res.headers.get('content-type');
+      assert.ok(ct && ct.includes('text/event-stream'), `Content-Type should be text/event-stream, got ${ct}`);
+      // Abort after checking headers — don't wait for stream to end
+      controller.abort();
+    } catch (err) {
+      clearTimeout(timer);
+      // AbortError is expected — we just need to check the headers were correct
+      if (err.name !== 'AbortError') throw err;
+    }
+  });
+
+  // T-IH136: GET /api/admin/inspect — includes sessionStream section (Phase 93)
+  it('T-IH136: GET /api/admin/inspect — includes sessionStream section', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('sessionStream' in data, 'inspect should contain sessionStream');
+    assert.strictEqual(typeof data.sessionStream.totalConnections, 'number');
+    assert.strictEqual(typeof data.sessionStream.uniqueUsers, 'number');
+  });
+
+  // T-IH137: hashIPFromRequest produces stable hash (Phase 93)
+  it('T-IH137: GET /api/sessions — returns consistent results across calls', async () => {
+    // Call twice — should get same structure (stable identity)
+    const res1 = await fetch(`${ts.baseUrl}/api/sessions`);
+    const res2 = await fetch(`${ts.baseUrl}/api/sessions`);
+    assert.strictEqual(res1.status, 200);
+    assert.strictEqual(res2.status, 200);
+    const data1 = await res1.json();
+    const data2 = await res2.json();
+    assert.ok(Array.isArray(data1.sessions));
+    assert.ok(Array.isArray(data2.sessions));
+    // Both should return same session count (same IP = same hash = same filter)
+    assert.strictEqual(data1.sessions.length, data2.sessions.length, 'stable hash should return consistent results');
+  });
+
+  // T-IH123: GET /api/admin/inspect → all sections present (Phase 93: +sessionStream)
+  it('T-IH123: GET /api/admin/inspect — all singleton sections present', async () => {
     const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
       headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
     });
@@ -1585,7 +1632,7 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
       'actionRegistry', 'queryPlanner', 'pipelineComposer',
       'sessionReplaySerializer', 'ragStrategySelector',
       'refinementAnalytics', 'strategyAnalytics',
-      'sessionMetadataIndex',
+      'sessionMetadataIndex', 'sessionStream',
       'observability', 'tiers',
     ];
     for (const section of expectedSections) {

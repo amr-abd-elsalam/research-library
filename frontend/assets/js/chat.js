@@ -1165,6 +1165,11 @@ const ChatModule = (() => {
       confirmEl.className = 'feedback-confirmation';
       confirmEl.textContent = 'شكراً على تقييمك';
       bar.appendChild(confirmEl);
+
+      // Phase 93: auto-dismiss after 3 seconds
+      setTimeout(function() {
+        confirmEl.classList.add('feedback-auto-dismiss');
+      }, 100);
     }
 
     btnUp.addEventListener('click', function() { handleFeedback('positive'); });

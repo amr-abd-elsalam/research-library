@@ -21,6 +21,7 @@ import { contextPersister } from '../services/contextPersister.js';
 import { logger } from '../services/logger.js';
 import { sessionReplaySerializer } from '../services/sessionReplaySerializer.js';
 import { sessionMetadataIndex } from '../services/sessionMetadataIndex.js';
+import { addConnection } from '../services/listeners/sessionStreamListener.js';
 
 // ── Custom Error ───────────────────────────────────────────────
 export class SessionHandlerError extends Error {
@@ -299,6 +300,51 @@ export async function handleListUserSessions(req, res) {
       code:  'SESSION_LIST_ERROR',
     }));
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GET /api/sessions/stream — SSE real-time session updates (Phase 93)
+// Sends events when current user's sessions are updated.
+// ═══════════════════════════════════════════════════════════════
+export async function handleSessionStream(req, res) {
+  if (!config.SESSIONS?.enabled || config.SESSION_INDEX?.sseEnabled === false) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'الميزة غير مفعّلة', code: 'FEATURE_DISABLED' }));
+    return;
+  }
+
+  const ipHash = hashIPFromRequest(req);
+
+  // SSE headers
+  res.writeHead(200, {
+    'Content-Type':      'text/event-stream',
+    'Cache-Control':     'no-cache',
+    'Connection':        'keep-alive',
+    'X-Accel-Buffering': 'no',
+  });
+
+  // Disable socket timeout for long-lived SSE
+  if (typeof res.setTimeout === 'function') {
+    res.setTimeout(0);
+  }
+
+  // Initial connection event
+  res.write(`data: ${JSON.stringify({ type: 'connected' })}\n\n`);
+
+  // Register connection for SSE push
+  addConnection(ipHash, res);
+
+  // Heartbeat every 30s to keep connection alive through proxies
+  const heartbeat = setInterval(() => {
+    if (!res.writableEnded) {
+      res.write(': heartbeat\n\n');
+    }
+  }, 30000);
+  if (heartbeat.unref) heartbeat.unref();
+
+  req.on('close', () => {
+    clearInterval(heartbeat);
+  });
 }
 
 // ── Session action URL matcher ─────────────────────────────────
