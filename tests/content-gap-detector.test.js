@@ -22,9 +22,9 @@ describe('ContentGapDetector', () => {
     featureFlags.clearOverride('CONTENT_GAPS');
   });
 
-  // T-CG01: enabled returns false with default config
-  it('T-CG01: enabled returns false with default config', () => {
-    assert.strictEqual(contentGapDetector.enabled, false);
+  // T-CG01: enabled returns true with default config (Phase 97: CONTENT_GAPS enabled by default)
+  it('T-CG01: enabled returns true with default config', () => {
+    assert.strictEqual(contentGapDetector.enabled, true);
   });
 
   // T-CG02: record() is no-op when disabled — does not throw
@@ -113,12 +113,12 @@ describe('ContentGapDetector', () => {
     assert.ok(after >= before + 2, `totalEntries should increase by at least 2 — before: ${before}, after: ${after}`);
   });
 
-  // T-CG10: After clearOverride('CONTENT_GAPS') — reverts to disabled (getGaps returns empty)
-  it('T-CG10: getGaps returns empty after clearOverride CONTENT_GAPS', () => {
+  // T-CG10: After setOverride('CONTENT_GAPS', false) — disabled (getGaps returns empty)
+  it('T-CG10: getGaps returns empty after setOverride CONTENT_GAPS false', () => {
     featureFlags.setOverride('CONTENT_GAPS', true);
     contentGapDetector.record({ message: 'سؤال عن البرمجة الكمية وتطبيقاتها', reason: 'low_score' });
 
-    featureFlags.clearOverride('CONTENT_GAPS');
+    featureFlags.setOverride('CONTENT_GAPS', false);
     const gaps = contentGapDetector.getGaps(10);
     assert.strictEqual(gaps.length, 0, 'getGaps should return empty when disabled');
   });
@@ -147,11 +147,11 @@ describe('ContentGapDetector', () => {
     assert.strictEqual(c.clusterCount, 0, 'clusterCount should be 0 after reset');
   });
 
-  // T-CGD13: restoreFromEntries when disabled stores data for later
+  // T-CGD13: restoreFromEntries when disabled stores data for later (Phase 97: explicitly disable)
   it('T-CGD13: restoreFromEntries when disabled stores data for later', () => {
     contentGapDetector.reset();
-    // Ensure disabled (config default + no override)
-    featureFlags.clearOverride('CONTENT_GAPS');
+    // Explicitly disable (Phase 97: config default is now true)
+    featureFlags.setOverride('CONTENT_GAPS', false);
     assert.strictEqual(contentGapDetector.enabled, false, 'should be disabled');
 
     // Restore entries while disabled — should NOT be rejected
@@ -167,10 +167,10 @@ describe('ContentGapDetector', () => {
     assert.ok(c.totalEntries >= 2, `totalEntries should be >= 2 after restore-then-enable — got ${c.totalEntries}`);
   });
 
-  // T-CGD14: full restore-then-enable lifecycle
+  // T-CGD14: full restore-then-enable lifecycle (Phase 97: explicitly disable first)
   it('T-CGD14: full restore then enable lifecycle', () => {
     contentGapDetector.reset();
-    featureFlags.clearOverride('CONTENT_GAPS');
+    featureFlags.setOverride('CONTENT_GAPS', false);
     assert.strictEqual(contentGapDetector.enabled, false, 'should start disabled');
 
     // Restore entries while disabled

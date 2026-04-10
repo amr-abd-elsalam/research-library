@@ -18,17 +18,17 @@ describe('AdminIntelligenceEngine (Phase 53)', () => {
     featureFlags.clearOverride('ADMIN_INTELLIGENCE');
   });
 
-  // T-AI01: enabled defaults to false
-  it('T-AI01: enabled defaults to false (config guard via featureFlags)', () => {
-    assert.strictEqual(adminIntelligence.enabled, false);
+  // T-AI01: enabled defaults to true (Phase 97: ADMIN_INTELLIGENCE enabled by default)
+  it('T-AI01: enabled defaults to true (config guard via featureFlags)', () => {
+    assert.strictEqual(adminIntelligence.enabled, true);
   });
 
-  // T-AI02: analyze() is no-op when disabled
-  it('T-AI02: analyze() is no-op when disabled — no insights generated', () => {
+  // T-AI02: analyze() generates insights when enabled (Phase 97: enabled by default)
+  it('T-AI02: analyze() generates insights when enabled by default', () => {
     adminIntelligence.analyze();
     const counts = adminIntelligence.counts();
-    assert.strictEqual(counts.analysisCount, 0);
-    assert.strictEqual(counts.insightCount, 0);
+    assert.strictEqual(counts.analysisCount, 1);
+    assert.ok(counts.insightCount >= 1, 'should generate at least 1 insight');
   });
 
   // T-AI03: getInsights() returns empty array when disabled

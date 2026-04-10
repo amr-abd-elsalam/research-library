@@ -75,21 +75,21 @@ describe('handleConfigFeatures()', () => {
     }
   });
 
-  // T-CF04: defaults match config (Phase 90: FEEDBACK/GROUNDING/CITATION/SUGGESTIONS now true)
+  // T-CF04: defaults match config (Phase 97: +ADMIN_INTELLIGENCE/CONTENT_GAPS/QUALITY/HEALTH_SCORE now true)
   it('T-CF04: defaults match config', async () => {
     const res = createMockRes();
     await handleConfigFeatures({}, res);
     const data = res.json;
-    assert.strictEqual(data.ADMIN_INTELLIGENCE, false);
-    assert.strictEqual(data.FEEDBACK, true);        // Phase 90: enabled by default
-    assert.strictEqual(data.SUGGESTIONS, true);     // Phase 90: enabled by default
-    assert.strictEqual(data.CONTENT_GAPS, false);
-    assert.strictEqual(data.QUALITY, false);
-    assert.strictEqual(data.HEALTH_SCORE, false);
+    assert.strictEqual(data.ADMIN_INTELLIGENCE, true);  // Phase 97: enabled by default
+    assert.strictEqual(data.FEEDBACK, true);             // Phase 90: enabled by default
+    assert.strictEqual(data.SUGGESTIONS, true);          // Phase 90: enabled by default
+    assert.strictEqual(data.CONTENT_GAPS, true);         // Phase 97: enabled by default
+    assert.strictEqual(data.QUALITY, true);              // Phase 97: enabled by default
+    assert.strictEqual(data.HEALTH_SCORE, true);         // Phase 97: enabled by default
     assert.strictEqual(data.RETRIEVAL, false);
     assert.strictEqual(data.QUERY_COMPLEXITY, false);
-    assert.strictEqual(data.GROUNDING, true);       // Phase 90: enabled by default
-    assert.strictEqual(data.CITATION, true);        // Phase 90: enabled by default
+    assert.strictEqual(data.GROUNDING, true);            // Phase 90: enabled by default
+    assert.strictEqual(data.CITATION, true);             // Phase 90: enabled by default
     assert.strictEqual(data.SEMANTIC_MATCHING, false);
   });
 
@@ -103,19 +103,19 @@ describe('handleConfigFeatures()', () => {
     assert.strictEqual(data.SUGGESTIONS, true);  // Phase 90: config default is now true
   });
 
-  // T-CF06: override removed — reverts to config value
+  // T-CF06: override removed — reverts to config value (Phase 97: QUALITY default is now true)
   it('T-CF06: reverts when override is cleared', async () => {
-    featureFlags.setOverride('QUALITY', true);
+    featureFlags.setOverride('QUALITY', false);
 
     let res = createMockRes();
     await handleConfigFeatures({}, res);
-    assert.strictEqual(res.json.QUALITY, true);
+    assert.strictEqual(res.json.QUALITY, false);
 
     featureFlags.clearOverride('QUALITY');
 
     res = createMockRes();
     await handleConfigFeatures({}, res);
-    assert.strictEqual(res.json.QUALITY, false);
+    assert.strictEqual(res.json.QUALITY, true);  // Phase 97: config default is now true
   });
 
 });

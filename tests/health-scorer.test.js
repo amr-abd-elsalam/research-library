@@ -21,15 +21,16 @@ describe('LibraryHealthScorer', () => {
     libraryHealthScorer.invalidateCache();
   });
 
-  // T-HS01: compute() returns null when HEALTH_SCORE disabled (default config)
-  it('T-HS01: compute returns null when HEALTH_SCORE disabled', () => {
+  // T-HS01: compute() returns non-null when HEALTH_SCORE enabled (Phase 97: enabled by default)
+  it('T-HS01: compute returns non-null when HEALTH_SCORE enabled', () => {
     const result = libraryHealthScorer.compute();
-    assert.strictEqual(result, null);
+    assert.notStrictEqual(result, null, 'should return score object when enabled');
+    assert.strictEqual(typeof result.score, 'number');
   });
 
-  // T-HS02: enabled getter returns false with default config
-  it('T-HS02: enabled returns false with default config', () => {
-    assert.strictEqual(libraryHealthScorer.enabled, false);
+  // T-HS02: enabled getter returns true with default config (Phase 97)
+  it('T-HS02: enabled returns true with default config', () => {
+    assert.strictEqual(libraryHealthScorer.enabled, true);
   });
 
   // T-HS03: counts() returns object with enabled field
@@ -90,16 +91,18 @@ describe('LibraryHealthScorer', () => {
     );
   });
 
-  // T-HS10: After clearOverride('HEALTH_SCORE') — compute() returns null again
-  it('T-HS10: compute returns null after clearOverride HEALTH_SCORE', () => {
-    featureFlags.setOverride('HEALTH_SCORE', true);
-    const enabled = libraryHealthScorer.compute();
-    assert.notStrictEqual(enabled, null, 'should be non-null while enabled');
+  // T-HS10: After setOverride('HEALTH_SCORE', false) — compute() returns null
+  it('T-HS10: compute returns null after setOverride HEALTH_SCORE false', () => {
+    // Phase 97: HEALTH_SCORE enabled by default — explicitly disable
+    featureFlags.setOverride('HEALTH_SCORE', false);
+    libraryHealthScorer.invalidateCache();
+    const disabled = libraryHealthScorer.compute();
+    assert.strictEqual(disabled, null, 'should return null when disabled');
 
     featureFlags.clearOverride('HEALTH_SCORE');
     libraryHealthScorer.invalidateCache();
-    const disabled = libraryHealthScorer.compute();
-    assert.strictEqual(disabled, null);
+    const enabled = libraryHealthScorer.compute();
+    assert.notStrictEqual(enabled, null, 'should be non-null after re-enabling');
   });
 
   // T-HS11: compute(libraryId) returns valid score object (Phase 61)

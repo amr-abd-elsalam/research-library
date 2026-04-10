@@ -32,17 +32,17 @@ describe('SessionQualityScorer', () => {
     assert.strictEqual(result, null);
   });
 
-  // T-SQ02: enabled getter reflects featureFlags state (false by default)
-  it('T-SQ02: enabled reflects featureFlags state (false by default)', () => {
-    assert.strictEqual(sessionQualityScorer.enabled, false);
+  // T-SQ02: enabled reflects featureFlags state (Phase 97: true by default)
+  it('T-SQ02: enabled reflects featureFlags state (true by default)', () => {
+    assert.strictEqual(sessionQualityScorer.enabled, true);
   });
 
-  // T-SQ03: counts() returns correct structure { enabled, trackedSessions }
+  // T-SQ03: counts returns correct structure (Phase 97: enabled true by default)
   it('T-SQ03: counts returns correct structure', () => {
     const c = sessionQualityScorer.counts();
     assert.ok('enabled' in c, 'should have enabled key');
     assert.ok('trackedSessions' in c, 'should have trackedSessions key');
-    assert.strictEqual(c.enabled, false);
+    assert.strictEqual(c.enabled, true);
     assert.strictEqual(c.trackedSessions, 0);
   });
 
@@ -151,8 +151,9 @@ describe('SessionQualityScorer', () => {
     assert.ok(scoreAfter >= 0 && scoreAfter <= 1, `score ${scoreAfter} should be in [0, 1]`);
   });
 
-  // T-SQ12: recordQuery when disabled — no-op, does not throw
+  // T-SQ12: recordQuery when disabled — no-op, does not throw (Phase 97: explicitly disable)
   it('T-SQ12: recordQuery when disabled does not throw', () => {
+    featureFlags.setOverride('QUALITY', false);
     assert.doesNotThrow(() => {
       sessionQualityScorer.recordQuery('sess-disabled', { avgScore: 0.5, aborted: false, rewriteMethod: null });
     });

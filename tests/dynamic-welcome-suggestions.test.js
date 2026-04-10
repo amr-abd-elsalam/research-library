@@ -180,10 +180,11 @@ describe('DynamicWelcomeSuggestions', () => {
     assert.ok(duplicates.length <= 1, 'same suggestion should not appear twice');
   });
 
-  // T-DWS11: enabled getter reflects combined state
+  // T-DWS11: enabled getter reflects combined state (Phase 97: LIBRARY_INDEX now true by default)
   it('T-DWS11: enabled getter reflects SUGGESTIONS + libraryIndex state', () => {
     // Phase 90: SUGGESTIONS now enabled by default — explicitly disable both first
     featureFlags.setOverride('SUGGESTIONS', false);
+    mockLibraryIndexEnabled(false);
 
     // Both off
     assert.strictEqual(dynamicWelcomeSuggestions.enabled, false);

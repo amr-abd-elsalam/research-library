@@ -20,13 +20,13 @@ describe('FeatureFlags', () => {
     }
   });
 
-  // T-FF01: isEnabled — no override, config defaults (Phase 90: FEEDBACK/SUGGESTIONS now true)
+  // T-FF01: isEnabled — no override, config defaults (Phase 97: +CONTENT_GAPS/QUALITY/HEALTH_SCORE now true)
   it('T-FF01: returns config default when no override is set', () => {
     assert.strictEqual(featureFlags.isEnabled('FEEDBACK'), true);       // Phase 90: enabled by default
     assert.strictEqual(featureFlags.isEnabled('SUGGESTIONS'), true);    // Phase 90: enabled by default
-    assert.strictEqual(featureFlags.isEnabled('CONTENT_GAPS'), false);
-    assert.strictEqual(featureFlags.isEnabled('QUALITY'), false);
-    assert.strictEqual(featureFlags.isEnabled('HEALTH_SCORE'), false);
+    assert.strictEqual(featureFlags.isEnabled('CONTENT_GAPS'), true);   // Phase 97: enabled by default
+    assert.strictEqual(featureFlags.isEnabled('QUALITY'), true);        // Phase 97: enabled by default
+    assert.strictEqual(featureFlags.isEnabled('HEALTH_SCORE'), true);   // Phase 97: enabled by default
   });
 
   // T-FF02: isEnabled — no override, config value (all defaults are false)
@@ -71,12 +71,12 @@ describe('FeatureFlags', () => {
     assert.strictEqual(featureFlags.isEnabled('SUGGESTIONS'), true);
   });
 
-  // T-FF08: clearOverride — reverts to config value
+  // T-FF08: clearOverride — reverts to config value (Phase 97: QUALITY default is now true)
   it('T-FF08: clearOverride reverts to config value', () => {
-    featureFlags.setOverride('QUALITY', true);
-    assert.strictEqual(featureFlags.isEnabled('QUALITY'), true);
+    featureFlags.setOverride('QUALITY', false);
+    assert.strictEqual(featureFlags.isEnabled('QUALITY'), false);
     featureFlags.clearOverride('QUALITY');
-    assert.strictEqual(featureFlags.isEnabled('QUALITY'), false); // config default (QUALITY still false)
+    assert.strictEqual(featureFlags.isEnabled('QUALITY'), true); // Phase 97: config default is now true
   });
 
   // T-FF09: getOverrides — returns current overrides
@@ -111,14 +111,14 @@ describe('FeatureFlags', () => {
     assert.ok(sectionNames.includes('RAG_STRATEGIES'));
   });
 
-  // T-FF11: getStatus — effective reflects override
+  // T-FF11: getStatus — effective reflects override (Phase 97: HEALTH_SCORE default is now true)
   it('T-FF11: getStatus effective field reflects override', () => {
-    featureFlags.setOverride('HEALTH_SCORE', true);
+    featureFlags.setOverride('HEALTH_SCORE', false);
     const status = featureFlags.getStatus();
     const hs = status.find(s => s.section === 'HEALTH_SCORE');
-    assert.strictEqual(hs.configValue, false);  // config default (HEALTH_SCORE still false)
-    assert.strictEqual(hs.override, true);       // our override
-    assert.strictEqual(hs.effective, true);      // resolved: override wins
+    assert.strictEqual(hs.configValue, true);    // Phase 97: config default is now true
+    assert.strictEqual(hs.override, false);      // our override
+    assert.strictEqual(hs.effective, false);     // resolved: override wins
   });
 
   // T-FF12: counts — returns correct structure (Phase 85: 15 sections)
@@ -153,26 +153,26 @@ describe('FeatureFlags', () => {
     assert.strictEqual(typeof emittedData.timestamp, 'number');
   });
 
-  // T-FF14: clearOverride event has correct previousValue and enabled (Phase 90: use QUALITY which is still false)
+  // T-FF14: clearOverride event has correct previousValue and enabled (Phase 97: QUALITY default is now true — use SEMANTIC_MATCHING which is still false)
   it('T-FF14: clearOverride event has correct previousValue and enabled', async () => {
     const { eventBus } = await import('../server/services/eventBus.js');
     let emittedData = null;
     const unsub = eventBus.on('feature:toggled', (data) => {
-      if (data.section === 'QUALITY' && data.previousValue === true) {
+      if (data.section === 'SEMANTIC_MATCHING' && data.previousValue === true) {
         emittedData = data;
       }
     });
 
-    featureFlags.setOverride('QUALITY', true);
-    assert.strictEqual(featureFlags.isEnabled('QUALITY'), true);
+    featureFlags.setOverride('SEMANTIC_MATCHING', true);
+    assert.strictEqual(featureFlags.isEnabled('SEMANTIC_MATCHING'), true);
 
-    featureFlags.clearOverride('QUALITY');
+    featureFlags.clearOverride('SEMANTIC_MATCHING');
 
     unsub();
 
     assert.ok(emittedData !== null, 'feature:toggled event should be emitted');
     assert.strictEqual(emittedData.previousValue, true, 'previousValue should be true (was overridden to true)');
-    assert.strictEqual(emittedData.enabled, false, 'enabled should be false (QUALITY config default is false)');
+    assert.strictEqual(emittedData.enabled, false, 'enabled should be false (SEMANTIC_MATCHING config default is false)');
   });
 
 });

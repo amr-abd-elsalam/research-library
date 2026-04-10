@@ -18,9 +18,9 @@ describe('LibraryIndex', () => {
     libraryIndex.stopPeriodicRefresh();
   });
 
-  // T-LI01: enabled is false by default (LIBRARY_INDEX.enabled defaults to false)
-  it('T-LI01: enabled is false by default', () => {
-    assert.strictEqual(libraryIndex.enabled, false);
+  // T-LI01: enabled is true by default (Phase 97: LIBRARY_INDEX.enabled defaults to true)
+  it('T-LI01: enabled is true by default', () => {
+    assert.strictEqual(libraryIndex.enabled, true);
   });
 
   // T-LI02: getIndex() returns null when no refresh has been done
@@ -49,11 +49,12 @@ describe('LibraryIndex', () => {
     assert.ok('libraryVersion' in c, 'should have libraryVersion');
   });
 
-  // T-LI05: startPeriodicRefresh() when disabled → no timer started
-  it('T-LI05: startPeriodicRefresh when disabled does not start timer', () => {
+  // T-LI05: startPeriodicRefresh() when enabled → timer starts (Phase 97: enabled by default)
+  it('T-LI05: startPeriodicRefresh when enabled starts timer', () => {
     libraryIndex.startPeriodicRefresh();
     const c = libraryIndex.counts();
-    assert.strictEqual(c.timerActive, false, 'timer should not start when disabled');
+    assert.strictEqual(c.timerActive, true, 'timer should start when enabled');
+    libraryIndex.stopPeriodicRefresh();
   });
 
   // T-LI06: stopPeriodicRefresh() idempotent — no error on double call
@@ -76,10 +77,10 @@ describe('LibraryIndex', () => {
     assert.strictEqual(c.refreshCount, 0);
   });
 
-  // T-LI09: counts().enabled is false by default
-  it('T-LI09: counts enabled is false by default', () => {
+  // T-LI09: counts().enabled is true by default (Phase 97)
+  it('T-LI09: counts enabled is true by default', () => {
     const c = libraryIndex.counts();
-    assert.strictEqual(c.enabled, false);
+    assert.strictEqual(c.enabled, true);
   });
 
   // T-LI10: getTopicNames() return type is Array
