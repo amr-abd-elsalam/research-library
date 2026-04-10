@@ -218,7 +218,7 @@ const config = {
   //    — لا يحتاج أي خدمة خارجية (file-based)
   // ═══════════════════════════════════════════════════════════
   SESSIONS: {
-    enabled:              false,    // true = حفظ المحادثات على السيرفر | false = المتصفح فقط
+    enabled:              true,     // true = حفظ المحادثات على السيرفر | false = المتصفح فقط
     maxMessages:          100,      // أقصى عدد رسائل في session واحدة
     ttlDays:              30,       // مدة الاحتفاظ بالـ session (بالأيام)
     maxSessions:          10000,    // أقصى عدد sessions محفوظة
@@ -491,7 +491,7 @@ const config = {
   //    — الاقتراحات تظهر تحت كل إجابة كأزرار قابلة للنقر
   // ═══════════════════════════════════════════════════════════
   SUGGESTIONS: {
-    enabled:        false,    // true = تفعيل اقتراحات المتابعة الذكية | false = معطّل (السلوك الحالي بالظبط)
+    enabled:        true,     // true = تفعيل اقتراحات المتابعة الذكية | false = معطّل (السلوك الحالي بالظبط)
     maxSuggestions: 3,        // أقصى عدد اقتراحات لكل رد (1-5)
     minTurns:       1,        // أقل عدد turns قبل ما تبدأ الاقتراحات (0 = من أول رد)
     templates:      [],       // templates إضافية — فارغ = builtin templates فقط (reserved for future customization)
@@ -504,7 +504,7 @@ const config = {
   //    — معطّل افتراضياً — فعّله من هنا
   // ═══════════════════════════════════════════════════════════
   FEEDBACK: {
-    enabled:          false,    // true = تفعيل نظام التقييم (👍👎) | false = مخفي بالكامل (zero overhead)
+    enabled:          true,     // true = تفعيل نظام التقييم (👍👎) | false = مخفي بالكامل (zero overhead)
     allowComments:    true,     // true = يسمح للمستخدم بإضافة تعليق نصي مع التقييم | false = تقييم فقط بدون نص
     maxCommentLength: 200,      // أقصى أحرف في التعليق
   },
@@ -763,7 +763,7 @@ const config = {
   //    — لا يحتاج أي dependency خارجية (in-memory token overlap)
   // ═══════════════════════════════════════════════════════════
   GROUNDING: {
-    enabled:           false,     // true = post-generation grounding check | false = no validation (zero overhead — السلوك الحالي بالظبط)
+    enabled:           true,      // true = post-generation grounding check | false = no validation (zero overhead — السلوك الحالي بالظبط)
     minGroundingScore: 0.4,       // 0-1: إجابات بـ score أقل من كده تظهر مع تنبيه للمستخدم. 0.4 = متساهل (يسمح بإعادة الصياغة)
     warnUser:          true,      // true = إضافة تنبيه في الـ response لما الـ score منخفض | false = تسجيل بدون تنبيه
     includeInTrace:    true,      // true = تسجيل grounding score في الـ pipeline trace | false = لا تسجيل
@@ -791,7 +791,7 @@ const config = {
   //    — يعمل فقط لما GROUNDING مفعّل أو مستقل
   // ═══════════════════════════════════════════════════════════
   CITATION: {
-    enabled:             false,     // true = تفعيل إسناد المصادر التلقائي | false = معطّل (zero overhead)
+    enabled:             true,      // true = تفعيل إسناد المصادر التلقائي | false = معطّل (zero overhead)
     showSourceRelevance: true,      // true = عرض نسبة صلة كل مصدر بالسؤال | false = بدون
     maxCitations:        5,         // أقصى عدد إسنادات لكل إجابة (1-20)
     minOverlap:          0.2,       // أقل نسبة تطابق لاعتبار الجملة مُسندة (0-1)

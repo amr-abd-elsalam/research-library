@@ -135,15 +135,31 @@ async function loadConfig() {
     }
 
     // ── Phase 46: Store effective feature state ───────────────────
+    // Phase 90: extended to cover all 15 features (was 5 — GROUNDING/CITATION etc were missing)
     window.__effectiveFeatures = {
-      FEEDBACK:     data.FEEDBACK?.effectiveEnabled     ?? data.FEEDBACK?.enabled     ?? false,
-      SUGGESTIONS:  data.SUGGESTIONS?.effectiveEnabled  ?? data.SUGGESTIONS?.enabled  ?? false,
-      CONTENT_GAPS: data.CONTENT_GAPS?.effectiveEnabled ?? data.CONTENT_GAPS?.enabled ?? false,
-      QUALITY:      data.QUALITY?.effectiveEnabled      ?? data.QUALITY?.enabled      ?? false,
-      HEALTH_SCORE: data.HEALTH_SCORE?.effectiveEnabled ?? data.HEALTH_SCORE?.enabled ?? false,
+      FEEDBACK:           data.FEEDBACK?.effectiveEnabled           ?? data.FEEDBACK?.enabled           ?? false,
+      SUGGESTIONS:        data.SUGGESTIONS?.effectiveEnabled        ?? data.SUGGESTIONS?.enabled        ?? false,
+      CONTENT_GAPS:       data.CONTENT_GAPS?.effectiveEnabled       ?? data.CONTENT_GAPS?.enabled       ?? false,
+      QUALITY:            data.QUALITY?.effectiveEnabled            ?? data.QUALITY?.enabled            ?? false,
+      HEALTH_SCORE:       data.HEALTH_SCORE?.effectiveEnabled       ?? data.HEALTH_SCORE?.enabled       ?? false,
+      ADMIN_INTELLIGENCE: false,
+      RETRIEVAL:          false,
+      QUERY_COMPLEXITY:   false,
+      GROUNDING:          false,
+      CITATION:           false,
+      SEMANTIC_MATCHING:  false,
+      COST_GOVERNANCE:    false,
+      ANSWER_REFINEMENT:  false,
+      QUERY_PLANNING:     false,
+      RAG_STRATEGIES:     false,
     };
 
     console.log('[config] ✅ تم تحميل الإعدادات من السيرفر');
+
+    // Phase 90: fetch full effective feature state from /api/config/features
+    // This covers all 15 features (loadConfig above only sets 5 from config data)
+    await window.refreshEffectiveFeatures();
+
     return true;
 
   } catch (err) {
@@ -159,18 +175,18 @@ window.getEffective = function(section) {
 };
 
 // ── Phase 46: On-demand refresh of effective feature state ────
+// Phase 90: extended to cover all 15 features from /api/config/features
 window.refreshEffectiveFeatures = async function() {
   try {
     var resp = await fetch('/api/config/features');
     if (!resp.ok) return;
     var data = await resp.json();
-    window.__effectiveFeatures = {
-      FEEDBACK:     data.FEEDBACK     ?? false,
-      SUGGESTIONS:  data.SUGGESTIONS  ?? false,
-      CONTENT_GAPS: data.CONTENT_GAPS ?? false,
-      QUALITY:      data.QUALITY      ?? false,
-      HEALTH_SCORE: data.HEALTH_SCORE ?? false,
-    };
+    window.__effectiveFeatures = {};
+    for (var key in data) {
+      if (typeof data[key] === 'boolean') {
+        window.__effectiveFeatures[key] = data[key];
+      }
+    }
   } catch (_) {
     // Silent fail — keep existing values
   }

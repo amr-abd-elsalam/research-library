@@ -226,6 +226,60 @@ export async function handleListSessions(req, res) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════
+// GET /api/sessions — User-scoped session list (Phase 90)
+// Returns last 50 sessions sorted by last_activity DESC.
+// Each session includes first_message (truncated to 50 chars).
+// ═══════════════════════════════════════════════════════════════
+export async function handleListUserSessions(req, res) {
+  if (!config.SESSIONS.enabled) {
+    sessionsDisabledResponse(res);
+    return;
+  }
+
+  try {
+    const result = await listSessions({ limit: '50', offset: '0', since: '0' });
+    const sessions = (result.sessions || []).map(s => {
+      return {
+        session_id:    s.session_id,
+        created_at:    s.created_at,
+        last_active:   s.last_active,
+        message_count: s.message_count || 0,
+        topic_filter:  s.topic_filter,
+        first_message: null,
+      };
+    });
+
+    // Enrich each session with first user message (truncated)
+    for (const s of sessions) {
+      try {
+        const full = await getSession(s.session_id);
+        if (full && full.messages && full.messages.length > 0) {
+          const firstUser = full.messages.find(m => m.role === 'user');
+          if (firstUser && firstUser.text) {
+            s.first_message = firstUser.text.length > 50
+              ? firstUser.text.slice(0, 50) + '…'
+              : firstUser.text;
+          }
+        }
+      } catch (_) {
+        // Non-fatal — leave first_message as null
+      }
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ sessions }));
+
+  } catch (err) {
+    console.error('[sessions:list-user] error:', err.message);
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      error: 'فشل جلب قائمة الجلسات',
+      code:  'SESSION_LIST_ERROR',
+    }));
+  }
+}
+
 // ── Session action URL matcher ─────────────────────────────────
 const SESSION_ACTION_RE = /^\/api\/sessions\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\/(resume|export|replay)\/?$/i;
 

@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   TopicsModule.init();
   SuggestionsModule.init();
   ChatModule.init();
+  SidebarModule.init();
 
   // ── 6. Apply permissions to UI (Phase 27) ───────────────────
   TopicsModule.onPermissionsReady();

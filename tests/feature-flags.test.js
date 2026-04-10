@@ -20,11 +20,10 @@ describe('FeatureFlags', () => {
     }
   });
 
-  // T-FF01: isEnabled — no override, config default false
-  it('T-FF01: returns false when no override and config defaults to false', () => {
-    // All 5 sections default to enabled: false in config.js
-    assert.strictEqual(featureFlags.isEnabled('FEEDBACK'), false);
-    assert.strictEqual(featureFlags.isEnabled('SUGGESTIONS'), false);
+  // T-FF01: isEnabled — no override, config defaults (Phase 90: FEEDBACK/SUGGESTIONS now true)
+  it('T-FF01: returns config default when no override is set', () => {
+    assert.strictEqual(featureFlags.isEnabled('FEEDBACK'), true);       // Phase 90: enabled by default
+    assert.strictEqual(featureFlags.isEnabled('SUGGESTIONS'), true);    // Phase 90: enabled by default
     assert.strictEqual(featureFlags.isEnabled('CONTENT_GAPS'), false);
     assert.strictEqual(featureFlags.isEnabled('QUALITY'), false);
     assert.strictEqual(featureFlags.isEnabled('HEALTH_SCORE'), false);
@@ -63,13 +62,13 @@ describe('FeatureFlags', () => {
     assert.strictEqual(featureFlags.isEnabled('Feedback'), true);
   });
 
-  // T-FF07: setOverride — changes isEnabled result
+  // T-FF07: setOverride — changes isEnabled result (Phase 90: SUGGESTIONS default is now true)
   it('T-FF07: setOverride changes isEnabled result', () => {
+    assert.strictEqual(featureFlags.isEnabled('SUGGESTIONS'), true);  // Phase 90: enabled by default
+    featureFlags.setOverride('SUGGESTIONS', false);
     assert.strictEqual(featureFlags.isEnabled('SUGGESTIONS'), false);
     featureFlags.setOverride('SUGGESTIONS', true);
     assert.strictEqual(featureFlags.isEnabled('SUGGESTIONS'), true);
-    featureFlags.setOverride('SUGGESTIONS', false);
-    assert.strictEqual(featureFlags.isEnabled('SUGGESTIONS'), false);
   });
 
   // T-FF08: clearOverride — reverts to config value
@@ -77,7 +76,7 @@ describe('FeatureFlags', () => {
     featureFlags.setOverride('QUALITY', true);
     assert.strictEqual(featureFlags.isEnabled('QUALITY'), true);
     featureFlags.clearOverride('QUALITY');
-    assert.strictEqual(featureFlags.isEnabled('QUALITY'), false); // config default
+    assert.strictEqual(featureFlags.isEnabled('QUALITY'), false); // config default (QUALITY still false)
   });
 
   // T-FF09: getOverrides — returns current overrides
@@ -117,7 +116,7 @@ describe('FeatureFlags', () => {
     featureFlags.setOverride('HEALTH_SCORE', true);
     const status = featureFlags.getStatus();
     const hs = status.find(s => s.section === 'HEALTH_SCORE');
-    assert.strictEqual(hs.configValue, false);  // config default
+    assert.strictEqual(hs.configValue, false);  // config default (HEALTH_SCORE still false)
     assert.strictEqual(hs.override, true);       // our override
     assert.strictEqual(hs.effective, true);      // resolved: override wins
   });
@@ -132,47 +131,48 @@ describe('FeatureFlags', () => {
     assert.strictEqual(typeof c.persisted, 'boolean');
   });
 
-  // T-FF13: clearOverride emits feature:toggled event
+  // T-FF13: clearOverride emits feature:toggled event (Phase 90: SUGGESTIONS default is now true)
   it('T-FF13: clearOverride emits feature:toggled event', async () => {
     const { eventBus } = await import('../server/services/eventBus.js');
     let emittedData = null;
     const unsub = eventBus.on('feature:toggled', (data) => {
-      // Capture only the clearOverride emission (enabled will be false for SUGGESTIONS)
-      if (data.section === 'SUGGESTIONS' && data.enabled === false) {
+      // Capture the clearOverride emission — SUGGESTIONS reverts to true (config default)
+      if (data.section === 'SUGGESTIONS' && data.previousValue === false) {
         emittedData = data;
       }
     });
 
-    featureFlags.setOverride('SUGGESTIONS', true);
+    featureFlags.setOverride('SUGGESTIONS', false);
     featureFlags.clearOverride('SUGGESTIONS');
 
     unsub();
 
     assert.ok(emittedData !== null, 'feature:toggled event should be emitted on clearOverride');
     assert.strictEqual(emittedData.section, 'SUGGESTIONS');
+    assert.strictEqual(emittedData.enabled, true);  // reverts to config default (now true)
     assert.strictEqual(typeof emittedData.timestamp, 'number');
   });
 
-  // T-FF14: clearOverride event has correct previousValue and enabled
+  // T-FF14: clearOverride event has correct previousValue and enabled (Phase 90: use QUALITY which is still false)
   it('T-FF14: clearOverride event has correct previousValue and enabled', async () => {
     const { eventBus } = await import('../server/services/eventBus.js');
     let emittedData = null;
     const unsub = eventBus.on('feature:toggled', (data) => {
-      if (data.section === 'FEEDBACK' && data.previousValue === true) {
+      if (data.section === 'QUALITY' && data.previousValue === true) {
         emittedData = data;
       }
     });
 
-    featureFlags.setOverride('FEEDBACK', true);
-    assert.strictEqual(featureFlags.isEnabled('FEEDBACK'), true);
+    featureFlags.setOverride('QUALITY', true);
+    assert.strictEqual(featureFlags.isEnabled('QUALITY'), true);
 
-    featureFlags.clearOverride('FEEDBACK');
+    featureFlags.clearOverride('QUALITY');
 
     unsub();
 
     assert.ok(emittedData !== null, 'feature:toggled event should be emitted');
     assert.strictEqual(emittedData.previousValue, true, 'previousValue should be true (was overridden to true)');
-    assert.strictEqual(emittedData.enabled, false, 'enabled should be false (config default)');
+    assert.strictEqual(emittedData.enabled, false, 'enabled should be false (QUALITY config default is false)');
   });
 
 });

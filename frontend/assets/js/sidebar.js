@@ -1,0 +1,398 @@
+/* =============================================================
+   sidebar.js — SidebarModule (Phase 90)
+   Conversation list sidebar — load, switch, delete, toggle
+   ============================================================= */
+
+'use strict';
+
+const SidebarModule = (() => {
+
+  /* ── DOM References ────────────────────────── */
+  let _sidebar      = null;
+  let _overlay      = null;
+  let _toggle       = null;
+  let _sessionsEl   = null;
+  let _newChatBtn   = null;
+  let _activeId     = null;
+  let _isOpen       = false;
+
+  /* ── Load sessions from API ────────────────── */
+  async function _loadSessions() {
+    if (!_sessionsEl) return;
+
+    try {
+      var res = await fetch('/api/sessions', {
+        headers: AuthModule.getAccessHeaders(),
+      });
+      if (!res.ok) {
+        _renderEmpty();
+        return;
+      }
+      var data = await res.json();
+      var sessions = data.sessions || [];
+      _renderSessionList(sessions);
+    } catch (_err) {
+      _renderEmpty();
+    }
+  }
+
+  /* ── Render empty state ────────────────────── */
+  function _renderEmpty() {
+    if (!_sessionsEl) return;
+    _sessionsEl.innerHTML = '';
+    var empty = document.createElement('div');
+    empty.className = 'sidebar-empty';
+    empty.textContent = 'لا توجد محادثات سابقة';
+    _sessionsEl.appendChild(empty);
+  }
+
+  /* ── Render session list ───────────────────── */
+  function _renderSessionList(sessions) {
+    if (!_sessionsEl) return;
+    _sessionsEl.innerHTML = '';
+
+    if (!sessions || sessions.length === 0) {
+      _renderEmpty();
+      return;
+    }
+
+    // Get current session ID for active highlight
+    var currentSid = null;
+    try { currentSid = sessionStorage.getItem('research_session_id'); } catch (_) {}
+
+    for (var i = 0; i < sessions.length; i++) {
+      (function(session) {
+        var item = document.createElement('div');
+        item.className = 'sidebar-item';
+        if (session.session_id === currentSid) {
+          item.classList.add('active');
+          _activeId = session.session_id;
+        }
+        item.setAttribute('data-session-id', session.session_id);
+        item.setAttribute('role', 'button');
+        item.setAttribute('tabindex', '0');
+
+        // Title — first message or fallback
+        var title = document.createElement('div');
+        title.className = 'sidebar-item-title';
+        title.textContent = session.first_message || 'محادثة بتاريخ ' + _formatDate(session.created_at);
+        item.appendChild(title);
+
+        // Meta — date + message count
+        var meta = document.createElement('div');
+        meta.className = 'sidebar-item-meta';
+        meta.textContent = _relativeTime(session.last_active) + ' · ' + (session.message_count || 0) + ' رسالة';
+        item.appendChild(meta);
+
+        // Delete button
+        var del = document.createElement('button');
+        del.className = 'sidebar-item-delete';
+        del.type = 'button';
+        del.textContent = '✕';
+        del.title = 'حذف المحادثة';
+        del.setAttribute('aria-label', 'حذف المحادثة');
+        del.addEventListener('click', function(e) {
+          e.stopPropagation();
+          _deleteSession(session.session_id);
+        });
+        item.appendChild(del);
+
+        // Click → switch to this session
+        item.addEventListener('click', function() {
+          _switchToSession(session.session_id);
+        });
+
+        // Keyboard accessibility
+        item.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            _switchToSession(session.session_id);
+          }
+        });
+
+        _sessionsEl.appendChild(item);
+      })(sessions[i]);
+    }
+  }
+
+  /* ── Switch to session ─────────────────────── */
+  async function _switchToSession(sessionId) {
+    if (!sessionId) return;
+
+    // Save session ID
+    try {
+      sessionStorage.setItem('research_session_id', sessionId);
+      localStorage.setItem('research_session_persist', sessionId);
+    } catch (_) {}
+
+    // Close sidebar on mobile
+    _close();
+
+    // Clear current chat UI
+    var messagesList = AppModule.DOM.messagesList;
+    if (messagesList) messagesList.innerHTML = '';
+    AppModule.hideWelcomeState();
+    if (window.__headerControl) window.__headerControl.hide();
+
+    // Fetch session data and render
+    try {
+      var res = await fetch('/api/sessions/' + sessionId, {
+        headers: AuthModule.getAccessHeaders(),
+      });
+      if (!res.ok) return;
+      var data = await res.json();
+      var messages = data.messages || [];
+
+      // Sync local history
+      var localHistory = [];
+      for (var i = 0; i < messages.length; i++) {
+        var m = messages[i];
+        var role = m.role === 'assistant' ? 'model' : m.role;
+        localHistory.push({ role: role, text: m.text });
+      }
+      try {
+        sessionStorage.setItem('research_chat_history', JSON.stringify(localHistory));
+      } catch (_) {}
+
+      // Render messages
+      if (!messagesList) return;
+      for (var j = 0; j < messages.length; j++) {
+        var msg = messages[j];
+        if (msg.role === 'user') {
+          _renderUserMsg(msg.text);
+        } else if (msg.role === 'assistant' || msg.role === 'model') {
+          _renderAssistantMsg(msg.text);
+        }
+      }
+      AppModule.scrollToBottom(false);
+
+      // Update active state in sidebar
+      _activeId = sessionId;
+      _updateActiveHighlight();
+
+    } catch (_err) {
+      // Silent fail
+    }
+  }
+
+  /* ── Simple message renderers for sidebar-initiated restore ── */
+  function _renderUserMsg(text) {
+    var messagesList = AppModule.DOM.messagesList;
+    if (!messagesList) return;
+
+    var msg = document.createElement('div');
+    msg.className = 'message user';
+
+    var avatar = document.createElement('div');
+    avatar.className = 'msg-avatar';
+    avatar.setAttribute('aria-hidden', 'true');
+    avatar.textContent = '👤';
+    msg.appendChild(avatar);
+
+    var body = document.createElement('div');
+    body.className = 'msg-body';
+
+    var label = document.createElement('span');
+    label.className = 'msg-label';
+    label.textContent = CLIENT_CONFIG.CHAT.userLabel;
+    body.appendChild(label);
+
+    var bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    bubble.textContent = text;
+    body.appendChild(bubble);
+
+    msg.appendChild(body);
+    messagesList.appendChild(msg);
+  }
+
+  function _renderAssistantMsg(text) {
+    var messagesList = AppModule.DOM.messagesList;
+    if (!messagesList) return;
+
+    var msg = document.createElement('div');
+    msg.className = 'message assistant';
+
+    var avatar = document.createElement('div');
+    avatar.className = 'msg-avatar';
+    avatar.setAttribute('aria-hidden', 'true');
+    avatar.textContent = '🔍';
+    msg.appendChild(avatar);
+
+    var body = document.createElement('div');
+    body.className = 'msg-body';
+
+    var label = document.createElement('span');
+    label.className = 'msg-label';
+    label.textContent = CLIENT_CONFIG.CHAT.assistantLabel;
+    body.appendChild(label);
+
+    var bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    bubble.appendChild(MarkdownRenderer.render(text));
+    body.appendChild(bubble);
+
+    // Phase 90: disabled feedback buttons on restored messages
+    if (window.getEffective('FEEDBACK')) {
+      var bar = document.createElement('div');
+      bar.className = 'ai8v-feedback-bar feedback-submitted';
+
+      var btnUp = document.createElement('button');
+      btnUp.type = 'button';
+      btnUp.className = 'feedback-btn feedback-positive';
+      btnUp.textContent = '\uD83D\uDC4D';
+      btnUp.disabled = true;
+      btnUp.title = 'التقييم متاح فقط للإجابات الجديدة';
+
+      var btnDown = document.createElement('button');
+      btnDown.type = 'button';
+      btnDown.className = 'feedback-btn feedback-negative';
+      btnDown.textContent = '\uD83D\uDC4E';
+      btnDown.disabled = true;
+      btnDown.title = 'التقييم متاح فقط للإجابات الجديدة';
+
+      bar.appendChild(btnUp);
+      bar.appendChild(btnDown);
+      body.appendChild(bar);
+    }
+
+    msg.appendChild(body);
+    messagesList.appendChild(msg);
+  }
+
+  /* ── Delete session ────────────────────────── */
+  async function _deleteSession(sessionId) {
+    if (!sessionId) return;
+
+    try {
+      var res = await fetch('/api/sessions/' + sessionId, {
+        method: 'DELETE',
+        headers: AuthModule.getAccessHeaders(),
+      });
+      if (!res.ok && res.status !== 404) return;
+
+      // If deleting the active session, clear chat
+      var currentSid = null;
+      try { currentSid = sessionStorage.getItem('research_session_id'); } catch (_) {}
+      if (sessionId === currentSid) {
+        ChatModule.clear();
+      }
+
+      // Refresh the list
+      _loadSessions();
+
+    } catch (_err) {
+      // Silent fail
+    }
+  }
+
+  /* ── Update active highlight ───────────────── */
+  function _updateActiveHighlight() {
+    if (!_sessionsEl) return;
+    var items = _sessionsEl.querySelectorAll('.sidebar-item');
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].getAttribute('data-session-id') === _activeId) {
+        items[i].classList.add('active');
+      } else {
+        items[i].classList.remove('active');
+      }
+    }
+  }
+
+  /* ── Toggle sidebar ────────────────────────── */
+  function _open() {
+    if (!_sidebar || _isOpen) return;
+    _isOpen = true;
+    _sidebar.classList.add('sidebar-open');
+    if (_overlay) _overlay.classList.add('open');
+    _loadSessions();
+  }
+
+  function _close() {
+    if (!_sidebar || !_isOpen) return;
+    _isOpen = false;
+    _sidebar.classList.remove('sidebar-open');
+    if (_overlay) _overlay.classList.remove('open');
+  }
+
+  function _toggle_fn() {
+    if (_isOpen) _close(); else _open();
+  }
+
+  /* ── Date helpers ──────────────────────────── */
+  function _formatDate(iso) {
+    if (!iso) return '';
+    try {
+      var d = new Date(iso);
+      return d.toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' });
+    } catch (_) {
+      return iso.slice(0, 10);
+    }
+  }
+
+  function _relativeTime(iso) {
+    if (!iso) return '';
+    try {
+      var now = Date.now();
+      var then = new Date(iso).getTime();
+      var diff = now - then;
+
+      var mins = Math.floor(diff / 60000);
+      if (mins < 1) return 'الآن';
+      if (mins < 60) return 'منذ ' + mins + ' د';
+
+      var hours = Math.floor(mins / 60);
+      if (hours < 24) return 'منذ ' + hours + ' س';
+
+      var days = Math.floor(hours / 24);
+      if (days < 7) return 'منذ ' + days + ' يوم';
+
+      return _formatDate(iso);
+    } catch (_) {
+      return _formatDate(iso);
+    }
+  }
+
+  /* ── Public ────────────────────────────────── */
+  function init() {
+    // Guard: skip if SESSIONS not enabled
+    if (!CLIENT_CONFIG.SESSIONS || !CLIENT_CONFIG.SESSIONS.enabled) return;
+
+    // Bind DOM refs
+    _sidebar    = document.getElementById('sidebar');
+    _overlay    = document.getElementById('sidebar-overlay');
+    _toggle     = document.getElementById('btn-sidebar-toggle');
+    _sessionsEl = document.getElementById('sidebar-sessions');
+    _newChatBtn = document.getElementById('btn-new-chat-sidebar');
+
+    if (!_sidebar || !_sessionsEl) return;
+
+    // Show toggle button
+    if (_toggle) {
+      _toggle.classList.remove('hidden');
+      _toggle.addEventListener('click', _toggle_fn);
+    }
+
+    // Overlay click → close
+    if (_overlay) {
+      _overlay.addEventListener('click', _close);
+    }
+
+    // New chat button in sidebar
+    if (_newChatBtn) {
+      _newChatBtn.addEventListener('click', function() {
+        _close();
+        ChatModule.clear();
+      });
+    }
+
+    // Load sessions initially
+    _loadSessions();
+  }
+
+  function refreshList() {
+    _loadSessions();
+  }
+
+  return Object.freeze({ init, refreshList });
+})();

@@ -815,6 +815,32 @@ const ChatModule = (() => {
     bubble.appendChild(MarkdownRenderer.render(text));
     body.appendChild(bubble);
 
+    // Phase 90: disabled feedback buttons on restored messages (no correlationId available)
+    if (window.getEffective('FEEDBACK')) {
+      var bar = document.createElement('div');
+      bar.className = 'ai8v-feedback-bar feedback-submitted';
+
+      var btnUp = document.createElement('button');
+      btnUp.type = 'button';
+      btnUp.className = 'feedback-btn feedback-positive';
+      btnUp.textContent = '\uD83D\uDC4D';
+      btnUp.disabled = true;
+      btnUp.title = 'التقييم متاح فقط للإجابات الجديدة';
+      btnUp.setAttribute('aria-label', 'التقييم متاح فقط للإجابات الجديدة');
+
+      var btnDown = document.createElement('button');
+      btnDown.type = 'button';
+      btnDown.className = 'feedback-btn feedback-negative';
+      btnDown.textContent = '\uD83D\uDC4E';
+      btnDown.disabled = true;
+      btnDown.title = 'التقييم متاح فقط للإجابات الجديدة';
+      btnDown.setAttribute('aria-label', 'التقييم متاح فقط للإجابات الجديدة');
+
+      bar.appendChild(btnUp);
+      bar.appendChild(btnDown);
+      body.appendChild(bar);
+    }
+
     msg.appendChild(body);
     messagesList.appendChild(msg);
   }
@@ -1133,6 +1159,12 @@ const ChatModule = (() => {
         ),
         body: JSON.stringify(payload),
       }).catch(function() { /* silent graceful degradation */ });
+
+      // Phase 90: confirmation text after submit
+      var confirmEl = document.createElement('span');
+      confirmEl.className = 'feedback-confirmation';
+      confirmEl.textContent = 'شكراً على تقييمك';
+      bar.appendChild(confirmEl);
     }
 
     btnUp.addEventListener('click', function() { handleFeedback('positive'); });

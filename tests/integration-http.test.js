@@ -335,13 +335,15 @@ describe('Integration HTTP — Body Validation', () => {
     assert.strictEqual(data.ok, true);
   });
 
-  // T-IH26: POST /api/feedback with valid body — returns 404 when feedback disabled
-  it('T-IH26: POST /api/feedback with valid body — returns 404 (feedback disabled)', async () => {
+  // T-IH26: POST /api/feedback with valid body — Phase 90: FEEDBACK enabled by default, returns 200
+  it('T-IH26: POST /api/feedback with valid body — returns 200 (feedback enabled)', async () => {
     const res = await postJSON(`${ts.baseUrl}/api/feedback`, {
       correlationId: 'test-corr-id',
       rating: 'positive',
     });
-    assert.strictEqual(res.status, 404);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.ok, true);
   });
 });
 
@@ -1445,6 +1447,52 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(typeof data.correlationIndex.enabled, 'boolean');
     assert.strictEqual(typeof data.correlationIndex.size, 'number');
     assert.strictEqual(typeof data.correlationIndex.maxSize, 'number');
+  });
+
+  // T-IH124: GET /api/config/features → FEEDBACK: true (Phase 90)
+  it('T-IH124: GET /api/config/features — FEEDBACK is true by default', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.FEEDBACK, true);
+  });
+
+  // T-IH125: GET /api/config/features → GROUNDING: true (Phase 90)
+  it('T-IH125: GET /api/config/features — GROUNDING is true by default', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.GROUNDING, true);
+    assert.strictEqual(data.CITATION, true);
+    assert.strictEqual(data.SUGGESTIONS, true);
+  });
+
+  // T-IH126: GET /api/sessions (user-scoped) — returns 200 with sessions array (Phase 90)
+  it('T-IH126: GET /api/sessions — returns sessions array', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/sessions`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.ok('sessions' in data, 'should contain sessions field');
+    assert.ok(Array.isArray(data.sessions), 'sessions should be an array');
+  });
+
+  // T-IH127: GET /api/sessions — Content-Type is application/json (Phase 90)
+  it('T-IH127: GET /api/sessions — Content-Type is application/json', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/sessions`);
+    assert.strictEqual(res.status, 200);
+    const ct = res.headers.get('content-type');
+    assert.ok(ct && ct.includes('application/json'), `Content-Type should include application/json, got ${ct}`);
+  });
+
+  // T-IH128: POST /api/feedback returns 200 when FEEDBACK enabled by default (Phase 90)
+  it('T-IH128: POST /api/feedback — returns 200 with ok:true', async () => {
+    const res = await postJSON(`${ts.baseUrl}/api/feedback`, {
+      correlationId: 'test-phase90-corr',
+      rating: 'negative',
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.ok, true);
   });
 
   // T-IH123: GET /api/admin/inspect → all 44 singleton sections present (Phase 89)

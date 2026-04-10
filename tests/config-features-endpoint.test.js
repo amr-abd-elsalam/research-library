@@ -75,22 +75,21 @@ describe('handleConfigFeatures()', () => {
     }
   });
 
-  // T-CF04: defaults match config (all false with default config)
-  it('T-CF04: defaults match config (all false)', async () => {
+  // T-CF04: defaults match config (Phase 90: FEEDBACK/GROUNDING/CITATION/SUGGESTIONS now true)
+  it('T-CF04: defaults match config', async () => {
     const res = createMockRes();
     await handleConfigFeatures({}, res);
     const data = res.json;
-    // All 11 sections are false by default in config.js
     assert.strictEqual(data.ADMIN_INTELLIGENCE, false);
-    assert.strictEqual(data.FEEDBACK, false);
-    assert.strictEqual(data.SUGGESTIONS, false);
+    assert.strictEqual(data.FEEDBACK, true);        // Phase 90: enabled by default
+    assert.strictEqual(data.SUGGESTIONS, true);     // Phase 90: enabled by default
     assert.strictEqual(data.CONTENT_GAPS, false);
     assert.strictEqual(data.QUALITY, false);
     assert.strictEqual(data.HEALTH_SCORE, false);
     assert.strictEqual(data.RETRIEVAL, false);
     assert.strictEqual(data.QUERY_COMPLEXITY, false);
-    assert.strictEqual(data.GROUNDING, false);
-    assert.strictEqual(data.CITATION, false);
+    assert.strictEqual(data.GROUNDING, true);       // Phase 90: enabled by default
+    assert.strictEqual(data.CITATION, true);        // Phase 90: enabled by default
     assert.strictEqual(data.SEMANTIC_MATCHING, false);
   });
 

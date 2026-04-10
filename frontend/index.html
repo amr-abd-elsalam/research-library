@@ -156,6 +156,27 @@
 </div><!-- /.app-shell -->
 
 <!-- ═══════════════════════════════════════════════════════════
+     CONVERSATION SIDEBAR (Phase 90)
+════════════════════════════════════════════════════════════ -->
+<div id="sidebar-overlay" class="sidebar-overlay" aria-hidden="true"></div>
+
+<aside id="sidebar" class="app-sidebar" role="navigation" aria-label="المحادثات السابقة">
+  <div class="sidebar-header">
+    <h2 class="sidebar-title">المحادثات</h2>
+    <button id="btn-new-chat-sidebar" class="sidebar-new-btn" type="button">+ جديدة</button>
+  </div>
+  <div id="sidebar-sessions" class="sidebar-sessions">
+    <!-- Session items injected by JS -->
+  </div>
+</aside>
+
+<button id="btn-sidebar-toggle" class="sidebar-toggle hidden" type="button" aria-label="إظهار المحادثات السابقة">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <path d="M4 6h16M4 12h16M4 18h16"/>
+  </svg>
+</button>
+
+<!-- ═══════════════════════════════════════════════════════════
      SOURCE DRAWER (يفتح عند الضغط على chip مصدر)
 ════════════════════════════════════════════════════════════ -->
 <div id="drawer-overlay" class="drawer-overlay" aria-hidden="true"></div>
@@ -203,6 +224,7 @@
 <script src="./assets/js/suggestions.js"   defer></script>
 <script src="./assets/js/sources.js"       defer></script>
 <script src="./assets/js/chat.js"          defer></script>
+<script src="./assets/js/sidebar.js"       defer></script>
 <script src="./assets/js/header-scroll.js" defer></script>
 <script src="./assets/js/bootstrap.js"     defer></script>
 </body>
