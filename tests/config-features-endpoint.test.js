@@ -93,6 +93,8 @@ describe('handleConfigFeatures()', () => {
     assert.strictEqual(data.QUERY_PLANNING, true);        // Phase 99: enabled by default
     assert.strictEqual(data.RAG_STRATEGIES, true);         // Phase 100: enabled by default
     assert.strictEqual(data.SEMANTIC_MATCHING, false);
+    assert.strictEqual(data.ANSWER_REFINEMENT, true);    // Phase 101: enabled by default
+    assert.strictEqual(data.COST_GOVERNANCE, true);       // Phase 101: enabled by default
   });
 
   // T-CF05: reflects runtime override (Phase 90: SUGGESTIONS now true by default)

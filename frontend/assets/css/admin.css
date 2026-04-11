@@ -354,6 +354,7 @@ img { max-width: 100%; display: block; }
 
 .admin-card:hover {
   border-color: var(--border-accent);
+  box-shadow: var(--glow-sm);
 }
 
 .admin-card-header {
@@ -2029,6 +2030,8 @@ img { max-width: 100%; display: block; }
   color: var(--accent-light);
   border-bottom-color: var(--accent);
   font-weight: 600;
+  background: var(--accent-dim);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
 }
 
 .ai8v-tab-panel {
@@ -2070,18 +2073,21 @@ img { max-width: 100%; display: block; }
   border-color: var(--status-ok);
   color: var(--status-ok);
   background: rgba(52, 211, 153, 0.08);
+  box-shadow: 0 0 20px rgba(52, 211, 153, 0.15);
 }
 
 .health-score-circle.warning {
   border-color: var(--status-warn);
   color: var(--status-warn);
   background: rgba(245, 158, 11, 0.08);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.15);
 }
 
 .health-score-circle.critical {
   border-color: var(--status-error);
   color: var(--status-error);
   background: rgba(248, 113, 113, 0.08);
+  box-shadow: 0 0 20px rgba(248, 113, 113, 0.15);
 }
 
 .health-score-circle.disabled {

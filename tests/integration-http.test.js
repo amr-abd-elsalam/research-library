@@ -924,14 +924,14 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.ok('globalUsage' in data.costGovernor, 'should contain globalUsage');
   });
 
-  // T-IH79: GET /api/admin/inspect costGovernor has enabled boolean field (Phase 76)
-  it('T-IH79: GET /api/admin/inspect — costGovernor.enabled is false by default', async () => {
+  // T-IH79: GET /api/admin/inspect costGovernor has enabled boolean field (Phase 76, Phase 101: enabled by default)
+  it('T-IH79: GET /api/admin/inspect — costGovernor.enabled is true by default', async () => {
     const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
       headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
     });
     assert.strictEqual(res.status, 200);
     const data = await res.json();
-    assert.strictEqual(data.costGovernor.enabled, false, 'should default to false');
+    assert.strictEqual(data.costGovernor.enabled, true, 'should default to true (Phase 101)');
     assert.strictEqual(data.costGovernor.monthlyBudgetCeiling, 0, 'default budget ceiling is 0');
   });
 
@@ -957,16 +957,16 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(typeof data.monthlyBudgetUsed, 'number');
   });
 
-  // T-IH82: GET /api/config/features — includes COST_GOVERNANCE boolean (Phase 77)
+  // T-IH82: GET /api/config/features — includes COST_GOVERNANCE boolean (Phase 77, Phase 101: enabled by default)
   it('T-IH82: GET /api/config/features includes COST_GOVERNANCE boolean', async () => {
     const res = await fetch(`${ts.baseUrl}/api/config/features`);
     assert.strictEqual(res.status, 200);
     const data = await res.json();
     assert.strictEqual(typeof data.COST_GOVERNANCE, 'boolean');
-    assert.strictEqual(data.COST_GOVERNANCE, false, 'COST_GOVERNANCE should default to false');
+    assert.strictEqual(data.COST_GOVERNANCE, true, 'COST_GOVERNANCE should default to true (Phase 101)');
   });
 
-  // T-IH83: GET /api/admin/inspect — costGovernor includes enforcementEnabled (Phase 77)
+  // T-IH83: GET /api/admin/inspect — costGovernor includes enforcementEnabled (Phase 77, Phase 101: COST_GOVERNANCE enabled, enforceBudget still false)
   it('T-IH83: GET /api/admin/inspect — costGovernor includes enforcementEnabled', async () => {
     const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
       headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
@@ -975,7 +975,7 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     const data = await res.json();
     assert.ok('enforcementEnabled' in data.costGovernor, 'costGovernor should have enforcementEnabled');
     assert.strictEqual(typeof data.costGovernor.enforcementEnabled, 'boolean');
-    assert.strictEqual(data.costGovernor.enforcementEnabled, false, 'should default to false');
+    assert.strictEqual(data.costGovernor.enforcementEnabled, false, 'enforceBudget still false — tracking only');
   });
 
   // T-IH84: GET /api/admin/cost — globalUsage has expected shape (Phase 77)

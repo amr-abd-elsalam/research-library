@@ -35,16 +35,17 @@ describe('stageAnswerRefinement Behavior', () => {
     assert.ok(result instanceof Promise, 'should return a Promise');
   });
 
-  // T-AR03: Returns ctx when ANSWER_REFINEMENT disabled (feature flag off)
-  it('T-AR03: returns ctx when ANSWER_REFINEMENT disabled', async () => {
-    // Default: ANSWER_REFINEMENT.enabled = false
+  // T-AR03: Returns ctx when ANSWER_REFINEMENT disabled (feature flag override off)
+  it('T-AR03: returns ctx when ANSWER_REFINEMENT disabled via override', async () => {
+    featureFlags.setOverride('ANSWER_REFINEMENT', false);
     const ctx = { aborted: false, fullText: 'some text', _groundingSkipped: false, _groundingScore: 0.2 };
     const result = await stageAnswerRefinement(ctx, null);
     assert.strictEqual(result, ctx);
   });
 
-  // T-AR04: Returns ctx and sets _refinementSkipped=true when disabled
-  it('T-AR04: sets _refinementSkipped=true and reason=disabled when feature off', async () => {
+  // T-AR04: Returns ctx and sets _refinementSkipped=true when disabled via override
+  it('T-AR04: sets _refinementSkipped=true and reason=disabled when feature off via override', async () => {
+    featureFlags.setOverride('ANSWER_REFINEMENT', false);
     const ctx = { aborted: false, fullText: 'some text', _groundingSkipped: false, _groundingScore: 0.2 };
     await stageAnswerRefinement(ctx, null);
     assert.strictEqual(ctx._refinementSkipped, true);
@@ -123,9 +124,9 @@ describe('stageAnswerRefinement Behavior', () => {
 // ═══════════════════════════════════════════════════════════════
 describe('Refinement Config', () => {
 
-  // T-AR11: Default config — enabled: false
-  it('T-AR11: default config has enabled false', () => {
-    assert.strictEqual(config.ANSWER_REFINEMENT.enabled, false);
+  // T-AR11: Default config — enabled: true (Phase 101)
+  it('T-AR11: default config has enabled true', () => {
+    assert.strictEqual(config.ANSWER_REFINEMENT.enabled, true);
   });
 
   // T-AR12: maxRefinements defaults to 1
@@ -150,10 +151,10 @@ describe('Refinement Config', () => {
 // ═══════════════════════════════════════════════════════════════
 describe('Feature Flag Integration', () => {
 
-  // T-AR15: featureFlags.isEnabled('ANSWER_REFINEMENT') returns boolean
-  it('T-AR15: featureFlags.isEnabled ANSWER_REFINEMENT returns boolean', () => {
+  // T-AR15: featureFlags.isEnabled('ANSWER_REFINEMENT') returns true (Phase 101)
+  it('T-AR15: featureFlags.isEnabled ANSWER_REFINEMENT returns true', () => {
     assert.strictEqual(typeof featureFlags.isEnabled('ANSWER_REFINEMENT'), 'boolean');
-    assert.strictEqual(featureFlags.isEnabled('ANSWER_REFINEMENT'), false);
+    assert.strictEqual(featureFlags.isEnabled('ANSWER_REFINEMENT'), true);
   });
 
   // T-AR16: ANSWER_REFINEMENT in featureFlags.getStatus()

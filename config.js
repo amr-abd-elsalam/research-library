@@ -847,7 +847,7 @@ const config = {
   //    — zero overhead عند التعطيل
   // ═══════════════════════════════════════════════════════════════
   COST_GOVERNANCE: {
-    enabled:            false,      // true = تتبع استهلاك الـ tokens الفعلي | false = معطّل (zero overhead)
+    enabled:            true,       // true = تتبع استهلاك الـ tokens الفعلي | false = معطّل (zero overhead)
     perProviderRates: {
       gemini: {
         inputPer1kTokens:  0.000125,   // USD per 1K input tokens
@@ -873,7 +873,7 @@ const config = {
   //    — zero overhead عند التعطيل
   // ═══════════════════════════════════════════════════════════════
   ANSWER_REFINEMENT: {
-    enabled:            false,     // true = إعادة توليد الإجابة لما الـ grounding score منخفض | false = بدون refinement (zero overhead — السلوك الحالي بالظبط)
+    enabled:            true,      // true = إعادة توليد الإجابة لما الـ grounding score منخفض | false = بدون refinement (zero overhead — السلوك الحالي بالظبط)
     maxRefinements:     1,         // أقصى عدد محاولات إعادة التوليد (1-3). أكثر = جودة أعلى بس تكلفة أعلى
     minScoreToRetry:    0.3,       // grounding score أقل من كده يُفعّل إعادة التوليد (0-1). 0.3 = يعيد فقط للإجابات الضعيفة جداً
     refinementPromptSuffix: 'تعليمات صارمة: أجب فقط وحصرياً بناءً على المحتوى المقدم إليك. لا تضف أي معلومة من خارج النص. كل جملة في إجابتك يجب أن تكون مدعومة مباشرة بمحتوى من المكتبة. إذا لم تجد معلومة كافية، قل ذلك بوضوح.',

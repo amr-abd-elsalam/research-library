@@ -22,10 +22,10 @@ describe('CostGovernor Structure', () => {
     assert.strictEqual(typeof instance.enabled, 'boolean');
   });
 
-  // T-CG02: enabled returns false by default
-  it('T-CG02: enabled returns false by default', () => {
+  // T-CG02: enabled returns true by default (Phase 101)
+  it('T-CG02: enabled returns true by default', () => {
     const instance = new CostGovernor();
-    assert.strictEqual(instance.enabled, false);
+    assert.strictEqual(instance.enabled, true);
   });
 
   // T-CG03: counts() returns expected shape
@@ -69,13 +69,16 @@ describe('CostGovernor Structure', () => {
 // ═══════════════════════════════════════════════════════════════
 describe('CostGovernor Usage Recording', () => {
 
-  // T-CG06: recordUsage does nothing when disabled
-  it('T-CG06: recordUsage does nothing when disabled', () => {
-    // Default config has enabled: false
+  // T-CG06: recordUsage tracks data when enabled (Phase 101: enabled by default)
+  it('T-CG06: recordUsage tracks data when enabled', () => {
     const instance = new CostGovernor();
     instance.recordUsage('session-1', { inputTokens: 100, outputTokens: 50 }, 'gemini');
-    assert.strictEqual(instance.getSessionUsage('session-1'), null);
-    assert.strictEqual(instance.getGlobalUsage().requests, 0);
+    const usage = instance.getSessionUsage('session-1');
+    assert.ok(usage !== null, 'session usage should be tracked');
+    assert.strictEqual(usage.inputTokens, 100);
+    assert.strictEqual(usage.outputTokens, 50);
+    assert.strictEqual(usage.requests, 1);
+    assert.strictEqual(instance.getGlobalUsage().requests, 1);
   });
 
   // T-CG07: singleton exported correctly
@@ -188,10 +191,10 @@ describe('CostGovernor Edge Cases', () => {
     assert.strictEqual(instance.counts().monthlyBudgetCeiling, 0);
   });
 
-  // T-CG20: getSessionUsage returns copy (immutability)
+  // T-CG20: counts() enabled matches config default (Phase 101: true)
   it('T-CG20: counts() enabled matches config default', () => {
     const instance = new CostGovernor();
-    assert.strictEqual(instance.counts().enabled, false);
+    assert.strictEqual(instance.counts().enabled, true);
   });
 
   // T-CG21: isSessionOverBudget is a function

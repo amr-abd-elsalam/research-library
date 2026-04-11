@@ -600,7 +600,7 @@ img { max-width: 100%; display: block; }
 
 .msg-bubble .md-list {
   margin:       6px 0;
-  padding-right: 18px;
+  padding-inline-start: 18px;
   display:      flex;
   flex-direction: column;
   gap:          4px;
@@ -608,7 +608,7 @@ img { max-width: 100%; display: block; }
 
 .msg-bubble .md-list-ordered {
   list-style: arabic-indic;
-  padding-right: 22px;
+  padding-inline-start: 22px;
 }
 
 .msg-bubble .md-list:not(.md-list-ordered) {
@@ -755,8 +755,7 @@ img { max-width: 100%; display: block; }
   max-width: var(--chat-max-w);
   margin:    0 auto;
   width:     100%;
-  padding-right: 20px;
-  padding-left:  20px;
+  padding-inline: 20px;
 }
 
 .typing-body {
@@ -929,11 +928,11 @@ img { max-width: 100%; display: block; }
 .source-drawer {
   position:   fixed;
   top:        0;
-  left:       0;
+  inset-inline-end: 0;
   width:      min(500px, 92vw);
   height:     100dvh;
   background: var(--bg-surface);
-  border-right: 1px solid var(--border);
+  border-inline-start: 1px solid var(--border);
   z-index:    201;
   display:    flex;
   flex-direction: column;
@@ -1140,7 +1139,7 @@ img { max-width: 100%; display: block; }
 .fab-new-chat {
   position: fixed;
   top: 12px;
-  right: 12px;
+  inset-inline-start: 12px;
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -1521,7 +1520,7 @@ img { max-width: 100%; display: block; }
 .sidebar-item-pin {
   position:   absolute;
   top:        8px;
-  left:       32px;
+  inset-inline-end: 32px;
   width:      24px;
   height:     24px;
   border-radius: var(--radius-sm);
@@ -1579,11 +1578,11 @@ img { max-width: 100%; display: block; }
 .app-sidebar {
   position:   fixed;
   top:        0;
-  right:      0;
+  inset-inline-start: 0;
   width:      280px;
   height:     100dvh;
   background: var(--bg-surface);
-  border-left: 1px solid var(--border);
+  border-inline-end: 1px solid var(--border);
   z-index:    150;
   display:    flex;
   flex-direction: column;
@@ -1680,7 +1679,7 @@ img { max-width: 100%; display: block; }
 .sidebar-item-delete {
   position:     absolute;
   top:          8px;
-  left:         8px;
+  inset-inline-end: 8px;
   width:        24px;
   height:       24px;
   border-radius: var(--radius-sm);
@@ -1716,7 +1715,7 @@ img { max-width: 100%; display: block; }
 .sidebar-toggle {
   position:   fixed;
   top:        var(--header-h);
-  right:      0;
+  inset-inline-start: 0;
   z-index:    151;
   width:      32px;
   height:     32px;

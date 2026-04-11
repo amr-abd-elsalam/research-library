@@ -72,6 +72,21 @@ describe('Admin Feature Defaults — Config (Phase 97)', () => {
   it('T-AD34: config.RAG_STRATEGIES.enabled is true', () => {
     assert.strictEqual(config.RAG_STRATEGIES.enabled, true);
   });
+
+  // T-AD39: config.ANSWER_REFINEMENT.enabled === true (Phase 101)
+  it('T-AD39: config.ANSWER_REFINEMENT.enabled is true', () => {
+    assert.strictEqual(config.ANSWER_REFINEMENT.enabled, true);
+  });
+
+  // T-AD40: config.COST_GOVERNANCE.enabled === true (Phase 101)
+  it('T-AD40: config.COST_GOVERNANCE.enabled is true', () => {
+    assert.strictEqual(config.COST_GOVERNANCE.enabled, true);
+  });
+
+  // T-AD41: config.COST_GOVERNANCE.enforceBudget === false (Phase 101 — tracking only)
+  it('T-AD41: config.COST_GOVERNANCE.enforceBudget is false', () => {
+    assert.strictEqual(config.COST_GOVERNANCE.enforceBudget, false);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -330,6 +345,36 @@ describe('Admin Feature Defaults — API Endpoints (Phase 97)', () => {
     assert.strictEqual(res.status, 200);
     const data = await res.json();
     assert.strictEqual(data.ragStrategySelector.enabled, true, 'ragStrategySelector should be enabled by default');
+  });
+
+  // T-AD42: Inspect shows answerRefinement.enabled true (Phase 101)
+  it('T-AD42: inspect shows answerRefinement.enabled true', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.answerRefinement.enabled, true, 'answerRefinement should be enabled by default');
+  });
+
+  // T-AD43: Inspect shows costGovernor.enabled true (Phase 101)
+  it('T-AD43: inspect shows costGovernor.enabled true', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.costGovernor.enabled, true, 'costGovernor should be enabled by default');
+    assert.strictEqual(data.costGovernor.enforcementEnabled, false, 'enforceBudget should still be false');
+  });
+
+  // T-AD44: Config features returns ANSWER_REFINEMENT + COST_GOVERNANCE as true (Phase 101)
+  it('T-AD44: config features — ANSWER_REFINEMENT + COST_GOVERNANCE true', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.ANSWER_REFINEMENT, true, 'ANSWER_REFINEMENT should be true');
+    assert.strictEqual(data.COST_GOVERNANCE, true, 'COST_GOVERNANCE should be true');
   });
 
   // T-AD37: Inspect shows searchReranker.totalReranked is number (Phase 100)

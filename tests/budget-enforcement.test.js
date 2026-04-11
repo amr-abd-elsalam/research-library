@@ -132,11 +132,11 @@ describe('enforcementEnabled Getter', () => {
     assert.strictEqual(instance.enforcementEnabled, false);
   });
 
-  // T-BE15: enforcementEnabled respects enabled getter
-  it('T-BE15: enforcementEnabled false when enabled is false', () => {
+  // T-BE15: enforcementEnabled false even when enabled is true (enforceBudget: false)
+  it('T-BE15: enforcementEnabled false when enforceBudget is false', () => {
     const instance = new CostGovernor();
-    // Default config: enabled = false → enforcementEnabled must be false
-    assert.strictEqual(instance.enabled, false);
+    // Phase 101: enabled = true, but enforceBudget = false → enforcementEnabled must be false
+    assert.strictEqual(instance.enabled, true);
     assert.strictEqual(instance.enforcementEnabled, false);
   });
 });
