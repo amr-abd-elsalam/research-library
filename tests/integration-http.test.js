@@ -1800,4 +1800,131 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     const data = await res.json();
     assert.strictEqual(Object.keys(data).length, 15, `expected 15 feature keys, got ${Object.keys(data).length}`);
   });
+
+  // ── Phase 103: Dedicated Admin Analytics Endpoints ─────────
+
+  // T-IH153: GET /api/admin/refinement without auth → 401
+  it('T-IH153: GET /api/admin/refinement without auth — returns 401', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/refinement`);
+    assert.strictEqual(res.status, 401);
+  });
+
+  // T-IH154: GET /api/admin/refinement with auth → 200 with expected shape
+  it('T-IH154: GET /api/admin/refinement with auth — returns 200 with shape', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/refinement`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.enabled, 'boolean');
+    assert.strictEqual(typeof data.totalRecorded, 'number');
+    assert.strictEqual(typeof data.successRate, 'number');
+    assert.strictEqual(typeof data.config, 'object');
+  });
+
+  // T-IH155: GET /api/admin/strategy without auth → 401
+  it('T-IH155: GET /api/admin/strategy without auth — returns 401', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/strategy`);
+    assert.strictEqual(res.status, 401);
+  });
+
+  // T-IH156: GET /api/admin/strategy with auth → 200 with expected shape
+  it('T-IH156: GET /api/admin/strategy with auth — returns 200 with shape', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/strategy`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.enabled, 'boolean');
+    assert.strictEqual(typeof data.totalRecorded, 'number');
+    assert.strictEqual(typeof data.escalationRate, 'number');
+    assert.strictEqual(typeof data.config, 'object');
+  });
+
+  // T-IH157: GET /api/admin/search-intel without auth → 401
+  it('T-IH157: GET /api/admin/search-intel without auth — returns 401', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/search-intel`);
+    assert.strictEqual(res.status, 401);
+  });
+
+  // T-IH158: GET /api/admin/search-intel with auth → 200 with expected shape
+  it('T-IH158: GET /api/admin/search-intel with auth — returns 200 with shape', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/search-intel`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.reranker, 'object');
+    assert.strictEqual(typeof data.complexity, 'object');
+    assert.strictEqual(typeof data.planner, 'object');
+    assert.strictEqual(typeof data.strategy, 'object');
+  });
+
+  // T-IH159: GET /api/admin/search-intel response has 4 sub-objects with enabled booleans
+  it('T-IH159: GET /api/admin/search-intel — 4 sub-objects with enabled booleans', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/search-intel`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.reranker.enabled, 'boolean');
+    assert.strictEqual(typeof data.complexity.enabled, 'boolean');
+    assert.strictEqual(typeof data.planner.enabled, 'boolean');
+    assert.strictEqual(typeof data.strategy.enabled, 'boolean');
+  });
+
+  // T-IH160: GET /api/admin/cost enriched response has semanticMatchingCost field
+  it('T-IH160: GET /api/admin/cost — has semanticMatchingCost field', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/cost`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.semanticMatchingCost, 'object');
+    assert.strictEqual(typeof data.semanticMatchingCost.enabled, 'boolean');
+  });
+
+  // T-IH161: GET /api/admin/refinement Content-Type is application/json
+  it('T-IH161: GET /api/admin/refinement — Content-Type is application/json', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/refinement`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    const ct = res.headers.get('content-type');
+    assert.ok(ct && ct.includes('application/json'), `expected application/json, got ${ct}`);
+  });
+
+  // T-IH162: GET /api/admin/strategy Content-Type is application/json
+  it('T-IH162: GET /api/admin/strategy — Content-Type is application/json', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/strategy`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    const ct = res.headers.get('content-type');
+    assert.ok(ct && ct.includes('application/json'), `expected application/json, got ${ct}`);
+  });
+
+  // T-IH163: GET /api/admin/search-intel Content-Type is application/json
+  it('T-IH163: GET /api/admin/search-intel — Content-Type is application/json', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/search-intel`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    const ct = res.headers.get('content-type');
+    assert.ok(ct && ct.includes('application/json'), `expected application/json, got ${ct}`);
+  });
+
+  // T-IH164: GET /api/admin/inspect — still returns all sections (no regression from Phase 103)
+  it('T-IH164: GET /api/admin/inspect — all sections still present after Phase 103', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    // Verify key sections still present and have expected minimal fields
+    assert.strictEqual(typeof data.refinementAnalytics.enabled, 'boolean');
+    assert.strictEqual(typeof data.strategyAnalytics.enabled, 'boolean');
+    assert.strictEqual(typeof data.searchReranker.enabled, 'boolean');
+    assert.strictEqual(typeof data.queryComplexityAnalyzer.enabled, 'boolean');
+    assert.strictEqual(typeof data.queryPlanner.enabled, 'boolean');
+    assert.strictEqual(typeof data.ragStrategySelector.enabled, 'boolean');
+    assert.strictEqual(typeof data.costGovernor.enabled, 'boolean');
+  });
 });

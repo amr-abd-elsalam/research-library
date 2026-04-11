@@ -3083,6 +3083,196 @@ img { max-width: 100%; display: block; }
 }
 
 /* ══════════════════════════════════════════════════════════
+   28c. REFINEMENT ANALYTICS (Phase 103)
+══════════════════════════════════════════════════════════ */
+.refinement-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.refinement-stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  text-align: center;
+  transition: border-color var(--speed) var(--ease);
+}
+
+.refinement-stat-card:hover {
+  border-color: var(--border-accent);
+}
+
+.refinement-stat-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--accent-light);
+  font-family: var(--font-en);
+}
+
+.refinement-stat-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.refinement-gauge {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-family: var(--font-en);
+}
+
+.refinement-gauge--good { color: var(--status-ok); }
+.refinement-gauge--medium { color: var(--status-warn); }
+.refinement-gauge--poor { color: var(--status-error); }
+
+.refinement-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.refinement-breakdown-row {
+  display: grid;
+  grid-template-columns: 120px 60px 80px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+}
+
+.refinement-breakdown-name {
+  font-family: var(--font-en);
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.refinement-breakdown-count {
+  color: var(--text-muted);
+  font-family: var(--font-en);
+  font-size: 0.8rem;
+}
+
+.refinement-breakdown-rate {
+  color: var(--accent-light);
+  font-family: var(--font-en);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 960px) {
+  .refinement-stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .refinement-stats { grid-template-columns: 1fr; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   28d. STRATEGY ANALYTICS (Phase 103)
+══════════════════════════════════════════════════════════ */
+.strategy-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.strategy-stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  text-align: center;
+  transition: border-color var(--speed) var(--ease);
+}
+
+.strategy-stat-card:hover {
+  border-color: var(--border-accent);
+}
+
+.strategy-stat-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--accent-light);
+  font-family: var(--font-en);
+}
+
+.strategy-stat-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.strategy-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.strategy-breakdown-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 50px 50px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+}
+
+.strategy-breakdown-name {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.strategy-breakdown-bar {
+  height: 8px;
+  background: var(--bg-elevated);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.strategy-breakdown-bar-fill {
+  height: 100%;
+  background: var(--gradient-brand);
+  border-radius: 4px;
+  min-width: 2px;
+  transition: width 0.4s var(--ease);
+}
+
+.strategy-breakdown-count {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-family: var(--font-en);
+}
+
+.strategy-breakdown-score {
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--accent);
+  font-family: var(--font-en);
+  font-weight: 600;
+}
+
+@media (max-width: 960px) {
+  .strategy-stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .strategy-stats { grid-template-columns: 1fr; }
+  .strategy-breakdown-row { grid-template-columns: 80px 1fr 40px; }
+  .strategy-breakdown-score { display: none; }
+}
+
+/* ══════════════════════════════════════════════════════════
    29. INTELLIGENCE SECTION (Phase 53)
 ══════════════════════════════════════════════════════════ */
 .intelligence-meta {

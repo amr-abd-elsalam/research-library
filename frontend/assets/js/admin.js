@@ -2721,6 +2721,8 @@
     loadLibraryOverview();
     loadContentGaps();
     loadGroundingAnalytics();
+    loadRefinementAnalytics();
+    loadStrategyAnalytics();
     loadQualityOverview();
   }
 
@@ -2817,16 +2819,16 @@
     container.innerHTML = '<p class="admin-empty-msg">\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u062D\u0645\u064A\u0644...</p>';
 
     try {
-      var data = await adminFetch('/api/admin/inspect');
+      var data = await adminFetch('/api/admin/search-intel');
       if (!data) {
         container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623 \u0641\u064A \u062A\u062D\u0645\u064A\u0644 \u0628\u064A\u0627\u0646\u0627\u062A \u0630\u0643\u0627\u0621 \u0627\u0644\u0628\u062D\u062B</p>';
         return;
       }
 
-      var reranker = data.searchReranker || {};
-      var complexity = data.queryComplexityAnalyzer || {};
-      var planner = data.queryPlanner || {};
-      var strategy = data.ragStrategySelector || {};
+      var reranker = data.reranker || {};
+      var complexity = data.complexity || {};
+      var planner = data.planner || {};
+      var strategy = data.strategy || {};
 
       var html = '';
 
@@ -3035,6 +3037,150 @@
 
       container.innerHTML = html;
 
+    } catch (err) {
+      container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623: ' + err.message + '</p>';
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  REFINEMENT ANALYTICS (Phase 103)
+  // ══════════════════════════════════════════════════════════
+  async function loadRefinementAnalytics() {
+    var container = document.getElementById('admin-refinement-content');
+    if (!container) {
+      // Dynamically inject section into content tab (Phase 103 — no admin.html modification)
+      var qualitySection = document.getElementById('admin-section-quality');
+      if (!qualitySection) return;
+      var section = document.createElement('section');
+      section.className = 'admin-section';
+      section.id = 'admin-section-refinement';
+      section.innerHTML = '<h2 class="admin-section-title">\u062A\u062D\u0633\u064A\u0646 \u0627\u0644\u0625\u062C\u0627\u0628\u0627\u062A (Answer Refinement)</h2><div id="admin-refinement-content"><p class="admin-empty-msg">\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u062D\u0645\u064A\u0644...</p></div>';
+      qualitySection.parentElement.insertBefore(section, qualitySection);
+      container = document.getElementById('admin-refinement-content');
+    }
+    if (!container) return;
+
+    container.innerHTML = '<p class="admin-empty-msg">\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u062D\u0645\u064A\u0644...</p>';
+
+    try {
+      var data = await adminFetch('/api/admin/refinement');
+      if (!data) {
+        container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623 \u0641\u064A \u062A\u062D\u0645\u064A\u0644 \u0628\u064A\u0627\u0646\u0627\u062A \u062A\u062D\u0633\u064A\u0646 \u0627\u0644\u0625\u062C\u0627\u0628\u0627\u062A</p>';
+        return;
+      }
+
+      if (!data.enabled) {
+        container.innerHTML = '<p class="admin-empty-msg">\u062A\u062D\u0633\u064A\u0646 \u0627\u0644\u0625\u062C\u0627\u0628\u0627\u062A \u0645\u0639\u0637\u0651\u0644 \u2014 \u0641\u0639\u0651\u0644\u0647 \u0645\u0646 <code>ANSWER_REFINEMENT.enabled: true</code></p>';
+        return;
+      }
+
+      var html = '';
+      var successPct = Math.round((data.successRate || 0) * 100);
+      var avgImpPct = Math.round((data.avgImprovement || 0) * 100);
+      var successCls = successPct >= 60 ? 'refinement-gauge--good' : successPct >= 30 ? 'refinement-gauge--medium' : 'refinement-gauge--poor';
+
+      html += '<div class="refinement-stats">';
+      html += '<div class="refinement-stat-card"><div class="refinement-gauge ' + successCls + '">' + successPct + '%</div><div class="refinement-stat-label">\u0645\u0639\u062F\u0644 \u0627\u0644\u0646\u062C\u0627\u062D</div></div>';
+      html += '<div class="refinement-stat-card"><div class="refinement-stat-value">+' + avgImpPct + '%</div><div class="refinement-stat-label">\u0645\u062A\u0648\u0633\u0637 \u0627\u0644\u062A\u062D\u0633\u064A\u0646</div></div>';
+      html += '<div class="refinement-stat-card"><div class="refinement-stat-value">' + (data.totalRecorded || 0) + '</div><div class="refinement-stat-label">\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0645\u062D\u0627\u0648\u0644\u0627\u062A</div></div>';
+      html += '<div class="refinement-stat-card"><div class="refinement-stat-value">' + (data.config && data.config.streamingRevisionEnabled ? '\u0645\u0641\u0639\u0651\u0644' : '\u0645\u0639\u0637\u0651\u0644') + '</div><div class="refinement-stat-label">Streaming Revision</div></div>';
+      html += '</div>';
+
+      // byStrategy breakdown
+      var byStrat = data.byStrategy || {};
+      var stratKeys = Object.keys(byStrat);
+      if (stratKeys.length > 0) {
+        html += '<h3 style="font-size:13px;color:var(--text-muted);margin:16px 0 8px;">\u062A\u0648\u0632\u064A\u0639 \u062D\u0633\u0628 \u0627\u0644\u0627\u0633\u062A\u0631\u0627\u062A\u064A\u062C\u064A\u0629</h3>';
+        html += '<div class="refinement-breakdown">';
+        for (var si = 0; si < stratKeys.length; si++) {
+          var sk = stratKeys[si];
+          var sb = byStrat[sk];
+          html += '<div class="refinement-breakdown-row">';
+          html += '<span class="refinement-breakdown-name">' + sk + '</span>';
+          html += '<span class="refinement-breakdown-count">' + sb.count + ' \u0645\u0631\u0629</span>';
+          html += '<span class="refinement-breakdown-rate">' + Math.round((sb.successRate || 0) * 100) + '% \u0646\u062C\u0627\u062D</span>';
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+
+      container.innerHTML = html;
+    } catch (err) {
+      container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623: ' + err.message + '</p>';
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  STRATEGY ANALYTICS (Phase 103)
+  // ══════════════════════════════════════════════════════════
+  async function loadStrategyAnalytics() {
+    var container = document.getElementById('admin-strategy-content');
+    if (!container) {
+      // Dynamically inject section into content tab (Phase 103 — no admin.html modification)
+      var qualitySection = document.getElementById('admin-section-quality');
+      if (!qualitySection) return;
+      var section = document.createElement('section');
+      section.className = 'admin-section';
+      section.id = 'admin-section-strategy';
+      section.innerHTML = '<h2 class="admin-section-title">\u0627\u0633\u062A\u0631\u0627\u062A\u064A\u062C\u064A\u0627\u062A \u0627\u0644\u0628\u062D\u062B (RAG Strategies)</h2><div id="admin-strategy-content"><p class="admin-empty-msg">\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u062D\u0645\u064A\u0644...</p></div>';
+      qualitySection.parentElement.insertBefore(section, qualitySection);
+      container = document.getElementById('admin-strategy-content');
+    }
+    if (!container) return;
+
+    container.innerHTML = '<p class="admin-empty-msg">\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u062D\u0645\u064A\u0644...</p>';
+
+    try {
+      var data = await adminFetch('/api/admin/strategy');
+      if (!data) {
+        container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623 \u0641\u064A \u062A\u062D\u0645\u064A\u0644 \u0628\u064A\u0627\u0646\u0627\u062A \u0627\u0633\u062A\u0631\u0627\u062A\u064A\u062C\u064A\u0627\u062A \u0627\u0644\u0628\u062D\u062B</p>';
+        return;
+      }
+
+      if (!data.enabled) {
+        container.innerHTML = '<p class="admin-empty-msg">\u0627\u0633\u062A\u0631\u0627\u062A\u064A\u062C\u064A\u0627\u062A \u0627\u0644\u0628\u062D\u062B \u0645\u0639\u0637\u0651\u0644\u0629 \u2014 \u0641\u0639\u0651\u0644\u0647\u0627 \u0645\u0646 <code>RAG_STRATEGIES.enabled: true</code></p>';
+        return;
+      }
+
+      var html = '';
+      var escalationPct = Math.round((data.escalationRate || 0) * 100);
+      var skippedPct = Math.round((data.skippedRate || 0) * 100);
+
+      html += '<div class="strategy-stats">';
+      html += '<div class="strategy-stat-card"><div class="strategy-stat-value">' + (data.totalRecorded || 0) + '</div><div class="strategy-stat-label">\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0627\u062E\u062A\u064A\u0627\u0631\u0627\u062A</div></div>';
+      html += '<div class="strategy-stat-card"><div class="strategy-stat-value">' + escalationPct + '%</div><div class="strategy-stat-label">\u0645\u0639\u062F\u0644 \u0627\u0644\u062A\u0635\u0639\u064A\u062F</div></div>';
+      html += '<div class="strategy-stat-card"><div class="strategy-stat-value">' + skippedPct + '%</div><div class="strategy-stat-label">\u0645\u062A\u062C\u0627\u0648\u064E\u0632\u0629</div></div>';
+      html += '<div class="strategy-stat-card"><div class="strategy-stat-value">' + (data.selectorTotalSelections || 0) + '</div><div class="strategy-stat-label">\u0627\u062E\u062A\u064A\u0627\u0631\u0627\u062A \u0627\u0644\u0645\u062D\u0631\u0643</div></div>';
+      html += '</div>';
+
+      // Per-strategy breakdown bars
+      var byStrat = data.byStrategy || {};
+      var stratKeys = Object.keys(byStrat);
+      if (stratKeys.length > 0) {
+        var maxCount = 0;
+        for (var mi = 0; mi < stratKeys.length; mi++) {
+          if (byStrat[stratKeys[mi]].count > maxCount) maxCount = byStrat[stratKeys[mi]].count;
+        }
+        if (maxCount === 0) maxCount = 1;
+        var stratLabels = { quick_factual: '\u0633\u0631\u064A\u0639', deep_analytical: '\u062A\u062D\u0644\u064A\u0644\u064A', conversational_followup: '\u0645\u062A\u0627\u0628\u0639\u0629', exploratory_scan: '\u0627\u0633\u062A\u0643\u0634\u0627\u0641\u064A', unknown: '\u063A\u064A\u0631 \u0645\u062D\u062F\u062F' };
+
+        html += '<h3 style="font-size:13px;color:var(--text-muted);margin:16px 0 8px;">\u062A\u0648\u0632\u064A\u0639 \u0627\u0644\u0627\u0633\u062A\u0631\u0627\u062A\u064A\u062C\u064A\u0627\u062A</h3>';
+        html += '<div class="strategy-breakdown">';
+        for (var si = 0; si < stratKeys.length; si++) {
+          var sk = stratKeys[si];
+          var sb = byStrat[sk];
+          var pct = Math.max((sb.count / maxCount) * 100, 2);
+          html += '<div class="strategy-breakdown-row">';
+          html += '<span class="strategy-breakdown-name">' + (stratLabels[sk] || sk) + '</span>';
+          html += '<div class="strategy-breakdown-bar"><div class="strategy-breakdown-bar-fill" style="width:' + pct + '%"></div></div>';
+          html += '<span class="strategy-breakdown-count">' + sb.count + '</span>';
+          html += '<span class="strategy-breakdown-score">' + Math.round((sb.avgScore || 0) * 100) + '%</span>';
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+
+      container.innerHTML = html;
     } catch (err) {
       container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623: ' + err.message + '</p>';
     }

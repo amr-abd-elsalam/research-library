@@ -28,6 +28,15 @@ export async function handleAdminCost(_req, res) {
   // ── Top sessions by cost ────────────────────────────────────
   const topSessions = costGovernor.getTopSessions(10);
 
+  // ── Semantic matching cost indicator (Phase 103) ────────────
+  const semanticEnabled = config.SEMANTIC_MATCHING?.enabled === true;
+  const semanticMatchingCost = {
+    enabled: semanticEnabled,
+    note: semanticEnabled
+      ? 'SEMANTIC_MATCHING adds embedding API calls per grounding check + citation mapping'
+      : 'SEMANTIC_MATCHING disabled — no extra embedding cost',
+  };
+
   const payload = {
     enabled:              costGovernor.enabled,
     enforcementEnabled:   costGovernor.enforcementEnabled,
@@ -36,6 +45,7 @@ export async function handleAdminCost(_req, res) {
     topSessions,
     monthlyBudgetCeiling: config.COST_GOVERNANCE?.monthlyBudgetCeiling ?? 0,
     monthlyBudgetUsed:    globalUsage.totalCost,
+    semanticMatchingCost,
   };
 
   res.writeHead(200, { 'Content-Type': 'application/json' });

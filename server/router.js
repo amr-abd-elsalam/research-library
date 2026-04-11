@@ -28,6 +28,9 @@ import { handleAdminNotifications } from './handlers/adminNotificationsHandler.j
 import { handleLibraries } from './handlers/librariesHandler.js';
 import { handleAdminCost } from './handlers/costHandler.js';
 import { handleAdminGrounding } from './handlers/groundingHandler.js';
+import { handleAdminRefinement } from './handlers/refinementHandler.js';
+import { handleAdminStrategy } from './handlers/strategyHandler.js';
+import { handleAdminSearchIntel } from './handlers/searchIntelHandler.js';
 import { bootstrap } from './bootstrap.js';
 import { eventBus } from './services/eventBus.js';
 import config from '../config.js';
@@ -255,6 +258,30 @@ export async function router(req, res) {
     requireAdmin(req, res);
     if (res.writableEnded) return;
     await handleAdminGrounding(req, res);
+    return;
+  }
+
+  // GET /api/admin/refinement (Phase 103 — answer refinement analytics)
+  if (method === 'GET' && matchRoute(url, '/api/admin/refinement')) {
+    requireAdmin(req, res);
+    if (res.writableEnded) return;
+    await handleAdminRefinement(req, res);
+    return;
+  }
+
+  // GET /api/admin/strategy (Phase 103 — RAG strategy analytics)
+  if (method === 'GET' && matchRoute(url, '/api/admin/strategy')) {
+    requireAdmin(req, res);
+    if (res.writableEnded) return;
+    await handleAdminStrategy(req, res);
+    return;
+  }
+
+  // GET /api/admin/search-intel (Phase 103 — unified search intelligence)
+  if (method === 'GET' && matchRoute(url, '/api/admin/search-intel')) {
+    requireAdmin(req, res);
+    if (res.writableEnded) return;
+    await handleAdminSearchIntel(req, res);
     return;
   }
 

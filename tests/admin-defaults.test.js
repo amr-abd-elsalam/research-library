@@ -406,6 +406,52 @@ describe('Admin Feature Defaults — API Endpoints (Phase 97)', () => {
     assert.strictEqual(data.config.semanticMatchingEnabled, true, 'semanticMatchingEnabled should be true');
   });
 
+  // T-AD49: GET /api/admin/refinement returns 200 with enabled: true (Phase 103)
+  it('T-AD49: refinement endpoint returns 200 with enabled: true', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/refinement`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.enabled, true, 'ANSWER_REFINEMENT should be enabled by default');
+    assert.strictEqual(typeof data.totalRecorded, 'number');
+    assert.strictEqual(typeof data.successRate, 'number');
+  });
+
+  // T-AD50: GET /api/admin/strategy returns 200 with enabled: true (Phase 103)
+  it('T-AD50: strategy endpoint returns 200 with enabled: true', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/strategy`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.enabled, true, 'RAG_STRATEGIES should be enabled by default');
+    assert.strictEqual(typeof data.totalRecorded, 'number');
+  });
+
+  // T-AD51: GET /api/admin/search-intel returns 200 with all 4 sub-objects enabled: true (Phase 103)
+  it('T-AD51: search-intel endpoint returns 200 with all enabled', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/search-intel`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.reranker.enabled, true);
+    assert.strictEqual(data.complexity.enabled, true);
+    assert.strictEqual(data.planner.enabled, true);
+    assert.strictEqual(data.strategy.enabled, true);
+  });
+
+  // T-AD52: GET /api/admin/cost returns semanticMatchingCost.enabled: true (Phase 103)
+  it('T-AD52: cost endpoint returns semanticMatchingCost.enabled true', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/cost`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.semanticMatchingCost.enabled, true, 'SEMANTIC_MATCHING should be enabled');
+  });
+
   // T-AD37: Inspect shows searchReranker.totalReranked is number (Phase 100)
   it('T-AD37: inspect shows searchReranker.totalReranked', async () => {
     const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
