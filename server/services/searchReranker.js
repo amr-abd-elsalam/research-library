@@ -11,6 +11,7 @@ import config from '../../config.js';
 import { featureFlags } from './featureFlags.js';
 
 class SearchReranker {
+  #totalReranked = 0;
 
   /** Whether re-ranking is active (dynamic — reads from featureFlags). */
   get enabled() {
@@ -26,6 +27,8 @@ class SearchReranker {
    */
   rerank(hits, query) {
     if (!this.enabled || !hits || hits.length <= 1) return hits;
+
+    this.#totalReranked++;
 
     const cfg = config.RETRIEVAL ?? {};
     const kwWeight  = Math.max(0, Math.min(1, cfg.keywordWeight ?? 0.3));
@@ -111,18 +114,17 @@ class SearchReranker {
 
   /**
    * Summary for inspect endpoint.
-   * @returns {{ enabled: boolean }}
+   * @returns {{ enabled: boolean, totalReranked: number }}
    */
   counts() {
-    return { enabled: this.enabled };
+    return { enabled: this.enabled, totalReranked: this.#totalReranked };
   }
 
   /**
-   * Resets internal state. Stateless singleton — no-op.
-   * Provided for pattern consistency with other singletons.
+   * Resets internal state.
    */
   reset() {
-    // Stateless — nothing to reset
+    this.#totalReranked = 0;
   }
 }
 

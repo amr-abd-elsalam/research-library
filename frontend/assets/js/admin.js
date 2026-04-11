@@ -2393,7 +2393,7 @@
       // Export buttons
       if (exportEnabled) {
         html += '<div class="export-buttons">';
-        html += '<span style="font-size:13px;color:var(--text-muted);margin-left:8px;">\u062A\u0635\u062F\u064A\u0631 \u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A:</span>';
+        html += '<span style="font-size:13px;color:var(--text-muted);margin-inline-start:8px;">\u062A\u0635\u062F\u064A\u0631 \u0627\u0644\u0628\u064A\u0627\u0646\u0627\u062A:</span>';
         html += '<button type="button" class="export-btn" onclick="(function(){ document.dispatchEvent(new CustomEvent(\'ai8v:export\',{detail:\'feedback\'})); })()">Feedback</button>';
         html += '<button type="button" class="export-btn" onclick="(function(){ document.dispatchEvent(new CustomEvent(\'ai8v:export\',{detail:\'audit\'})); })()">Audit</button>';
         html += '<button type="button" class="export-btn" onclick="(function(){ document.dispatchEvent(new CustomEvent(\'ai8v:export\',{detail:\'gaps\'})); })()">Gaps</button>';
@@ -2805,14 +2805,16 @@
       var reranker = data.searchReranker || {};
       var complexity = data.queryComplexityAnalyzer || {};
       var planner = data.queryPlanner || {};
+      var strategy = data.ragStrategySelector || {};
 
       var html = '';
 
-      // Stats cards (3 cards: Re-ranking, Complexity, Query Planning)
+      // Stats cards (4 cards: Re-ranking, Complexity, Query Planning, RAG Strategies)
       html += '<div class="search-intel-stats">';
       html += '<div class="search-intel-stat-card"><div class="search-intel-stat-value">' + (reranker.enabled ? '\u0645\u0641\u0639\u0651\u0644' : '\u0645\u0639\u0637\u0651\u0644') + '</div><div class="search-intel-stat-label">\u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u062A\u0631\u062A\u064A\u0628 (Re-ranking)</div></div>';
       html += '<div class="search-intel-stat-card"><div class="search-intel-stat-value">' + (complexity.enabled ? '\u0645\u0641\u0639\u0651\u0644' : '\u0645\u0639\u0637\u0651\u0644') + '</div><div class="search-intel-stat-label">\u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u062A\u0639\u0642\u064A\u062F (Complexity)</div></div>';
       html += '<div class="search-intel-stat-card"><div class="search-intel-stat-value">' + (planner.enabled ? '\u0645\u0641\u0639\u0651\u0644' : '\u0645\u0639\u0637\u0651\u0644') + '</div><div class="search-intel-stat-label">\u062A\u062E\u0637\u064A\u0637 \u0627\u0644\u0627\u0633\u062A\u0639\u0644\u0627\u0645 (Query Planning)</div></div>';
+      html += '<div class="search-intel-stat-card"><div class="search-intel-stat-value">' + (strategy.enabled ? '\u0645\u0641\u0639\u0651\u0644' : '\u0645\u0639\u0637\u0651\u0644') + '</div><div class="search-intel-stat-label">\u0627\u0633\u062A\u0631\u0627\u062A\u064A\u062C\u064A\u0627\u062A \u0627\u0644\u0628\u062D\u062B (RAG Strategies)</div></div>';
       html += '</div>';
 
       // Re-ranker details
@@ -2849,6 +2851,7 @@
 
       var stages = [
         { name: 'stageComplexityAnalysis', label: '\u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u062A\u0639\u0642\u064A\u062F', active: complexity.enabled },
+        { name: 'stageStrategySelect', label: '\u0627\u062E\u062A\u064A\u0627\u0631 \u0627\u0644\u0627\u0633\u062A\u0631\u0627\u062A\u064A\u062C\u064A\u0629', active: strategy.enabled },
         { name: 'stageQueryPlan', label: '\u062A\u062E\u0637\u064A\u0637 \u0627\u0644\u0627\u0633\u062A\u0639\u0644\u0627\u0645', active: planner.enabled },
         { name: 'stageRerank', label: '\u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u062A\u0631\u062A\u064A\u0628', active: reranker.enabled },
       ];
@@ -2864,6 +2867,60 @@
       }
 
       html += '</div>';
+
+      // Usage counters
+      html += '<div style="margin-top:12px;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);font-size:0.85rem;color:var(--text-muted);line-height:1.6;">';
+      html += '<strong style="color:var(--text-secondary);">\u0625\u062D\u0635\u0627\u0626\u064A\u0627\u062A \u0627\u0644\u0627\u0633\u062A\u062E\u062F\u0627\u0645:</strong><br>';
+      html += '\u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u062A\u0631\u062A\u064A\u0628: <strong>' + (reranker.totalReranked || 0) + '</strong> \u0645\u0631\u0629 \u00B7 ';
+      html += '\u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u062A\u0639\u0642\u064A\u062F: <strong>' + (complexity.totalAnalyzed || 0) + '</strong> \u0645\u0631\u0629 \u00B7 ';
+      html += '\u0627\u062E\u062A\u064A\u0627\u0631 \u0627\u0633\u062A\u0631\u0627\u062A\u064A\u062C\u064A\u0629: <strong>' + (strategy.totalSelections || 0) + '</strong> \u0645\u0631\u0629';
+      html += '</div>';
+
+      // Complexity type breakdown
+      var typeBreakdown = complexity.typeBreakdown || {};
+      var typeKeys = Object.keys(typeBreakdown);
+      var typeTotal = 0;
+      for (var ti = 0; ti < typeKeys.length; ti++) typeTotal += typeBreakdown[typeKeys[ti]];
+
+      if (typeTotal > 0) {
+        html += '<h3 style="font-size:13px;color:var(--text-muted);margin:16px 0 8px;">\u062A\u0648\u0632\u064A\u0639 \u0623\u0646\u0648\u0627\u0639 \u0627\u0644\u0623\u0633\u0626\u0644\u0629 (Complexity)</h3>';
+        html += '<div class="search-intel-breakdown">';
+        for (var tj = 0; tj < typeKeys.length; tj++) {
+          var tKey = typeKeys[tj];
+          var tCount = typeBreakdown[tKey];
+          var tPct = Math.max((tCount / typeTotal) * 100, 2);
+          html += '<div class="search-intel-stage-row">';
+          html += '<span style="width:14px;"></span>';
+          html += '<span class="search-intel-stage-name">' + tKey + '</span>';
+          html += '<span class="search-intel-stage-label">' + tCount + '</span>';
+          html += '<span class="search-intel-stage-status">' + ((tCount / typeTotal) * 100).toFixed(0) + '%</span>';
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+
+      // Strategy breakdown
+      var stratBreakdown = strategy.strategyBreakdown || {};
+      var stratKeys = Object.keys(stratBreakdown);
+      var stratTotal = 0;
+      for (var si = 0; si < stratKeys.length; si++) stratTotal += stratBreakdown[stratKeys[si]];
+
+      if (stratTotal > 0) {
+        html += '<h3 style="font-size:13px;color:var(--text-muted);margin:16px 0 8px;">\u062A\u0648\u0632\u064A\u0639 \u0627\u0633\u062A\u0631\u0627\u062A\u064A\u062C\u064A\u0627\u062A \u0627\u0644\u0628\u062D\u062B</h3>';
+        html += '<div class="search-intel-breakdown">';
+        var stratLabels = { quick_factual: '\u0633\u0631\u064A\u0639', deep_analytical: '\u062A\u062D\u0644\u064A\u0644\u064A \u0639\u0645\u064A\u0642', conversational_followup: '\u0645\u062A\u0627\u0628\u0639\u0629', exploratory_scan: '\u0627\u0633\u062A\u0643\u0634\u0627\u0641\u064A', none: '\u0628\u062F\u0648\u0646 \u0627\u0633\u062A\u0631\u0627\u062A\u064A\u062C\u064A\u0629' };
+        for (var sk = 0; sk < stratKeys.length; sk++) {
+          var sKey = stratKeys[sk];
+          var sCount = stratBreakdown[sKey];
+          html += '<div class="search-intel-stage-row">';
+          html += '<span style="width:14px;"></span>';
+          html += '<span class="search-intel-stage-name">' + (stratLabels[sKey] || sKey) + '</span>';
+          html += '<span class="search-intel-stage-label">' + sCount + '</span>';
+          html += '<span class="search-intel-stage-status">' + (stratTotal > 0 ? ((sCount / stratTotal) * 100).toFixed(0) : 0) + '%</span>';
+          html += '</div>';
+        }
+        html += '</div>';
+      }
 
       container.innerHTML = html;
 

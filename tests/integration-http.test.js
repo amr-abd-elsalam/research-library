@@ -1230,13 +1230,13 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(typeof data.sessionReplaySerializer.enabled, 'boolean');
   });
 
-  // T-IH107: GET /api/config/features includes RAG_STRATEGIES boolean (Phase 85)
+  // T-IH107: GET /api/config/features includes RAG_STRATEGIES boolean (Phase 100: enabled by default)
   it('T-IH107: GET /api/config/features includes RAG_STRATEGIES boolean', async () => {
     const res = await fetch(`${ts.baseUrl}/api/config/features`);
     assert.strictEqual(res.status, 200);
     const data = await res.json();
     assert.strictEqual(typeof data.RAG_STRATEGIES, 'boolean');
-    assert.strictEqual(data.RAG_STRATEGIES, false, 'RAG_STRATEGIES should default to false');
+    assert.strictEqual(data.RAG_STRATEGIES, true, 'RAG_STRATEGIES should default to true (Phase 100)');
   });
 
   // T-IH108: GET /api/admin/inspect includes ragStrategySelector section (Phase 85)

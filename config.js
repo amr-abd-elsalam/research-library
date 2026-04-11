@@ -931,7 +931,7 @@ const config = {
   //    — بدون استدعاء API — zero cost
   // ═══════════════════════════════════════════════════════════════
   RAG_STRATEGIES: {
-    enabled:        false,    // true = تفعيل اختيار الاستراتيجية التكيّفي | false = معطّل (zero overhead — السلوك الحالي بالظبط)
+    enabled:        true,     // true = تفعيل اختيار الاستراتيجية التكيّفي | false = معطّل (zero overhead — السلوك الحالي بالظبط)
     includeInTrace: true,     // true = تسجيل الاستراتيجية المختارة في الـ trace | false = لا تسجيل
     strategies: {
       quick_factual: {

@@ -27,9 +27,9 @@ describe('RAGStrategySelector Structure', () => {
     assert.strictEqual(typeof ragStrategySelector.enabled, 'boolean');
   });
 
-  // T-RS02: select() returns null when disabled
+  // T-RS02: select() returns null when disabled via override
   it('T-RS02: select() returns null when disabled', () => {
-    // RAG_STRATEGIES is false by default
+    featureFlags.setOverride('RAG_STRATEGIES', false);  // Phase 100: config default is now true — explicitly disable
     const result = ragStrategySelector.select({
       complexityType: 'factual',
       turnNumber: 0,

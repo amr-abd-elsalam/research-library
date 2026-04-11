@@ -357,15 +357,16 @@ describe('PipelineComposer Stats', () => {
 // ═══════════════════════════════════════════════════════════════
 describe('PipelineComposer RAG Strategy Stage', () => {
 
-  // T-PCO30: stageStrategySelect NOT in composed stages when RAG_STRATEGIES disabled
+  // T-PCO30: stageStrategySelect NOT in composed stages when RAG_STRATEGIES explicitly disabled
   it('T-PCO30: stageStrategySelect NOT included when RAG_STRATEGIES disabled', () => {
+    featureFlags.setOverride('RAG_STRATEGIES', false);  // Phase 100: config default is now true — explicitly disable
     const stages = pipelineComposer.compose({});
     assert.ok(!stages.includes(stageStrategySelect), 'should NOT include stageStrategySelect');
   });
 
-  // T-PCO31: stageStrategySelect IN composed stages when RAG_STRATEGIES enabled
+  // T-PCO31: stageStrategySelect IN composed stages when RAG_STRATEGIES enabled (default)
   it('T-PCO31: stageStrategySelect included when RAG_STRATEGIES enabled', () => {
-    featureFlags.setOverride('RAG_STRATEGIES', true);
+    // Phase 100: RAG_STRATEGIES enabled by default — no override needed
     const stages = pipelineComposer.compose({});
     assert.ok(stages.includes(stageStrategySelect), 'should include stageStrategySelect');
   });
@@ -394,15 +395,16 @@ describe('PipelineComposer RAG Strategy Stage', () => {
     assert.ok(idxStrategy < idxPlan, 'strategy should come before plan');
   });
 
-  // T-PCO34: Total composed stages increases by 1 when RAG_STRATEGIES enabled
-  it('T-PCO34: stage count increases by 1 when RAG_STRATEGIES enabled', () => {
-    const withoutStrategy = pipelineComposer.compose({});
-    const countWithout = withoutStrategy.length;
-
-    pipelineComposer.reset();
-    featureFlags.setOverride('RAG_STRATEGIES', true);
+  // T-PCO34: Total composed stages decreases by 1 when RAG_STRATEGIES explicitly disabled
+  it('T-PCO34: stage count decreases by 1 when RAG_STRATEGIES disabled', () => {
+    // Phase 100: RAG_STRATEGIES is now enabled by default
     const withStrategy = pipelineComposer.compose({});
     const countWith = withStrategy.length;
+
+    pipelineComposer.reset();
+    featureFlags.setOverride('RAG_STRATEGIES', false);
+    const withoutStrategy = pipelineComposer.compose({});
+    const countWithout = withoutStrategy.length;
 
     assert.strictEqual(countWith, countWithout + 1, `expected ${countWithout + 1} with strategy, got ${countWith}`);
   });

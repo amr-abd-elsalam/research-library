@@ -22,6 +22,8 @@ const MULTI_PART_PATTERN = /(?:^|[\s,.،؛:!؟?])(أولاً|أولا|ثانيا
 const EXPLORATORY_PATTERN = /(?:^|[\s,.،؛:!؟?])(ما هو|ما هي|ماذا يعني|اشرح|وضّح|وضح|عرّف|عرف|شرح شامل|نظرة عامة|ملخص شامل|overview|explain|define|describe|elaborate)(?:[\s,.،؛:!؟?]|$)/i;
 
 class QueryComplexityAnalyzer {
+  #totalAnalyzed = 0;
+  #typeBreakdown = { factual: 0, comparative: 0, analytical: 0, multi_part: 0, exploratory: 0 };
 
   /** Whether complexity analysis is active (dynamic — reads from featureFlags). */
   get enabled() {
@@ -88,6 +90,9 @@ class QueryComplexityAnalyzer {
     else if (indicators.includes('analytical'))   type = 'analytical';
     else if (indicators.includes('exploratory'))  type = 'exploratory';
 
+    this.#totalAnalyzed++;
+    if (this.#typeBreakdown[type] !== undefined) this.#typeBreakdown[type]++;
+
     return { type, score, indicators };
   }
 
@@ -110,19 +115,19 @@ class QueryComplexityAnalyzer {
   }
 
   /**
-   * Resets internal state. Stateless singleton — no-op.
-   * Provided for pattern consistency with other singletons.
+   * Resets internal state.
    */
   reset() {
-    // Stateless — nothing to reset
+    this.#totalAnalyzed = 0;
+    this.#typeBreakdown = { factual: 0, comparative: 0, analytical: 0, multi_part: 0, exploratory: 0 };
   }
 
   /**
    * Summary for inspect endpoint.
-   * @returns {{ enabled: boolean }}
+   * @returns {{ enabled: boolean, totalAnalyzed: number, typeBreakdown: Object }}
    */
   counts() {
-    return { enabled: this.enabled };
+    return { enabled: this.enabled, totalAnalyzed: this.#totalAnalyzed, typeBreakdown: { ...this.#typeBreakdown } };
   }
 }
 

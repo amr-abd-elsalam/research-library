@@ -159,15 +159,47 @@ describe('SearchReranker', () => {
     assert.doesNotThrow(() => reranker.reset());
   });
 
-  // T-SR12: counts() — returns { enabled: boolean }
-  it('T-SR12: counts returns { enabled: boolean }', () => {
+  // T-SR12: counts() — returns { enabled: boolean, totalReranked: number }
+  it('T-SR12: counts returns { enabled: boolean, totalReranked: number }', () => {
     featureFlags.setOverride('RETRIEVAL', false);  // Phase 98: config default is now true — explicitly disable for first check
     const c = reranker.counts();
     assert.strictEqual(typeof c.enabled, 'boolean');
     assert.strictEqual(c.enabled, false); // overridden to false
+    assert.strictEqual(typeof c.totalReranked, 'number');
 
     featureFlags.setOverride('RETRIEVAL', true);
     const c2 = reranker.counts();
     assert.strictEqual(c2.enabled, true);
+  });
+
+  // T-SR13: totalReranked increments after rerank with multiple hits
+  it('T-SR13: totalReranked increments after rerank', () => {
+    featureFlags.setOverride('RETRIEVAL', true);
+    reranker.reset();
+    assert.strictEqual(reranker.counts().totalReranked, 0);
+    reranker.rerank([mockHit(0.9, 'a.pdf', 'hello'), mockHit(0.8, 'b.pdf', 'world')], 'test');
+    assert.strictEqual(reranker.counts().totalReranked, 1);
+    reranker.rerank([mockHit(0.7, 'c.pdf', 'foo'), mockHit(0.6, 'd.pdf', 'bar')], 'test2');
+    assert.strictEqual(reranker.counts().totalReranked, 2);
+  });
+
+  // T-SR14: totalReranked does NOT increment for single hit or disabled
+  it('T-SR14: totalReranked does NOT increment for single hit or disabled', () => {
+    reranker.reset();
+    featureFlags.setOverride('RETRIEVAL', true);
+    reranker.rerank([mockHit(0.9, 'a.pdf', 'hello')], 'test'); // single hit — early return
+    assert.strictEqual(reranker.counts().totalReranked, 0);
+    featureFlags.setOverride('RETRIEVAL', false);
+    reranker.rerank([mockHit(0.9, 'a.pdf', 'hello'), mockHit(0.8, 'b.pdf', 'world')], 'test'); // disabled
+    assert.strictEqual(reranker.counts().totalReranked, 0);
+  });
+
+  // T-SR15: reset() clears totalReranked
+  it('T-SR15: reset clears totalReranked', () => {
+    featureFlags.setOverride('RETRIEVAL', true);
+    reranker.rerank([mockHit(0.9, 'a.pdf', 'hello'), mockHit(0.8, 'b.pdf', 'world')], 'test');
+    assert.ok(reranker.counts().totalReranked > 0);
+    reranker.reset();
+    assert.strictEqual(reranker.counts().totalReranked, 0);
   });
 });

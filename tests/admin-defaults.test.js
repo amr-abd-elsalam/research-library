@@ -67,6 +67,11 @@ describe('Admin Feature Defaults — Config (Phase 97)', () => {
   it('T-AD31: config.QUERY_PLANNING.enabled is true', () => {
     assert.strictEqual(config.QUERY_PLANNING.enabled, true);
   });
+
+  // T-AD34: config.RAG_STRATEGIES.enabled === true (Phase 100)
+  it('T-AD34: config.RAG_STRATEGIES.enabled is true', () => {
+    assert.strictEqual(config.RAG_STRATEGIES.enabled, true);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -307,5 +312,45 @@ describe('Admin Feature Defaults — API Endpoints (Phase 97)', () => {
     assert.strictEqual(res.status, 200);
     const data = await res.json();
     assert.strictEqual(data.queryPlanner.enabled, true, 'queryPlanner should be enabled by default');
+  });
+
+  // T-AD35: Config features returns RAG_STRATEGIES as true (Phase 100)
+  it('T-AD35: config features — RAG_STRATEGIES true', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.RAG_STRATEGIES, true, 'RAG_STRATEGIES should be true');
+  });
+
+  // T-AD36: Inspect shows ragStrategySelector.enabled true (Phase 100)
+  it('T-AD36: inspect shows ragStrategySelector.enabled true', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.ragStrategySelector.enabled, true, 'ragStrategySelector should be enabled by default');
+  });
+
+  // T-AD37: Inspect shows searchReranker.totalReranked is number (Phase 100)
+  it('T-AD37: inspect shows searchReranker.totalReranked', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.searchReranker.totalReranked, 'number');
+  });
+
+  // T-AD38: Inspect shows queryComplexityAnalyzer.totalAnalyzed + typeBreakdown (Phase 100)
+  it('T-AD38: inspect shows queryComplexityAnalyzer counters', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.queryComplexityAnalyzer.totalAnalyzed, 'number');
+    assert.strictEqual(typeof data.queryComplexityAnalyzer.typeBreakdown, 'object');
+    assert.strictEqual(Object.keys(data.queryComplexityAnalyzer.typeBreakdown).length, 5);
   });
 });

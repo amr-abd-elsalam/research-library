@@ -133,15 +133,57 @@ describe('QueryComplexityAnalyzer', () => {
     assert.strictEqual(strategy.promptSuffix, null);
   });
 
-  // T-QCA14: counts() → returns { enabled: boolean }
+  // T-QCA14: counts() → returns { enabled, totalAnalyzed, typeBreakdown }
   it('T-QCA14: counts returns correct structure', () => {
     featureFlags.setOverride('QUERY_COMPLEXITY', false);  // Phase 98: config default is now true — explicitly disable for first check
     const c1 = analyzer.counts();
     assert.strictEqual(typeof c1.enabled, 'boolean');
     assert.strictEqual(c1.enabled, false); // overridden to false
+    assert.strictEqual(typeof c1.totalAnalyzed, 'number');
+    assert.strictEqual(typeof c1.typeBreakdown, 'object');
 
     featureFlags.setOverride('QUERY_COMPLEXITY', true);
     const c2 = analyzer.counts();
     assert.strictEqual(c2.enabled, true);
+  });
+
+  // T-QCA15: totalAnalyzed increments on each analyze() call when enabled
+  it('T-QCA15: totalAnalyzed increments on each analyze call', () => {
+    featureFlags.setOverride('QUERY_COMPLEXITY', true);
+    analyzer.reset();
+    assert.strictEqual(analyzer.counts().totalAnalyzed, 0);
+    analyzer.analyze('سؤال بسيط');
+    analyzer.analyze('ما الفرق بين A و B؟');
+    assert.strictEqual(analyzer.counts().totalAnalyzed, 2);
+  });
+
+  // T-QCA16: typeBreakdown tracks types correctly
+  it('T-QCA16: typeBreakdown tracks types correctly', () => {
+    featureFlags.setOverride('QUERY_COMPLEXITY', true);
+    analyzer.reset();
+    analyzer.analyze('سؤال بسيط');  // factual
+    analyzer.analyze('ما الفرق بين A و B؟');  // comparative
+    const c = analyzer.counts();
+    assert.ok(c.typeBreakdown.factual >= 1, 'should have at least 1 factual');
+    assert.ok(c.typeBreakdown.comparative >= 1, 'should have at least 1 comparative');
+  });
+
+  // T-QCA17: totalAnalyzed does NOT increment when disabled
+  it('T-QCA17: totalAnalyzed does NOT increment when disabled', () => {
+    featureFlags.setOverride('QUERY_COMPLEXITY', false);
+    analyzer.reset();
+    analyzer.analyze('سؤال بسيط');
+    assert.strictEqual(analyzer.counts().totalAnalyzed, 0);
+  });
+
+  // T-QCA18: reset() clears totalAnalyzed and typeBreakdown
+  it('T-QCA18: reset clears totalAnalyzed and typeBreakdown', () => {
+    featureFlags.setOverride('QUERY_COMPLEXITY', true);
+    analyzer.analyze('test');
+    assert.ok(analyzer.counts().totalAnalyzed > 0);
+    analyzer.reset();
+    assert.strictEqual(analyzer.counts().totalAnalyzed, 0);
+    const bd = analyzer.counts().typeBreakdown;
+    assert.strictEqual(Object.values(bd).reduce((s, v) => s + v, 0), 0);
   });
 });

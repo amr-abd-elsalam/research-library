@@ -287,4 +287,51 @@ describe('Search Intelligence — Admin API (Phase 98)', () => {
     const result = queryPlanner.shouldPlan('ما هي الباقات؟', { type: 'factual', score: 1, indicators: [] });
     assert.strictEqual(result, false);
   });
+
+  // T-SI29: config features returns RAG_STRATEGIES: true (Phase 100)
+  it('T-SI29: config features returns RAG_STRATEGIES true', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.RAG_STRATEGIES, true, 'RAG_STRATEGIES should be true (Phase 100)');
+  });
+
+  // T-SI30: ragStrategySelector singleton enabled by default (Phase 100)
+  it('T-SI30: ragStrategySelector singleton enabled by default', async () => {
+    const { ragStrategySelector } = await import('../server/services/ragStrategySelector.js');
+    assert.strictEqual(ragStrategySelector.enabled, true);
+  });
+
+  // T-SI31: ragStrategySelector.select returns quick_factual for short factual (Phase 100)
+  it('T-SI31: ragStrategySelector selects quick_factual for short factual', async () => {
+    const { ragStrategySelector } = await import('../server/services/ragStrategySelector.js');
+    const result = ragStrategySelector.select({
+      complexityType: 'factual', turnNumber: 0, lastAvgScore: 0,
+      isFollowUp: false, messageWordCount: 5,
+    });
+    assert.ok(result !== null);
+    assert.strictEqual(result.name, 'quick_factual');
+  });
+
+  // T-SI32: inspect shows ragStrategySelector.enabled: true (Phase 100)
+  it('T-SI32: inspect shows ragStrategySelector enabled', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.ragStrategySelector.enabled, true);
+    assert.strictEqual(typeof data.ragStrategySelector.totalSelections, 'number');
+    assert.strictEqual(typeof data.ragStrategySelector.strategyBreakdown, 'object');
+  });
+
+  // T-SI33: inspect shows searchReranker with totalReranked (Phase 100)
+  it('T-SI33: inspect shows searchReranker.totalReranked', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.searchReranker.totalReranked, 'number');
+  });
 });
