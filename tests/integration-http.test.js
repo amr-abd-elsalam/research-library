@@ -1764,4 +1764,40 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     // With ACTION_REGISTRY enabled, unifiedRegistry should have action entries
     assert.strictEqual(data.unifiedRegistry.enabled, true, 'unifiedRegistry should be enabled');
   });
+
+  // T-IH149: GET /api/admin/grounding without auth returns 401 (Phase 102)
+  it('T-IH149: GET /api/admin/grounding without auth — returns 401', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/grounding`);
+    assert.strictEqual(res.status, 401);
+  });
+
+  // T-IH150: GET /api/admin/grounding with auth returns 200 with expected shape (Phase 102)
+  it('T-IH150: GET /api/admin/grounding with auth — returns 200 with shape', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/grounding`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.totalChecked, 'number');
+    assert.strictEqual(typeof data.avgScore, 'number');
+    assert.strictEqual(typeof data.scoreDistribution, 'object');
+    assert.strictEqual(typeof data.config, 'object');
+    assert.strictEqual(typeof data.config.semanticMatchingEnabled, 'boolean');
+  });
+
+  // T-IH151: GET /api/config/features returns SEMANTIC_MATCHING: true (Phase 102)
+  it('T-IH151: GET /api/config/features — SEMANTIC_MATCHING is true', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.SEMANTIC_MATCHING, true, 'SEMANTIC_MATCHING should be true (Phase 102)');
+  });
+
+  // T-IH152: GET /api/config/features returns exactly 15 keys (count unchanged — Phase 102)
+  it('T-IH152: GET /api/config/features returns exactly 15 keys', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(Object.keys(data).length, 15, `expected 15 feature keys, got ${Object.keys(data).length}`);
+  });
 });

@@ -92,7 +92,7 @@ describe('handleConfigFeatures()', () => {
     assert.strictEqual(data.CITATION, true);             // Phase 90: enabled by default
     assert.strictEqual(data.QUERY_PLANNING, true);        // Phase 99: enabled by default
     assert.strictEqual(data.RAG_STRATEGIES, true);         // Phase 100: enabled by default
-    assert.strictEqual(data.SEMANTIC_MATCHING, false);
+    assert.strictEqual(data.SEMANTIC_MATCHING, true);     // Phase 102: enabled by default
     assert.strictEqual(data.ANSWER_REFINEMENT, true);    // Phase 101: enabled by default
     assert.strictEqual(data.COST_GOVERNANCE, true);       // Phase 101: enabled by default
   });

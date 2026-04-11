@@ -153,26 +153,26 @@ describe('FeatureFlags', () => {
     assert.strictEqual(typeof emittedData.timestamp, 'number');
   });
 
-  // T-FF14: clearOverride event has correct previousValue and enabled (Phase 97: QUALITY default is now true — use SEMANTIC_MATCHING which is still false)
+  // T-FF14: clearOverride event has correct previousValue and enabled (Phase 102: SEMANTIC_MATCHING now true — use override false then clear)
   it('T-FF14: clearOverride event has correct previousValue and enabled', async () => {
     const { eventBus } = await import('../server/services/eventBus.js');
     let emittedData = null;
     const unsub = eventBus.on('feature:toggled', (data) => {
-      if (data.section === 'SEMANTIC_MATCHING' && data.previousValue === true) {
+      if (data.section === 'SEMANTIC_MATCHING' && data.previousValue === false) {
         emittedData = data;
       }
     });
 
-    featureFlags.setOverride('SEMANTIC_MATCHING', true);
-    assert.strictEqual(featureFlags.isEnabled('SEMANTIC_MATCHING'), true);
+    featureFlags.setOverride('SEMANTIC_MATCHING', false);
+    assert.strictEqual(featureFlags.isEnabled('SEMANTIC_MATCHING'), false);
 
     featureFlags.clearOverride('SEMANTIC_MATCHING');
 
     unsub();
 
     assert.ok(emittedData !== null, 'feature:toggled event should be emitted');
-    assert.strictEqual(emittedData.previousValue, true, 'previousValue should be true (was overridden to true)');
-    assert.strictEqual(emittedData.enabled, false, 'enabled should be false (SEMANTIC_MATCHING config default is false)');
+    assert.strictEqual(emittedData.previousValue, false, 'previousValue should be false (was overridden to false)');
+    assert.strictEqual(emittedData.enabled, true, 'enabled should be true (SEMANTIC_MATCHING config default is now true)');
   });
 
 });

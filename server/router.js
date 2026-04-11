@@ -27,6 +27,7 @@ import { handleSuggestionAnalytics } from './handlers/suggestionsHandler.js';
 import { handleAdminNotifications } from './handlers/adminNotificationsHandler.js';
 import { handleLibraries } from './handlers/librariesHandler.js';
 import { handleAdminCost } from './handlers/costHandler.js';
+import { handleAdminGrounding } from './handlers/groundingHandler.js';
 import { bootstrap } from './bootstrap.js';
 import { eventBus } from './services/eventBus.js';
 import config from '../config.js';
@@ -246,6 +247,14 @@ export async function router(req, res) {
     requireAdmin(req, res);
     if (res.writableEnded) return;
     await handleAdminCost(req, res);
+    return;
+  }
+
+  // GET /api/admin/grounding (Phase 102 — grounding analytics + score distribution)
+  if (method === 'GET' && matchRoute(url, '/api/admin/grounding')) {
+    requireAdmin(req, res);
+    if (res.writableEnded) return;
+    await handleAdminGrounding(req, res);
     return;
   }
 

@@ -806,7 +806,7 @@ const config = {
   //    — بدون overhead لما معطّل — الـ grounding والـ citation يفضلوا token-only
   // ═══════════════════════════════════════════════════════════════
   SEMANTIC_MATCHING: {
-    enabled:         false,    // true = semantic similarity for grounding + citation | false = token overlap only (zero overhead — السلوك الحالي بالظبط)
+    enabled:         true,     // true = semantic similarity for grounding + citation | false = token overlap only (zero overhead)
     tokenWeight:     0.5,      // 0-1: وزن token overlap في الـ blended score
     semanticWeight:  0.5,      // 0-1: وزن semantic (cosine) similarity في الـ blended score
     batchSize:       20,       // أقصى عدد texts يتم embed-ها في call واحد (cost control)

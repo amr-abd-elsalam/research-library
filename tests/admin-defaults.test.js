@@ -87,6 +87,16 @@ describe('Admin Feature Defaults — Config (Phase 97)', () => {
   it('T-AD41: config.COST_GOVERNANCE.enforceBudget is false', () => {
     assert.strictEqual(config.COST_GOVERNANCE.enforceBudget, false);
   });
+
+  // T-AD45: config.SEMANTIC_MATCHING.enabled === true (Phase 102 — ALL features now enabled)
+  it('T-AD45: config.SEMANTIC_MATCHING.enabled is true', () => {
+    assert.strictEqual(config.SEMANTIC_MATCHING.enabled, true);
+  });
+
+  // T-AD46: config.SEMANTIC_MATCHING.fallbackOnError === true (Phase 102 — safety net)
+  it('T-AD46: config.SEMANTIC_MATCHING.fallbackOnError is true', () => {
+    assert.strictEqual(config.SEMANTIC_MATCHING.fallbackOnError, true);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -375,6 +385,25 @@ describe('Admin Feature Defaults — API Endpoints (Phase 97)', () => {
     const data = await res.json();
     assert.strictEqual(data.ANSWER_REFINEMENT, true, 'ANSWER_REFINEMENT should be true');
     assert.strictEqual(data.COST_GOVERNANCE, true, 'COST_GOVERNANCE should be true');
+  });
+
+  // T-AD47: Config features returns SEMANTIC_MATCHING as true (Phase 102)
+  it('T-AD47: config features — SEMANTIC_MATCHING true', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.SEMANTIC_MATCHING, true, 'SEMANTIC_MATCHING should be true');
+  });
+
+  // T-AD48: GET /api/admin/grounding returns 200 with config (Phase 102)
+  it('T-AD48: grounding endpoint returns 200 with config', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/grounding`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(typeof data.config, 'object');
+    assert.strictEqual(data.config.semanticMatchingEnabled, true, 'semanticMatchingEnabled should be true');
   });
 
   // T-AD37: Inspect shows searchReranker.totalReranked is number (Phase 100)

@@ -2734,39 +2734,57 @@
     container.innerHTML = '<p class="admin-empty-msg">\u062C\u0627\u0631\u064A \u0627\u0644\u062A\u062D\u0645\u064A\u0644...</p>';
 
     try {
-      var data = await adminFetch('/api/admin/inspect');
-      if (!data || !data.groundingAnalytics) {
+      var data = await adminFetch('/api/admin/grounding');
+      if (!data) {
         container.innerHTML = '<p class="admin-empty-msg">\u062E\u0637\u0623 \u0641\u064A \u062A\u062D\u0645\u064A\u0644 \u0628\u064A\u0627\u0646\u0627\u062A \u062C\u0648\u062F\u0629 \u0627\u0644\u0625\u062C\u0627\u0628\u0627\u062A</p>';
         return;
       }
 
-      var ga = data.groundingAnalytics;
-      var agc = data.answerGroundingChecker || {};
-      var cm = data.citationMapper || {};
-
-      if (!agc.enabled) {
+      if (!data.config || !data.config.enabled) {
         container.innerHTML = '<p class="admin-empty-msg">\u0641\u062D\u0635 \u062F\u0642\u0629 \u0627\u0644\u0625\u062C\u0627\u0628\u0627\u062A \u0645\u0639\u0637\u0651\u0644 \u2014 \u0641\u0639\u0651\u0644\u0647 \u0645\u0646 <code>GROUNDING.enabled: true</code></p>';
         return;
       }
 
-      if (ga.totalChecked === 0) {
+      if (data.totalChecked === 0) {
         container.innerHTML = '<p class="admin-empty-msg">\u0644\u0627 \u062A\u0648\u062C\u062F \u0628\u064A\u0627\u0646\u0627\u062A \u0628\u0639\u062F \u2014 \u0633\u062A\u0638\u0647\u0631 \u0627\u0644\u0625\u062D\u0635\u0627\u0626\u064A\u0627\u062A \u0628\u0639\u062F \u0625\u0631\u0633\u0627\u0644 \u0623\u0633\u0626\u0644\u0629</p>';
         return;
       }
 
       var html = '';
 
-      // Stats cards — Phase 97: enriched with grounding details + citation status
-      var avgPct = Math.round(ga.avgScore * 100);
+      // Stats cards
+      var avgPct = Math.round(data.avgScore * 100);
       var avgCls = avgPct >= 80 ? 'grounding-gauge--good' : avgPct >= 60 ? 'grounding-gauge--medium' : 'grounding-gauge--poor';
       var statusLabel = avgPct >= 80 ? '\u062C\u064A\u062F\u0629' : avgPct >= 60 ? '\u0645\u062A\u0648\u0633\u0637\u0629' : '\u0636\u0639\u064A\u0641\u0629';
+      var semanticLabel = data.config.semanticMatchingEnabled ? '\u0645\u0641\u0639\u0651\u0644' : '\u0645\u0639\u0637\u0651\u0644';
 
       html += '<div class="grounding-stats">';
       html += '<div class="grounding-stat-card"><div class="grounding-gauge ' + avgCls + '">' + avgPct + '%</div><div class="grounding-stat-label">\u0645\u0639\u062F\u0644 \u0627\u0644\u0627\u0633\u062A\u0646\u0627\u062F</div></div>';
-      html += '<div class="grounding-stat-card"><div class="grounding-stat-value">' + ga.totalChecked + '</div><div class="grounding-stat-label">\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0641\u062D\u0648\u0635\u0627\u062A</div></div>';
+      html += '<div class="grounding-stat-card"><div class="grounding-stat-value">' + data.totalChecked + '</div><div class="grounding-stat-label">\u0625\u062C\u0645\u0627\u0644\u064A \u0627\u0644\u0641\u062D\u0648\u0635\u0627\u062A</div></div>';
       html += '<div class="grounding-stat-card"><div class="grounding-stat-value">' + statusLabel + '</div><div class="grounding-stat-label">\u062D\u0627\u0644\u0629 \u0627\u0644\u062C\u0648\u062F\u0629</div></div>';
-      html += '<div class="grounding-stat-card"><div class="grounding-stat-value">' + (cm.enabled ? '\u0645\u0641\u0639\u0651\u0644' : '\u0645\u0639\u0637\u0651\u0644') + '</div><div class="grounding-stat-label">\u0625\u0633\u0646\u0627\u062F \u0627\u0644\u0645\u0635\u0627\u062F\u0631</div></div>';
+      html += '<div class="grounding-stat-card"><div class="grounding-stat-value">' + semanticLabel + '</div><div class="grounding-stat-label">\u0627\u0644\u0645\u0637\u0627\u0628\u0642\u0629 \u0627\u0644\u062F\u0644\u0627\u0644\u064A\u0629</div></div>';
       html += '</div>';
+
+      // Score distribution bars
+      var dist = data.scoreDistribution;
+      if (dist) {
+        var distTotal = (dist.veryHigh || 0) + (dist.high || 0) + (dist.medium || 0) + (dist.low || 0) + (dist.veryLow || 0);
+        if (distTotal > 0) {
+          var goodCount = (dist.veryHigh || 0) + (dist.high || 0);
+          var medCount = dist.medium || 0;
+          var poorCount = (dist.low || 0) + (dist.veryLow || 0);
+          var goodPct = ((goodCount / distTotal) * 100).toFixed(1);
+          var medPct = ((medCount / distTotal) * 100).toFixed(1);
+          var poorPct = ((poorCount / distTotal) * 100).toFixed(1);
+
+          html += '<h3 style="font-size:13px;color:var(--text-muted);margin:16px 0 8px;">\u062A\u0648\u0632\u064A\u0639 \u062F\u0631\u062C\u0627\u062A \u0627\u0644\u0627\u0633\u062A\u0646\u0627\u062F</h3>';
+          html += '<div class="grounding-dist-bars">';
+          html += '<div class="grounding-dist-bar-row"><div class="grounding-dist-label">\u062C\u064A\u062F (\u2265 60%)</div><div class="grounding-dist-bar-container"><div class="grounding-dist-fill grounding-dist-fill--good" style="width:' + goodPct + '%"></div></div><div class="grounding-dist-count">' + goodCount + '</div><div class="grounding-dist-pct">' + goodPct + '%</div></div>';
+          html += '<div class="grounding-dist-bar-row"><div class="grounding-dist-label">\u0645\u062A\u0648\u0633\u0637 (40-59%)</div><div class="grounding-dist-bar-container"><div class="grounding-dist-fill grounding-dist-fill--medium" style="width:' + medPct + '%"></div></div><div class="grounding-dist-count">' + medCount + '</div><div class="grounding-dist-pct">' + medPct + '%</div></div>';
+          html += '<div class="grounding-dist-bar-row"><div class="grounding-dist-label">\u0636\u0639\u064A\u0641 (&lt; 40%)</div><div class="grounding-dist-bar-container"><div class="grounding-dist-fill grounding-dist-fill--poor" style="width:' + poorPct + '%"></div></div><div class="grounding-dist-count">' + poorCount + '</div><div class="grounding-dist-pct">' + poorPct + '%</div></div>';
+          html += '</div>';
+        }
+      }
 
       // Grounding score interpretation
       html += '<div style="margin-top:12px;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);font-size:0.85rem;color:var(--text-muted);line-height:1.6;">';
@@ -2776,6 +2794,9 @@
         html += '\u26A0\uFE0F \u0645\u0639\u062F\u0644 \u0627\u0633\u062A\u0646\u0627\u062F \u0645\u062A\u0648\u0633\u0637 (' + avgPct + '%). \u0628\u0639\u0636 \u0627\u0644\u0625\u062C\u0627\u0628\u0627\u062A \u0642\u062F \u062A\u062A\u0636\u0645\u0646 \u0645\u0639\u0644\u0648\u0645\u0627\u062A \u063A\u064A\u0631 \u0645\u0648\u062C\u0648\u062F\u0629 \u0641\u064A \u0627\u0644\u0645\u0643\u062A\u0628\u0629. \u0631\u0627\u062C\u0639 \u0627\u0644\u0645\u062D\u062A\u0648\u0649 \u0648\u0623\u0636\u0641 \u0645\u0635\u0627\u062F\u0631 \u062C\u062F\u064A\u062F\u0629.';
       } else {
         html += '\uD83D\uDD34 \u0645\u0639\u062F\u0644 \u0627\u0633\u062A\u0646\u0627\u062F \u0636\u0639\u064A\u0641 (' + avgPct + '%). \u0627\u0644\u0625\u062C\u0627\u0628\u0627\u062A \u0642\u062F \u062A\u062A\u0636\u0645\u0646 \u0645\u0639\u0644\u0648\u0645\u0627\u062A \u0645\u0646 \u062E\u0627\u0631\u062C \u0627\u0644\u0645\u0643\u062A\u0628\u0629. \u0641\u0639\u0651\u0644 Answer Refinement \u0623\u0648 \u0623\u0636\u0641 \u0645\u062D\u062A\u0648\u0649 \u064A\u063A\u0637\u064A \u0627\u0644\u0645\u0648\u0627\u0636\u064A\u0639 \u0627\u0644\u0634\u0627\u0626\u0639\u0629.';
+      }
+      if (data.config.semanticMatchingEnabled) {
+        html += '<br><span style="font-family:var(--font-en);font-size:0.8rem;">\u0627\u0644\u0645\u0637\u0627\u0628\u0642\u0629 \u0627\u0644\u062F\u0644\u0627\u0644\u064A\u0629 \u0645\u0641\u0639\u0651\u0644\u0629 \u2014 \u0627\u0644\u0641\u062D\u0635 \u064A\u0633\u062A\u062E\u062F\u0645 token overlap + semantic similarity \u0644\u062F\u0642\u0629 \u0623\u0639\u0644\u0649.</span>';
       }
       html += '</div>';
 
