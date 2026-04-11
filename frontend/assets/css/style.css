@@ -1722,7 +1722,7 @@ img { max-width: 100%; display: block; }
   border-radius: var(--radius-sm) 0 0 var(--radius-sm);
   background: var(--bg-card);
   border:     1px solid var(--border);
-  border-right: none;
+  border-inline-end: none;
   color:      var(--text-muted);
   display:    flex;
   align-items: center;
@@ -1745,7 +1745,7 @@ img { max-width: 100%; display: block; }
 .sidebar-badge {
   position: absolute;
   top: -4px;
-  left: -4px;
+  inset-inline-end: -4px;
   background: var(--accent, #10b981);
   color: #fff;
   font-size: 0.6rem;
@@ -2011,8 +2011,8 @@ img { max-width: 100%; display: block; }
 .cmd-autocomplete {
   position: absolute;
   bottom: 100%;
-  left: 0;
-  right: 0;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-md);

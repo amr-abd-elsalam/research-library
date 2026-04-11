@@ -130,9 +130,9 @@ describe('stageAnswerRefinement Streaming Behavior', () => {
     assert.strictEqual(ctx._refinementSkipReason, 'no_grounding_data');
   });
 
-  // T-SRV07: stageAnswerRefinement skips when ANSWER_REFINEMENT feature flag is off
+  // T-SRV07: stageAnswerRefinement skips when ANSWER_REFINEMENT feature flag is off (Phase 101: use override)
   it('T-SRV07: skips when feature flag off', async () => {
-    // Default: ANSWER_REFINEMENT disabled
+    featureFlags.setOverride('ANSWER_REFINEMENT', false);
     const ctx = {
       aborted: false,
       fullText: 'some text',
