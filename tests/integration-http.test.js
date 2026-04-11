@@ -822,13 +822,13 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.ok(data.sharedUtilities.includes('arabicNlp'), 'should include arabicNlp');
   });
 
-  // T-IH71: GET /api/config/features — includes SEMANTIC_MATCHING boolean (Phase 73)
+  // T-IH71: GET /api/config/features — includes SEMANTIC_MATCHING boolean (Phase 73, Phase 102: enabled by default)
   it('T-IH71: GET /api/config/features includes SEMANTIC_MATCHING boolean', async () => {
     const res = await fetch(`${ts.baseUrl}/api/config/features`);
     assert.strictEqual(res.status, 200);
     const data = await res.json();
     assert.strictEqual(typeof data.SEMANTIC_MATCHING, 'boolean');
-    assert.strictEqual(data.SEMANTIC_MATCHING, false, 'SEMANTIC_MATCHING should default to false');
+    assert.strictEqual(data.SEMANTIC_MATCHING, true, 'SEMANTIC_MATCHING should default to true (Phase 102)');
   });
 
   // T-IH72: GET /api/admin/inspect — featureFlags.status has 15 sections including RAG_STRATEGIES (Phase 85: was 14)
