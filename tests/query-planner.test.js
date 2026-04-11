@@ -60,14 +60,15 @@ describe('QueryPlanner Structure', () => {
     assert.strictEqual(after.totalSkipped, 0);
   });
 
-  // T-QP05: enabled getter returns boolean (false by default)
-  it('T-QP05: enabled returns false by default', () => {
-    assert.strictEqual(queryPlanner.enabled, false);
+  // T-QP05: enabled getter returns boolean (true by default — Phase 99)
+  it('T-QP05: enabled returns true by default', () => {
+    assert.strictEqual(queryPlanner.enabled, true);
     assert.strictEqual(typeof queryPlanner.enabled, 'boolean');
   });
 
-  // T-QP06: shouldPlan returns false when disabled
-  it('T-QP06: shouldPlan returns false when disabled', () => {
+  // T-QP06: shouldPlan returns false when disabled via override
+  it('T-QP06: shouldPlan returns false when disabled via override', () => {
+    featureFlags.setOverride('QUERY_PLANNING', false);
     assert.strictEqual(queryPlanner.shouldPlan('some question', { type: 'comparative', score: 3, indicators: ['comparative'] }), false);
   });
 });
@@ -255,18 +256,20 @@ describe('QueryPlanner Merge Strategies', () => {
 // ═══════════════════════════════════════════════════════════════
 describe('QueryPlanner Config Gating', () => {
 
-  // T-QP24: decompose returns single when disabled
-  it('T-QP24: decompose returns single when disabled', () => {
-    // QUERY_PLANNING is disabled by default
+  // T-QP24: decompose returns single when disabled via override (Phase 99: enabled by default)
+  it('T-QP24: decompose returns single when disabled via override', () => {
+    featureFlags.setOverride('QUERY_PLANNING', false);
     const result = queryPlanner.decompose('ما المنصة؟ وما الأسعار؟', { type: 'multi_part' });
     assert.strictEqual(result.strategy, 'single');
     assert.strictEqual(result.subQueries.length, 1);
   });
 
-  // T-QP25: feature flag override enables planning
-  it('T-QP25: feature flag override enables planning', () => {
+  // T-QP25: feature flag override disables then re-enables planning (Phase 99: enabled by default)
+  it('T-QP25: feature flag override disables then re-enables planning', () => {
+    assert.strictEqual(queryPlanner.enabled, true);
+    featureFlags.setOverride('QUERY_PLANNING', false);
     assert.strictEqual(queryPlanner.enabled, false);
-    featureFlags.setOverride('QUERY_PLANNING', true);
+    featureFlags.clearOverride('QUERY_PLANNING');
     assert.strictEqual(queryPlanner.enabled, true);
     assert.strictEqual(queryPlanner.shouldPlan('بين الأولى و الثانية', { type: 'comparative', score: 3, indicators: ['comparative'] }), true);
   });

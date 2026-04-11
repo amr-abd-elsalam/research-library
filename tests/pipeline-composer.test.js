@@ -114,12 +114,10 @@ describe('PipelineComposer Core Stages', () => {
     assert.ok(stages.includes(stageStream), 'should include stageStream');
   });
 
-  // T-PCO09: compose() minimum stage count is 7 (all features disabled)
-  it('T-PCO09: compose() minimum stage count is 7 with all features disabled', () => {
-    // Default config: all optional features disabled
+  // T-PCO09: compose() minimum stage count with default config features (Phase 99: QUERY_COMPLEXITY + RETRIEVAL + GROUNDING + CITATION + QUERY_PLANNING enabled)
+  it('T-PCO09: compose() minimum stage count with default config features', () => {
+    // Default config (Phase 99): 7 core + stageRewriteQuery + stageComplexityAnalysis + stageQueryPlan + stageRerank + stageGroundingCheck + stageCitationMapping = 13
     const stages = pipelineComposer.compose({});
-    // 7 core + stageRewriteQuery (if FOLLOWUP.enabled is true in default config)
-    // FOLLOWUP.enabled defaults to true in config → stageRewriteQuery included
     assert.ok(stages.length >= 7, `expected >= 7, got ${stages.length}`);
   });
 });
@@ -260,9 +258,17 @@ describe('PipelineComposer Stage Ordering', () => {
     assert.strictEqual(unique.size, stages.length, 'should have no duplicates');
   });
 
-  // T-PCO22: stage count matches expected when all features enabled vs all disabled
-  it('T-PCO22: stage count — all disabled vs all enabled', () => {
-    // All disabled (default) — 7 core + stageRewriteQuery (FOLLOWUP.enabled=true) = 8
+  // T-PCO22: stage count matches expected when all features enabled vs minimal disabled
+  it('T-PCO22: stage count — minimal vs all enabled', () => {
+    // Minimal: disable all optional features explicitly (Phase 99: some are on by default)
+    featureFlags.setOverride('QUERY_COMPLEXITY', false);
+    featureFlags.setOverride('QUERY_PLANNING', false);
+    featureFlags.setOverride('RETRIEVAL', false);
+    featureFlags.setOverride('GROUNDING', false);
+    featureFlags.setOverride('ANSWER_REFINEMENT', false);
+    featureFlags.setOverride('CITATION', false);
+    featureFlags.setOverride('RAG_STRATEGIES', false);
+
     const minStages = pipelineComposer.compose({});
     const minCount = minStages.length;
 
@@ -275,6 +281,7 @@ describe('PipelineComposer Stage Ordering', () => {
     featureFlags.setOverride('CITATION', true);
     featureFlags.setOverride('RAG_STRATEGIES', true);
 
+    pipelineComposer.reset();
     const maxStages = pipelineComposer.compose({ responseMode: 'structured' });
     const maxCount = maxStages.length;
 

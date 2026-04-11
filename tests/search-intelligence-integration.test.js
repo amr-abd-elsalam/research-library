@@ -247,4 +247,44 @@ describe('Search Intelligence — Admin API (Phase 98)', () => {
     const data = await res.json();
     assert.strictEqual(Object.keys(data).length, 15);
   });
+
+  // T-SI24: config features returns QUERY_PLANNING: true (Phase 99)
+  it('T-SI24: config features returns QUERY_PLANNING true', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.QUERY_PLANNING, true, 'QUERY_PLANNING should be true (Phase 99)');
+  });
+
+  // T-SI25: inspect shows queryPlanner.enabled: true (Phase 99)
+  it('T-SI25: inspect shows queryPlanner enabled', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.queryPlanner.enabled, true);
+    assert.strictEqual(typeof data.queryPlanner.totalPlanned, 'number');
+    assert.strictEqual(typeof data.queryPlanner.totalSkipped, 'number');
+  });
+
+  // T-SI26: queryPlanner.enabled is true by default (singleton check) (Phase 99)
+  it('T-SI26: queryPlanner singleton enabled by default', async () => {
+    const { queryPlanner } = await import('../server/services/queryPlanner.js');
+    assert.strictEqual(queryPlanner.enabled, true);
+  });
+
+  // T-SI27: queryPlanner.shouldPlan returns true for comparative (Phase 99)
+  it('T-SI27: queryPlanner shouldPlan returns true for comparative', async () => {
+    const { queryPlanner } = await import('../server/services/queryPlanner.js');
+    const result = queryPlanner.shouldPlan('ما الفرق بين الأولى والثانية', { type: 'comparative', score: 3, indicators: ['comparative'] });
+    assert.strictEqual(result, true);
+  });
+
+  // T-SI28: queryPlanner.shouldPlan returns false for factual (Phase 99)
+  it('T-SI28: queryPlanner shouldPlan returns false for factual', async () => {
+    const { queryPlanner } = await import('../server/services/queryPlanner.js');
+    const result = queryPlanner.shouldPlan('ما هي الباقات؟', { type: 'factual', score: 1, indicators: [] });
+    assert.strictEqual(result, false);
+  });
 });

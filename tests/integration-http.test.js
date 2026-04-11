@@ -1112,13 +1112,13 @@ describe('Integration HTTP — Per-Library Analytics (Phase 61)', () => {
     assert.strictEqual(typeof data.actionRegistry.enabled, 'boolean');
   });
 
-  // T-IH95: GET /api/config/features includes QUERY_PLANNING boolean (Phase 81)
+  // T-IH95: GET /api/config/features includes QUERY_PLANNING boolean (Phase 99: enabled by default)
   it('T-IH95: GET /api/config/features includes QUERY_PLANNING boolean', async () => {
     const res = await fetch(`${ts.baseUrl}/api/config/features`);
     assert.strictEqual(res.status, 200);
     const data = await res.json();
     assert.strictEqual(typeof data.QUERY_PLANNING, 'boolean');
-    assert.strictEqual(data.QUERY_PLANNING, false, 'QUERY_PLANNING should default to false');
+    assert.strictEqual(data.QUERY_PLANNING, true, 'QUERY_PLANNING should default to true (Phase 99)');
   });
 
   // T-IH96: GET /api/admin/inspect includes queryPlanner section (Phase 81)

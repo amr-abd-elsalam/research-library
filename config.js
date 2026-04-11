@@ -914,7 +914,7 @@ const config = {
   //    — Pattern-based decomposition — بدون استدعاء API (تكلفة صفر)
   // ═══════════════════════════════════════════════════════════════
   QUERY_PLANNING: {
-    enabled:               false,          // true = multi-step retrieval للأسئلة المركّبة | false = single-pass (السلوك الحالي بالظبط)
+    enabled:               true,          // true = multi-step retrieval للأسئلة المركّبة | false = single-pass (السلوك الحالي بالظبط)
     maxSubQueries:         3,              // أقصى عدد استعلامات فرعية لكل سؤال (1-5)
     mergeStrategy:         'interleave',   // 'interleave' = round-robin من كل sub-query | 'concatenate' = flatten + sort by score | 'ranked' = weighted by position + score
     minComplexityForPlan:  'comparative',  // أقل مستوى تعقيد لتفعيل التخطيط ('comparative' | 'analytical' | 'multi_part'). 'factual' و 'exploratory' = لا تخطيط

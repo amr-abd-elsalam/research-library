@@ -2804,13 +2804,15 @@
 
       var reranker = data.searchReranker || {};
       var complexity = data.queryComplexityAnalyzer || {};
+      var planner = data.queryPlanner || {};
 
       var html = '';
 
-      // Stats cards
+      // Stats cards (3 cards: Re-ranking, Complexity, Query Planning)
       html += '<div class="search-intel-stats">';
       html += '<div class="search-intel-stat-card"><div class="search-intel-stat-value">' + (reranker.enabled ? '\u0645\u0641\u0639\u0651\u0644' : '\u0645\u0639\u0637\u0651\u0644') + '</div><div class="search-intel-stat-label">\u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u062A\u0631\u062A\u064A\u0628 (Re-ranking)</div></div>';
       html += '<div class="search-intel-stat-card"><div class="search-intel-stat-value">' + (complexity.enabled ? '\u0645\u0641\u0639\u0651\u0644' : '\u0645\u0639\u0637\u0651\u0644') + '</div><div class="search-intel-stat-label">\u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u062A\u0639\u0642\u064A\u062F (Complexity)</div></div>';
+      html += '<div class="search-intel-stat-card"><div class="search-intel-stat-value">' + (planner.enabled ? '\u0645\u0641\u0639\u0651\u0644' : '\u0645\u0639\u0637\u0651\u0644') + '</div><div class="search-intel-stat-label">\u062A\u062E\u0637\u064A\u0637 \u0627\u0644\u0627\u0633\u062A\u0639\u0644\u0627\u0645 (Query Planning)</div></div>';
       html += '</div>';
 
       // Re-ranker details
@@ -2831,12 +2833,23 @@
       }
       html += '</div>';
 
+      // Query Planning details
+      html += '<div style="margin-top:8px;padding:12px 16px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);font-size:0.85rem;color:var(--text-muted);line-height:1.6;">';
+      if (planner.enabled) {
+        html += '\u2705 \u062A\u062E\u0637\u064A\u0637 \u0627\u0644\u0627\u0633\u062A\u0639\u0644\u0627\u0645 \u0645\u0641\u0639\u0651\u0644 \u2014 \u0627\u0644\u0623\u0633\u0626\u0644\u0629 \u0627\u0644\u0645\u0631\u0643\u0651\u0628\u0629 (comparative / analytical / multi_part) \u062A\u064F\u0642\u0633\u0645 \u062A\u0644\u0642\u0627\u0626\u064A\u0627\u064B \u0644\u0627\u0633\u062A\u0639\u0644\u0627\u0645\u0627\u062A \u0641\u0631\u0639\u064A\u0629 \u0645\u0639 \u0628\u062D\u062B \u0645\u062A\u0648\u0627\u0632\u064A + \u062F\u0645\u062C \u0627\u0644\u0646\u062A\u0627\u0626\u062C. \u0628\u062F\u0648\u0646 \u062A\u0643\u0644\u0641\u0629 LLM \u0625\u0636\u0627\u0641\u064A\u0629 (pattern-based).';
+        html += '<br><span style="font-family:var(--font-en);font-size:0.8rem;">\u0627\u0633\u062A\u0639\u0644\u0627\u0645\u0627\u062A \u0645\u062E\u0637\u0637\u0629: <strong>' + (planner.totalPlanned || 0) + '</strong> \u00B7 \u0645\u062A\u062C\u0627\u0648\u064E\u0632\u0629: <strong>' + (planner.totalSkipped || 0) + '</strong></span>';
+      } else {
+        html += '\u26A0\uFE0F \u062A\u062E\u0637\u064A\u0637 \u0627\u0644\u0627\u0633\u062A\u0639\u0644\u0627\u0645 \u0645\u0639\u0637\u0651\u0644 \u2014 \u0643\u0644 \u0627\u0644\u0623\u0633\u0626\u0644\u0629 \u062A\u064F\u0628\u062D\u062B \u0641\u064A \u062E\u0637\u0648\u0629 \u0648\u0627\u062D\u062F\u0629. \u0641\u0639\u0651\u0644\u0647 \u0645\u0646 <code>QUERY_PLANNING.enabled: true</code>';
+      }
+      html += '</div>';
+
       // Pipeline stage info
       html += '<div class="search-intel-stages">';
       html += '<h3 style="font-size:13px;color:var(--text-muted);margin:16px 0 8px;">\u0645\u0631\u0627\u062D\u0644 \u0627\u0644\u0640 Pipeline \u0627\u0644\u0645\u062A\u0623\u062B\u0631\u0629</h3>';
 
       var stages = [
         { name: 'stageComplexityAnalysis', label: '\u062A\u062D\u0644\u064A\u0644 \u0627\u0644\u062A\u0639\u0642\u064A\u062F', active: complexity.enabled },
+        { name: 'stageQueryPlan', label: '\u062A\u062E\u0637\u064A\u0637 \u0627\u0644\u0627\u0633\u062A\u0639\u0644\u0627\u0645', active: planner.enabled },
         { name: 'stageRerank', label: '\u0625\u0639\u0627\u062F\u0629 \u0627\u0644\u062A\u0631\u062A\u064A\u0628', active: reranker.enabled },
       ];
 

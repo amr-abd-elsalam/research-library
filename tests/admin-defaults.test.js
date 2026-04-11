@@ -62,6 +62,11 @@ describe('Admin Feature Defaults — Config (Phase 97)', () => {
   it('T-AD27: config.QUERY_COMPLEXITY.enabled is true', () => {
     assert.strictEqual(config.QUERY_COMPLEXITY.enabled, true);
   });
+
+  // T-AD31: config.QUERY_PLANNING.enabled === true (Phase 99)
+  it('T-AD31: config.QUERY_PLANNING.enabled is true', () => {
+    assert.strictEqual(config.QUERY_PLANNING.enabled, true);
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -284,5 +289,23 @@ describe('Admin Feature Defaults — API Endpoints (Phase 97)', () => {
     const data = await res.json();
     assert.strictEqual(data.RETRIEVAL, true, 'RETRIEVAL should be true');
     assert.strictEqual(data.QUERY_COMPLEXITY, true, 'QUERY_COMPLEXITY should be true');
+  });
+
+  // T-AD32: Config features returns QUERY_PLANNING as true (Phase 99)
+  it('T-AD32: config features — QUERY_PLANNING true', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/config/features`);
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.QUERY_PLANNING, true, 'QUERY_PLANNING should be true');
+  });
+
+  // T-AD33: Inspect shows queryPlanner.enabled true (Phase 99)
+  it('T-AD33: inspect shows queryPlanner.enabled true', async () => {
+    const res = await fetch(`${ts.baseUrl}/api/admin/inspect`, {
+      headers: { 'Authorization': `Bearer ${ADMIN_TOKEN}` },
+    });
+    assert.strictEqual(res.status, 200);
+    const data = await res.json();
+    assert.strictEqual(data.queryPlanner.enabled, true, 'queryPlanner should be enabled by default');
   });
 });
